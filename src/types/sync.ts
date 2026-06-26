@@ -10,10 +10,54 @@ export interface MutationEntry {
 
 export interface SyncBatchRequest { device_id: string; device_seq: number; operations: MutationEntry[] }
 
+export interface ConflictEntry {
+  client_id: string
+  record_id: string
+  field: string
+  local_value: unknown
+  server_value: unknown
+  strategy: "last_write_wins" | "server_authoritative" | "manual" | "average" | "max" | "min"
+  field_strategy: string
+  auto_resolved: boolean
+  resolved_value?: unknown
+}
+
 export interface SyncBatchResponse {
   acked: string[]; failed: { client_id: string; reason: string }[]
-  conflicts: { client_id: string; record_id: string; field: string; local_value: unknown; server_value: unknown }[]
+  conflicts: ConflictEntry[]
   server_changes: MutationEntry[]; last_seq: number; server_timestamp: number
+}
+
+export interface AuditEvent {
+  id: string
+  type: "conflict_auto_resolved" | "conflict_escalated" | "inventory_reservation"
+  record_id?: string
+  field?: string
+  strategy?: string
+  field_strategy?: string
+  client_value?: unknown
+  server_value?: unknown
+  resolved_value?: unknown
+  item_id?: string
+  quantity?: number
+  content_hash?: string
+  status?: string
+  detail: string
+  timestamp: number
+}
+
+export interface InventoryLedgerEntry {
+  id: string
+  contentHash: string
+  itemId: string
+  quantity: number
+  userId: string | undefined
+  stockBefore: { total: number; reserved: number }
+  stockAfter: { total: number; reserved: number }
+  status: "committed" | "failed_serialization"
+  competingRequestId?: string
+  idempotencyKey: string
+  timestamp: number
 }
 
 export interface DeviceState {

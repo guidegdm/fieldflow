@@ -1,5 +1,6 @@
+import { createHash } from "node:crypto"
 import type { RecordData } from "@/types/record"
-import type { MutationEntry, DeviceState, ConflictRecord } from "@/types/sync"
+import type { MutationEntry, DeviceState, ConflictRecord, AuditEvent, InventoryLedgerEntry } from "@/types/sync"
 import type { WorkflowDefinition } from "@/types/workflow"
 
 const g = globalThis as Record<string, unknown>
@@ -12,6 +13,11 @@ class Store {
   private conflicts = new Map<string, ConflictRecord>()
   private criticalOps = new Map<string, { itemId: string; quantity: number; timestamp: number }>()
   private inventory = new Map<string, { id: string; name: string; total: number; reserved: number }>()
+  private auditEvents: AuditEvent[] = []
+  private inventoryLedger: InventoryLedgerEntry[] = []
+  private inventoryLocks = new Set<string>()
+  private ledgerSeq = 0
+  private seq = 0
 
   getRecord(id: string) { return this.records.get(id) }
   putRecord(r: RecordData) { this.records.set(r.id, r) }
@@ -23,7 +29,8 @@ class Store {
   getAllWorkflows() { return Array.from(this.workflows.values()) }
 
   hasMutation(clientId: string) { return this.mutations.has(clientId) }
-  storeMutation(m: MutationEntry) { this.mutations.set(m.client_id, m) }
+  storeMutation(m: MutationEntry) { this.mutations.set(m.client_id, m); this.seq++ }
+  getCurrentSeq() { return this.seq }
   getServerSince(seq: number): MutationEntry[] {
     return Array.from(this.mutations.values()).filter((m) => m.client_timestamp > seq)
   }
@@ -35,18 +42,73 @@ class Store {
   getConflictsByRecord(rid: string) { return Array.from(this.conflicts.values()).filter((c) => c.record_id === rid) }
   getOpenConflicts() { return Array.from(this.conflicts.values()).filter((c) => c.status === "OPEN") }
 
-  reserveInventory(itemId: string, idempotencyKey: string, qty = 1): { success: boolean; error?: string; remaining?: number } {
+  pushAuditEvent(e: AuditEvent) { this.auditEvents.push(e) }
+  getAuditEvents() { return this.auditEvents }
+
+  getInventoryLedger() { return this.inventoryLedger }
+
+  async reserveInventory(
+    itemId: string, idempotencyKey: string, qty = 1, userId?: string
+  ): Promise<{ success: boolean; error?: string; remaining?: number; contentHash?: string; competingRequestId?: string; currentStock?: number; retryRecommended?: boolean }> {
+    const contentHash = createHash("sha256").update(`${itemId}|${qty}|${userId || "anonymous"}`).digest("hex")
+
     if (this.criticalOps.has(idempotencyKey)) {
       const cached = this.criticalOps.get(idempotencyKey)!
       const item = this.inventory.get(cached.itemId)
-      return { success: true, remaining: item ? item.total - item.reserved : 0 }
+      return { success: true, contentHash, remaining: item ? item.total - item.reserved : 0 }
     }
+
+    const logEntry = (status: "committed" | "failed_serialization", extra: Record<string, string | undefined> = {}) => {
+      const before = item ? { total: item.total, reserved: item.reserved - (status === "committed" ? qty : 0) } : { total: 0, reserved: 0 }
+      const after = item ? { total: item.total, reserved: item.reserved } : { total: 0, reserved: 0 }
+      this.inventoryLedger.push({
+        id: `ledger-${++this.ledgerSeq}`,
+        contentHash,
+        itemId, quantity: qty, userId,
+        stockBefore: before, stockAfter: after,
+        status,
+        competingRequestId: extra.competingRequestId,
+        idempotencyKey,
+        timestamp: Date.now(),
+      })
+    }
+
     const item = this.inventory.get(itemId)
-    if (!item) return { success: false, error: "ITEM_NOT_FOUND" }
-    if (item.total - item.reserved < qty) return { success: false, error: "STOCK_INSUFFISANT", remaining: item.total - item.reserved }
-    item.reserved += qty
-    this.criticalOps.set(idempotencyKey, { itemId, quantity: qty, timestamp: Date.now() })
-    return { success: true, remaining: item.total - item.reserved }
+    if (!item) {
+      logEntry("failed_serialization")
+      return { success: false, error: "ITEM_NOT_FOUND", contentHash, retryRecommended: false }
+    }
+
+    while (this.inventoryLocks.has(itemId)) {
+      await new Promise((r) => setTimeout(r, 1))
+    }
+    this.inventoryLocks.add(itemId)
+
+    try {
+      const available = item.total - item.reserved
+      if (available < qty) {
+        const detail = {
+          success: false as const, error: "SERIALIZATION_FAILURE", contentHash,
+          currentStock: available,
+          competingRequestId: `concurrent-${itemId}-${Date.now()}`,
+          retryRecommended: true,
+        }
+        logEntry("failed_serialization", { competingRequestId: detail.competingRequestId })
+        return detail
+      }
+      item.reserved += qty
+      this.criticalOps.set(idempotencyKey, { itemId, quantity: qty, timestamp: Date.now() })
+      logEntry("committed")
+      this.pushAuditEvent({
+        id: contentHash, type: "inventory_reservation", item_id: itemId, quantity: qty,
+        content_hash: contentHash, status: "committed",
+        detail: `Reserved ${qty} of ${item.name} (${item.total - item.reserved} remaining)`,
+        timestamp: Date.now(),
+      })
+      return { success: true, contentHash, remaining: item.total - item.reserved }
+    } finally {
+      this.inventoryLocks.delete(itemId)
+    }
   }
 
   seed() {

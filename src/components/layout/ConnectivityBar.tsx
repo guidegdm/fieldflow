@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useSyncStore } from "@/stores/syncStore"
+import { useStorageQuota } from "@/hooks/useStorageQuota"
 import { cn } from "@/lib/utils"
 import {
   simulateNetwork,
@@ -19,10 +20,12 @@ const modes: { value: NetworkMode; label: string }[] = [
 export function ConnectivityBar() {
   const { isOnline, isSyncing, pendingCount, lastSyncAt, setOnline } =
     useSyncStore()
+  const { usage, quota, percentageUsed, isNearLimit } = useStorageQuota()
   const [showSim, setShowSim] = useState(false)
   const [simMode, setSimMode] = useState<NetworkMode>(getCurrentMode())
 
   const failed = pendingCount > 0 && !isSyncing && lastSyncAt !== null
+  const showStorage = quota > 0 && percentageUsed > 70
 
   const isDev = process.env.NODE_ENV === "development"
 
@@ -91,6 +94,15 @@ export function ConnectivityBar() {
           </button>
         )}
       </div>
+
+      {showStorage && (
+        <div className="h-1 bg-gray-200">
+          <div
+            className={cn("h-full transition-all", isNearLimit ? "bg-emergency-red" : "bg-exposed-wire")}
+            style={{ width: `${Math.min(percentageUsed, 100)}%` }}
+          />
+        </div>
+      )}
 
       {isDev && showSim && (
         <div className="absolute top-full left-0 right-0 bg-white border border-graph-line shadow-md px-3 py-2 flex items-center gap-3 text-xs">

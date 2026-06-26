@@ -1,17 +1,83 @@
 export interface WorkflowDefinition {
   id: string
-  name: string
-  description: string
-  fields: WorkflowField[]
   version: number
-  createdAt: number
-  updatedAt: number
+  name: string
+  nameEn: string
+  description: string
+  descriptionEn: string
+  entity: WorkflowEntity
+  states: WorkflowState[]
+  transitions: WorkflowTransition[]
+  roles: WorkflowRole[]
+  offlinePolicy: OfflinePolicy
+  status: "draft" | "published"
+  createdAt: string
+  updatedAt: string
+  publishedAt?: string
+  author: string
+}
+
+export interface WorkflowEntity {
+  id: string
+  key: string
+  label: string
+  labelEn: string
+  fields: WorkflowField[]
 }
 
 export interface WorkflowField {
-  name: string
+  id: string
+  key: string
   label: string
-  type: "text" | "number" | "select" | "date" | "signature"
+  labelEn: string
+  type: string
   required: boolean
-  options?: string[]
+  order: number
+  section: string
+  validation?: { min?: number; max?: number }
+  options?: { label: string; value: string }[]
+}
+
+export type FieldDefinition = WorkflowField
+
+export interface WorkflowState {
+  id: string
+  key: string
+  label: string
+  labelEn: string
+  color: string
+  isInitial: boolean
+  isTerminal: boolean
+  x: number
+  y: number
+}
+
+export interface WorkflowTransition {
+  id: string
+  key: string
+  label: string
+  labelEn: string
+  fromState: string
+  toState: string
+  requiredRoles: string[]
+  sideEffects?: string[]
+}
+
+export interface WorkflowRole {
+  id: string
+  key: string
+  label: string
+  labelEn?: string
+  permissions: string[]
+}
+
+export interface OfflinePolicy {
+  maxOfflineHours: number
+  allowedOperations: { create: boolean; update: boolean; delete: boolean; evidence: boolean }
+  conflictStrategy: "last_write_wins" | "server_authoritative" | "manual"
+  manualResolutionFields: string[]
+  autoResolutionNumeric: "average" | "max" | "min"
+  maxAttachmentSizeMb: number
+  allowedAttachmentTypes: string[]
+  attachmentSyncPriority: string
 }

@@ -2,6 +2,7 @@ import { useCallback } from "react"
 import { db } from "@/lib/db/indexeddb"
 import { fullSync } from "@/lib/sync/sync-client"
 import { useSyncStore } from "@/stores/syncStore"
+import { retryWithBackoff } from "@/lib/sync/backoff"
 
 export function useSync() {
   const { isSyncing, pendingCount, setSyncing, setPendingCount, setLastSync, setConflicts } = useSyncStore()
@@ -12,10 +13,10 @@ export function useSync() {
     try {
       const pending = await db.getPendingMutations()
       setPendingCount(pending.length)
-      const result = await fullSync()
-      setConflicts(result.conflicts ?? [])
+      const result = await retryWithBackoff(() => fullSync())
+      setConflicts((result as any)?.conflicts ?? [])
       setLastSync(Date.now())
-      setPendingCount(result.acked ? Math.max(0, pending.length - result.acked.length) : 0)
+      setPendingCount((result as any)?.acked ? Math.max(0, pending.length - (result as any).acked.length) : 0)
     } catch {
       setLastSync(Date.now())
     } finally {

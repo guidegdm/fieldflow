@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
   }
 
   const store = getStore()
-  const result = store.reserveInventory(item_id, idempotency_key, quantity)
+  const result = await store.reserveInventory(item_id, idempotency_key, quantity)
 
   if (!result.success) {
     return NextResponse.json(result, { status: 409 })

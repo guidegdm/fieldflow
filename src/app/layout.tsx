@@ -1,6 +1,5 @@
 import type { Metadata } from "next"
 import "@/styles/globals.css"
-import "@/lib/i18n/i18n"
 import { ClientLayout } from "@/components/layout/ClientLayout"
 
 export const metadata: Metadata = {

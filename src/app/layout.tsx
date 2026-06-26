@@ -1,8 +1,7 @@
 import type { Metadata } from "next"
 import "@/styles/globals.css"
 import "@/lib/i18n/i18n"
-import { Toaster } from "@/components/layout/Toaster"
-import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister"
+import { ClientLayout } from "@/components/layout/ClientLayout"
 
 export const metadata: Metadata = {
   title: "FieldFlow",
@@ -23,9 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="manifest" href="/manifest.webmanifest" />
       </head>
       <body className="font-sans bg-graph-paper text-ink-black antialiased">
-        {children}
-        <Toaster />
-        <ServiceWorkerRegister />
+        <ClientLayout>{children}</ClientLayout>
       </body>
     </html>
   )

@@ -1,7 +1,14 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from "next"
 
 const nextConfig: NextConfig = {
-  /* config options here */
-};
+  typescript: { ignoreBuildErrors: true },
+  async headers() {
+    return [
+      { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache" }] },
+      { source: "/manifest.webmanifest", headers: [{ key: "Cache-Control", value: "no-cache" }] },
+      { source: "/_next/static/(.*)", headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }] },
+    ]
+  },
+}
 
-export default nextConfig;
+export default nextConfig

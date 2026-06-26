@@ -1,0 +1,229 @@
+{
+  "app": {
+    "title": "FieldFlow",
+    "subtitle": "Operational humanitarian platform",
+    "tagline": "Built for limited-connectivity environments"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "edit": "Edit",
+    "search": "Search",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "back": "Back",
+    "submit": "Submit",
+    "sync": "Sync",
+    "offline": "Offline",
+    "online": "Online",
+    "syncing": "Syncing...",
+    "lastSync": "Last sync",
+    "pendingSync": "Pending sync",
+    "noData": "No data",
+    "required": "Required",
+    "close": "Close"
+  },
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "email": "Email address",
+    "role": "Role",
+    "demo_accounts": "Demo accounts",
+    "demo_disclaimer": "Hackathon demo — No real data"
+  },
+  "roles": {
+    "field_worker": "Field Agent",
+    "supervisor": "Supervisor",
+    "org_admin": "Administrator"
+  },
+  "records": {
+    "newRegistration": "New Registration",
+    "householdName": "Household Name",
+    "headOfHousehold": "Head of Household",
+    "householdSize": "Household Size",
+    "shelterType": "Shelter Type",
+    "village": "Village",
+    "gpsCoordinates": "GPS Coordinates",
+    "vulnerabilityScore": "Vulnerability Score",
+    "needs": "Priority Needs",
+    "status": "Status",
+    "savedLocally": "Saved Locally",
+    "syncComplete": "Sync Complete",
+    "conflictDetected": "Conflict Detected"
+  },
+  "workflow": {
+    "builder": "Workflow Builder",
+    "states": "States",
+    "transitions": "Transitions",
+    "fields": "Fields",
+    "roles": "Roles",
+    "publish": "Publish",
+    "published": "Published",
+    "draft": "Draft"
+  },
+  "dashboard": {
+    "admin": "Administration",
+    "supervisor": "Supervision",
+    "fieldWorker": "Field Agent",
+    "recentActivity": "Recent Activity",
+    "syncHealth": "Sync Health",
+    "pendingReviews": "Pending Reviews",
+    "conflicts": "Conflicts",
+    "inventory": "Inventory",
+    "audit": "Audit",
+    "pending": "Pending",
+    "approvedToday": "Approved Today",
+    "rejected": "Rejected",
+    "filterAll": "All",
+    "filterPriority": "Priority",
+    "filterToday": "Today",
+    "submitter": "Submitted by",
+    "timeAgo": "",
+    "noPending": "No pending records"
+  },
+  "sync": {
+    "pendingCount": "{{count}} pending change(s)",
+    "syncNow": "Sync Now",
+    "syncFailed": "Sync Failed"
+  },
+  "inventory": {
+    "available": "Available",
+    "reserved": "Reserved",
+    "total": "Total",
+    "outOfStock": "Out of Stock",
+    "reserveFailed": "Reservation failed: insufficient inventory",
+    "reserveSuccess": "Reservation successful",
+    "lowStock": "Low stock — fewer than 2 units available"
+  },
+  "conflicts": {
+    "resolution": "Conflict Resolution",
+    "acceptA": "Accept A",
+    "acceptB": "Accept B",
+    "manualMerge": "Manual Merge",
+    "rationale": "Rationale",
+    "rationaleRequired": "Rationale is required",
+    "resolved": "Conflict Resolved"
+  },
+  "admin": {
+    "kpiWorkflows": "Active Workflows",
+    "kpiAgents": "Field Agents",
+    "kpiRecords": "Total Records",
+    "kpiPending": "Pending Sync",
+    "activityFeed": "Activity Feed",
+    "syncHealth": "Sync Health",
+    "device": "Device",
+    "lastSeen": "Last Seen",
+    "name": "Name",
+    "version": "Version",
+    "recordCount": "Records",
+    "properties": "Properties",
+    "publication": "Publication",
+    "entity": "Entity",
+    "noSelection": "Select an item"
+  },
+  "supervisor": {
+    "approve": "Approve",
+    "reject": "Reject",
+    "requestChanges": "Request Changes",
+    "rejectionReason": "Rejection Reason",
+    "rejectionReasonRequired": "Please provide a reason",
+    "confirmRejection": "Confirm Rejection",
+    "confirmApproval": "Confirm Approval",
+    "statusTimeline": "Status Timeline",
+    "versionA": "Version A (Jean-Pierre)",
+    "versionB": "Version B (Fatima)",
+    "nonConflictingFields": "Non-Conflicting Fields",
+    "confirmResolution": "Confirm Resolution",
+    "reserve": "Reserve",
+    "review": "Review",
+    "reviewQueue": "Review Queue",
+    "acceptedA": "Version A accepted",
+    "acceptedB": "Version B accepted",
+    "resolved": "Resolved"
+  },
+  "engineering": {
+    "dsqlLedger": "DSQL Ledger",
+    "syncVisualization": "Sync Visualization",
+    "deviceStatus": "Device Status",
+    "operationLog": "Operation Log",
+    "tabs": {
+      "sync": "Sync",
+      "dsqlLedger": "DSQL Ledger",
+      "appareils": "Devices"
+    },
+    "syncOps": {
+      "pending": "Pending",
+      "sending": "Sending",
+      "acked": "Acknowledged",
+      "conflict": "Conflict"
+    },
+    "dsql": {
+      "horodatage": "Timestamp",
+      "cle": "Idempotency Key",
+      "article": "Item",
+      "qte": "Qty",
+      "statut": "Status",
+      "resultat": "Result",
+      "committed": "COMMITTED",
+      "serializationFailure": "SERIALIZATION_FAILURE"
+    },
+    "devices": {
+      "id": "Device ID",
+      "user": "User",
+      "lastActivity": "Last Activity",
+      "pending": "Pending",
+      "version": "Version",
+      "status": "Status",
+      "online": "Online",
+      "offline": "Offline",
+      "attention": "Attention"
+    }
+  },
+  "home": {
+    "urgent": "Urgent",
+    "pendingSync": "Pending Sync",
+    "today": "Today",
+    "recordsCount": "{{count}} record(s)",
+    "noRecords": "No records today"
+  },
+  "register": {
+    "identification": "Identification",
+    "livingConditions": "Living Conditions",
+    "needs": "Priority Needs",
+    "latitude": "Latitude",
+    "longitude": "Longitude",
+    "vulnerabilityLabel": "Vulnerability Level",
+    "savedLocally": "Saved Locally",
+    "successMessage": "Data has been saved on this device",
+    "shelter_tente": "Tent",
+    "shelter_abri": "Shelter",
+    "shelter_maison": "House",
+    "shelter_centre": "Collective Center",
+    "shelter_famille": "Host Family",
+    "need_nourriture": "Food",
+    "need_eau": "Drinking Water",
+    "need_abri": "Shelter",
+    "need_medical": "Medical Care",
+    "need_education": "Education",
+    "need_protection": "Protection"
+  },
+  "search": {
+    "placeholder": "Search households...",
+    "all": "All",
+    "pending": "Pending",
+    "verified": "Verified",
+    "synced": "Synced",
+    "noResults": "No results"
+  },
+  "record": {
+    "auditTimeline": "Timeline",
+    "created": "Record created",
+    "submitted": "Submitted for review",
+    "synced": "Synced",
+    "conflict": "Conflict detected",
+    "resolved": "Conflict resolved"
+  }
+}

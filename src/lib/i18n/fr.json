@@ -1,0 +1,229 @@
+{
+  "app": {
+    "title": "FieldFlow",
+    "subtitle": "Plateforme humanitaire opérationnelle",
+    "tagline": "Conçu pour les environnements à connectivité limitée"
+  },
+  "common": {
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "confirm": "Confirmer",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "search": "Rechercher",
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "success": "Succès",
+    "back": "Retour",
+    "submit": "Soumettre",
+    "sync": "Synchroniser",
+    "offline": "Hors ligne",
+    "online": "En ligne",
+    "syncing": "Synchronisation...",
+    "lastSync": "Dernière sync",
+    "pendingSync": "En attente de sync",
+    "noData": "Aucune donnée",
+    "required": "Obligatoire",
+    "close": "Fermer"
+  },
+  "auth": {
+    "login": "Connexion",
+    "logout": "Déconnexion",
+    "email": "Adresse email",
+    "role": "Rôle",
+    "demo_accounts": "Comptes de démonstration",
+    "demo_disclaimer": "Démo hackathon — Aucune donnée réelle"
+  },
+  "roles": {
+    "field_worker": "Agent terrain",
+    "supervisor": "Superviseur",
+    "org_admin": "Administrateur"
+  },
+  "records": {
+    "newRegistration": "Nouvelle inscription",
+    "householdName": "Nom du ménage",
+    "headOfHousehold": "Chef de ménage",
+    "householdSize": "Taille du ménage",
+    "shelterType": "Type d'abri",
+    "village": "Village",
+    "gpsCoordinates": "Coordonnées GPS",
+    "vulnerabilityScore": "Score de vulnérabilité",
+    "needs": "Besoins prioritaires",
+    "status": "Statut",
+    "savedLocally": "Enregistré localement",
+    "syncComplete": "Synchronisation terminée",
+    "conflictDetected": "Conflit détecté"
+  },
+  "workflow": {
+    "builder": "Éditeur de workflow",
+    "states": "États",
+    "transitions": "Transitions",
+    "fields": "Champs",
+    "roles": "Rôles",
+    "publish": "Publier",
+    "published": "Publié",
+    "draft": "Brouillon"
+  },
+  "dashboard": {
+    "admin": "Administration",
+    "supervisor": "Supervision",
+    "fieldWorker": "Agent terrain",
+    "recentActivity": "Activité récente",
+    "syncHealth": "Santé synchronisation",
+    "pendingReviews": "Examens en attente",
+    "conflicts": "Conflits",
+    "inventory": "Inventaire",
+    "audit": "Audit",
+    "pending": "En attente",
+    "approvedToday": "Approuvés aujourd'hui",
+    "rejected": "Rejetés",
+    "filterAll": "Tous",
+    "filterPriority": "Prioritaire",
+    "filterToday": "Aujourd'hui",
+    "submitter": "Soumis par",
+    "timeAgo": "Il y a",
+    "noPending": "Aucun dossier en attente"
+  },
+  "sync": {
+    "pendingCount": "{{count}} modification(s) en attente",
+    "syncNow": "Synchroniser maintenant",
+    "syncFailed": "Échec de synchronisation"
+  },
+  "inventory": {
+    "available": "Disponible",
+    "reserved": "Réservé",
+    "total": "Total",
+    "outOfStock": "Stock épuisé",
+    "reserveFailed": "Réservation impossible: inventaire insuffisant",
+    "reserveSuccess": "Réservation réussie",
+    "lowStock": "Stock insuffisant — moins de 2 unités"
+  },
+  "conflicts": {
+    "resolution": "Résolution de conflit",
+    "acceptA": "Accepter A",
+    "acceptB": "Accepter B",
+    "manualMerge": "Fusion manuelle",
+    "rationale": "Justification",
+    "rationaleRequired": "La justification est obligatoire",
+    "resolved": "Conflit résolu"
+  },
+  "admin": {
+    "kpiWorkflows": "Workflows actifs",
+    "kpiAgents": "Agents terrain",
+    "kpiRecords": "Enregistrements",
+    "kpiPending": "En attente de sync",
+    "activityFeed": "Flux d'activité",
+    "syncHealth": "Santé synchronisation",
+    "device": "Appareil",
+    "lastSeen": "Dernière vue",
+    "name": "Nom",
+    "version": "Version",
+    "recordCount": "Enregistrements",
+    "properties": "Propriétés",
+    "publication": "Publication",
+    "entity": "Entité",
+    "noSelection": "Sélectionnez un élément"
+  },
+  "supervisor": {
+    "approve": "Approuver",
+    "reject": "Rejeter",
+    "requestChanges": "Demander des modifications",
+    "rejectionReason": "Motif du rejet",
+    "rejectionReasonRequired": "Veuillez fournir un motif",
+    "confirmRejection": "Confirmer le rejet",
+    "confirmApproval": "Confirmer l'approbation",
+    "statusTimeline": "Chronologie",
+    "versionA": "Version A (Jean-Pierre)",
+    "versionB": "Version B (Fatima)",
+    "nonConflictingFields": "Champs sans conflit",
+    "confirmResolution": "Confirmer la résolution",
+    "reserve": "Réserver",
+    "review": "Examiner",
+    "reviewQueue": "File d'examen",
+    "acceptedA": "Version A acceptée",
+    "acceptedB": "Version B acceptée",
+    "resolved": "Résolu"
+  },
+  "engineering": {
+    "dsqlLedger": "Registre DSQL",
+    "syncVisualization": "Visualisation sync",
+    "deviceStatus": "État des appareils",
+    "operationLog": "Journal des opérations",
+    "tabs": {
+      "sync": "Sync",
+      "dsqlLedger": "Registre DSQL",
+      "appareils": "Appareils"
+    },
+    "syncOps": {
+      "pending": "En attente",
+      "sending": "Envoi",
+      "acked": "Confirmé",
+      "conflict": "Conflit"
+    },
+    "dsql": {
+      "horodatage": "Horodatage",
+      "cle": "Clé d'idempotence",
+      "article": "Article",
+      "qte": "Qté",
+      "statut": "Statut",
+      "resultat": "Résultat",
+      "committed": "COMMITTED",
+      "serializationFailure": "SERIALIZATION_FAILURE"
+    },
+    "devices": {
+      "id": "ID Appareil",
+      "user": "Utilisateur",
+      "lastActivity": "Dernière activité",
+      "pending": "En attente",
+      "version": "Version",
+      "status": "Statut",
+      "online": "En ligne",
+      "offline": "Hors ligne",
+      "attention": "Attention"
+    }
+  },
+  "home": {
+    "urgent": "Urgent",
+    "pendingSync": "En attente de sync",
+    "today": "Aujourd'hui",
+    "recordsCount": "{{count}} enregistrement(s)",
+    "noRecords": "Aucun enregistrement aujourd'hui"
+  },
+  "register": {
+    "identification": "Identification",
+    "livingConditions": "Conditions de vie",
+    "needs": "Besoins prioritaires",
+    "latitude": "Latitude",
+    "longitude": "Longitude",
+    "vulnerabilityLabel": "Niveau de vulnérabilité",
+    "savedLocally": "Enregistré localement",
+    "successMessage": "Les données ont été sauvegardées sur cet appareil",
+    "shelter_tente": "Tente",
+    "shelter_abri": "Abri de fortune",
+    "shelter_maison": "Maison",
+    "shelter_centre": "Centre collectif",
+    "shelter_famille": "Famille d'accueil",
+    "need_nourriture": "Nourriture",
+    "need_eau": "Eau potable",
+    "need_abri": "Abri",
+    "need_medical": "Soins médicaux",
+    "need_education": "Éducation",
+    "need_protection": "Protection"
+  },
+  "search": {
+    "placeholder": "Rechercher un ménage...",
+    "all": "Tous",
+    "pending": "En attente",
+    "verified": "Vérifié",
+    "synced": "Synchronisé",
+    "noResults": "Aucun résultat"
+  },
+  "record": {
+    "auditTimeline": "Chronologie",
+    "created": "Enregistrement créé",
+    "submitted": "Soumis pour validation",
+    "synced": "Synchronisé",
+    "conflict": "Conflit détecté",
+    "resolved": "Conflit résolu"
+  }
+}

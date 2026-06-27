@@ -5,6 +5,7 @@ import { useMediaQuery } from "@/hooks/useMediaQuery"
 import { ConnectivityBar } from "@/components/layout/ConnectivityBar"
 import { TabBar } from "@/components/layout/TabBar"
 import { Drawer } from "@/components/layout/Drawer"
+import { LanguageToggle } from "@/components/layout/LanguageToggle"
 
 interface AppShellProps {
   children: React.ReactNode
@@ -34,6 +35,9 @@ export function AppShell({ children, role }: AppShellProps) {
             : "pt-7 pl-10"
         }
       >
+        <div className="fixed top-7 right-4 z-30">
+          <LanguageToggle />
+        </div>
         {children}
       </main>
     </div>

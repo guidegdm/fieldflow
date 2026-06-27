@@ -10,6 +10,7 @@ export function LanguageToggle() {
   const toggle = () => {
     const next = current === "FR" ? "en" : "fr"
     i18n.changeLanguage(next)
+    localStorage.setItem("fieldflow-lang", next)
   }
 
   return (

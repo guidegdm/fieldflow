@@ -29,11 +29,8 @@ export function AppShell({ children, role }: AppShellProps) {
         />
       )}
       <main
-        className={
-          isMobile
-            ? "pt-7 pb-16"
-            : "pt-7 pl-10"
-        }
+        className="pt-7 pb-16"
+        style={!isMobile ? { marginLeft: drawerOpen ? 200 : 40, transition: "margin-left 200ms ease-out" } : undefined}
       >
         <div className="fixed top-7 right-4 z-30">
           <LanguageToggle />

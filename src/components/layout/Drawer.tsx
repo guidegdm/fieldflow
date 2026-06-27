@@ -2,59 +2,48 @@
 
 import { useAuthStore } from "@/stores/authStore"
 import { cn } from "@/lib/utils"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import Link from "next/link"
 import {
-  LayoutDashboard,
-  Workflow,
-  Users,
-  Settings,
-  Home,
-  Search,
-  Activity,
-  Inbox,
-  AlertTriangle,
-  Package,
-  Plus,
-  Menu,
-  LogOut,
+  LayoutDashboard, Workflow, Users, Settings, Home, Search,
+  Activity, Inbox, AlertTriangle, Package, Plus, Menu, LogOut,
 } from "lucide-react"
 
-interface DrawerProps {
-  role: "admin" | "supervisor" | "field_worker"
-  open: boolean
-  onToggle: () => void
-}
+interface DrawerProps { role: "admin" | "supervisor" | "field_worker"; open: boolean; onToggle: () => void }
 
-type NavItem = { label: string; href: string; icon: React.ReactNode }
-
-const navByRole: Record<string, NavItem[]> = {
+const navByRole: Record<string, { label: string; href: string; icon: React.ReactNode }[]> = {
   field_worker: [
     { label: "Accueil", href: "/field-worker/home", icon: <Home size={20} /> },
     { label: "Rechercher", href: "/field-worker/search", icon: <Search size={20} /> },
-    { label: "Nouvel enregistrement", href: "/field-worker/register", icon: <Plus size={20} /> },
+    { label: "Nouveau", href: "/field-worker/register", icon: <Plus size={20} /> },
+    { label: "Conflits", href: "/field-worker/conflicts", icon: <AlertTriangle size={20} /> },
     { label: "Statut", href: "/field-worker/status", icon: <Activity size={20} /> },
   ],
   supervisor: [
+    { label: "Tableau de bord", href: "/supervisor/dashboard", icon: <LayoutDashboard size={20} /> },
     { label: "File d'attente", href: "/supervisor/review", icon: <Inbox size={20} /> },
     { label: "Conflits", href: "/supervisor/conflicts", icon: <AlertTriangle size={20} /> },
     { label: "Inventaire", href: "/supervisor/inventory", icon: <Package size={20} /> },
-    { label: "Nouveau", href: "/supervisor/review", icon: <Plus size={20} /> },
     { label: "Paramètres", href: "/supervisor/settings", icon: <Settings size={20} /> },
   ],
   admin: [
     { label: "Tableau de bord", href: "/admin/dashboard", icon: <LayoutDashboard size={20} /> },
     { label: "Workflows", href: "/admin/workflows", icon: <Workflow size={20} /> },
     { label: "Utilisateurs", href: "/admin/users", icon: <Users size={20} /> },
-    { label: "Nouveau workflow", href: "/admin/workflows/new", icon: <Plus size={20} /> },
     { label: "Paramètres", href: "/admin/settings", icon: <Settings size={20} /> },
   ],
 }
 
 export function Drawer({ role, open, onToggle }: DrawerProps) {
-  const { user, logout } = useAuthStore()
+  const { user, logout, org } = useAuthStore()
   const pathname = usePathname()
+  const router = useRouter()
   const items = navByRole[role] ?? navByRole.field_worker
+
+  const handleLogout = () => {
+    logout()
+    router.push("/")
+  }
 
   return (
     <aside
@@ -63,43 +52,33 @@ export function Drawer({ role, open, onToggle }: DrawerProps) {
         open ? "w-[200px]" : "w-[40px]",
       )}
     >
-      {/* Toggle button */}
       <div className="flex items-center justify-center h-12 shrink-0">
-        <button
-          onClick={onToggle}
-          className="w-8 h-8 flex items-center justify-center rounded-md text-pencil hover:text-ink-black hover:bg-black/5 transition-colors"
-          aria-label={open ? "Fermer le menu" : "Ouvrir le menu"}
-        >
+        <button onClick={onToggle} className="w-8 h-8 flex items-center justify-center rounded-md text-pencil hover:text-ink-black hover:bg-black/5" aria-label={open ? "Fermer" : "Ouvrir"}>
           <Menu size={18} />
         </button>
       </div>
 
-      {/* Navigation items */}
+      {open && org && (
+        <div className="px-3 pb-2">
+          <p className="text-xs font-medium text-lake-deep truncate">{org.name || "Organisation"}</p>
+        </div>
+      )}
+
       <nav className="flex-1 px-2 space-y-1 overflow-y-auto">
         {items.map((item) => {
           const isActive = pathname.startsWith(item.href)
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              aria-current={isActive ? "page" : undefined}
-              className={cn(
-                "flex items-center gap-3 px-2 py-2.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap",
-                isActive
-                  ? "bg-ink-blue/10 text-lake-deep"
-                  : "text-pencil hover:text-ink-black hover:bg-black/5",
-              )}
-            >
-              <span className="w-8 flex items-center justify-center shrink-0">
-                {item.icon}
-              </span>
+            <Link key={item.href} href={item.href} className={cn(
+              "flex items-center gap-3 px-2 py-2.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap",
+              isActive ? "bg-ink-blue/10 text-lake-deep" : "text-pencil hover:text-ink-black hover:bg-black/5",
+            )}>
+              <span className="w-8 flex items-center justify-center shrink-0">{item.icon}</span>
               {open && <span>{item.label}</span>}
             </Link>
           )
         })}
       </nav>
 
-      {/* User section at bottom */}
       {user && (
         <div className={cn("border-t border-graph-line", open ? "px-3 py-3" : "px-1 py-2")}>
           <div className={cn("flex items-center", open ? "gap-3" : "justify-center")}>
@@ -110,15 +89,9 @@ export function Drawer({ role, open, onToggle }: DrawerProps) {
               <>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-ink-black truncate">{user.name}</p>
-                  <span className="text-[10px] uppercase tracking-wider text-pencil">
-                    {role.replace("_", " ")}
-                  </span>
+                  <p className="text-[10px] uppercase tracking-wider text-pencil">{role.replace("_", " ")}</p>
                 </div>
-                <button
-                  onClick={logout}
-                  className="p-1.5 text-pencil hover:text-rebar hover:bg-black/5 rounded-md transition-colors"
-                  aria-label="Déconnexion"
-                >
+                <button onClick={handleLogout} className="p-1.5 text-pencil hover:text-rebar hover:bg-black/5 rounded-md" aria-label="Déconnexion">
                   <LogOut size={16} />
                 </button>
               </>

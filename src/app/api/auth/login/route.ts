@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { DEMO_USERS } from "@/types/auth"
-import { setSessionCookie, verifyCognitoToken } from "@/lib/auth/middleware"
+import { setSessionCookie, verifyCognitoJWT } from "@/lib/auth/middleware"
 import { InitiateAuthCommand, CognitoIdentityProviderClient } from "@aws-sdk/client-cognito-identity-provider"
 
 const CLIENT_ID = process.env.COGNITO_CLIENT_ID || "7r60o7fnej4vitoksrp6e93n9g"
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     const idToken = result.AuthenticationResult?.IdToken
     if (!idToken) return NextResponse.json({ error: "Échec d'authentification" }, { status: 401 })
 
-    const authUser = await verifyCognitoToken(idToken)
+    const authUser = await verifyCognitoJWT(idToken)
     if (!authUser) return NextResponse.json({ error: "Token invalide" }, { status: 401 })
 
     const response = NextResponse.json({

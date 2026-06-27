@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server"
+import { getStore } from "@/lib/api/in-memory-store"
 
 export async function GET() {
-  const counts = { workflows: 1, records: 2, devices: 4, conflicts: 0 }
+  const store = getStore()
+  const counts = {
+    workflows: store.getAllWorkflows().length,
+    records: store.getAllRecords().length,
+    devices: store.getInventoryItems().length + 1,
+    conflicts: store.getOpenConflicts().length,
+  }
   return NextResponse.json(counts)
 }

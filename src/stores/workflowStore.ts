@@ -137,7 +137,11 @@ export const useWorkflowStore = create<WorkflowStateStore>()((set, get) => ({
   publish: async () => {
     const w = get().workflow
     if (!w) return
-    await fetch(`/api/workflows/${w.id}/publish`, { method: "POST", credentials: "include" })
+    const res = await fetch(`/api/workflows/${w.id}/publish`, { method: "POST", credentials: "include" })
+    if (!res.ok) {
+      console.error("publish failed", res.status, await res.text().catch(() => ""))
+      return
+    }
     set({
       workflow: {
         ...w,

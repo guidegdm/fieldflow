@@ -1,17 +1,19 @@
 "use client"
 
+import { useTranslation } from "react-i18next"
 import { cn } from "@/lib/utils"
 import { Home, Search, Plus, QrCode, Activity } from "lucide-react"
 
-const tabs = [
-  { label: "Accueil", href: "/field-worker/home", icon: Home },
-  { label: "Rechercher", href: "/field-worker/search", icon: Search },
-  { label: "Scanner", href: "/field-worker/scan", icon: QrCode },
-  { label: "Statut", href: "/field-worker/status", icon: Activity },
-]
-
 export function TabBar() {
+  const { t } = useTranslation()
   const activeHref = typeof window !== "undefined" ? window.location.pathname : ""
+
+  const tabs = [
+    { label: t("tabbar.home"), href: "/field-worker/home", icon: Home },
+    { label: t("tabbar.search"), href: "/field-worker/search", icon: Search },
+    { label: t("tabbar.scan"), href: "/field-worker/scan", icon: QrCode },
+    { label: t("tabbar.status"), href: "/field-worker/status", icon: Activity },
+  ]
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 h-14 bg-white border-t border-grid-line z-40">
@@ -64,7 +66,7 @@ export function TabBar() {
           )
         })}
 
-        <button className="absolute bottom-3 left-1/2 -translate-x-1/2 w-12 h-12 rounded-full bg-ink-blue text-white flex items-center justify-center shadow-md hover:bg-ink-blue/90 transition-colors" aria-label="Ajouter">
+        <button className="absolute bottom-3 left-1/2 -translate-x-1/2 w-12 h-12 rounded-full bg-ink-blue text-white flex items-center justify-center shadow-md hover:bg-ink-blue/90 transition-colors" aria-label={t("tabbar.add")}>
           <Plus size={22} />
         </button>
       </div>

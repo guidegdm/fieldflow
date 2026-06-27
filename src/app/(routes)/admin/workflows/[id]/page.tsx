@@ -13,75 +13,67 @@ import { AIPanel } from "@/components/ai/AIPanel"
 import type { WorkflowDefinition, WorkflowTransition } from "@/types/workflow"
 
 const DEMO_WORKFLOW: WorkflowDefinition = {
-  id: "wf-1",
-  version: 3,
+  id: "wf-1", version: 2,
   name: "Enregistrement et Distribution Humanitaire",
   nameEn: "Humanitarian Registration & Distribution",
-  description: "Workflow de bout en bout pour l'enregistrement et la distribution d'aide humanitaire",
-  descriptionEn: "End-to-end workflow for humanitarian registration and aid distribution",
+  description: "Enregistrement des menages, evaluation des besoins et distribution d'aide",
+  descriptionEn: "Household registration, needs assessment, and aid distribution",
   entity: {
-    id: "ent-1",
-    key: "household",
-    label: "Ménage",
-    labelEn: "Household",
+    id: "entity-household", key: "household", label: "Menage", labelEn: "Household",
     fields: [
-      { id: "f-1", key: "head_name", label: "Chef de ménage", labelEn: "Head of Household", type: "text", required: true, order: 0, section: "default" },
-      { id: "f-2", key: "size", label: "Taille du ménage", labelEn: "Household Size", type: "number", required: true, order: 1, section: "default" },
-      { id: "f-3", key: "village", label: "Village", labelEn: "Village", type: "text", required: true, order: 2, section: "default" },
-      { id: "f-4", key: "shelter", label: "Type d'abri", labelEn: "Shelter Type", type: "select", required: false, order: 3, section: "default", options: [{ label: "Tente", value: "tent" }, { label: "Brique", value: "brick" }, { label: "Abri temporaire", value: "temporary" }] },
-      { id: "f-5", key: "vulnerability", label: "Score de vulnérabilité", labelEn: "Vulnerability Score", type: "number", required: true, order: 4, section: "assessment" },
-      { id: "f-6", key: "gps", label: "Coordonnées GPS", labelEn: "GPS Coordinates", type: "gps", required: false, order: 5, section: "assessment" },
-      { id: "f-7", key: "photo", label: "Photo du chef", labelEn: "Head Photo", type: "photo", required: false, order: 6, section: "evidence" },
-      { id: "f-8", key: "notes", label: "Notes", labelEn: "Notes", type: "textarea", required: false, order: 7, section: "notes" },
+      { id: "f-1", key: "household_name", label: "Nom du menage", labelEn: "Household name", type: "text", required: true, order: 1, section: "Identification" },
+      { id: "f-2", key: "head_of_household", label: "Chef de menage", labelEn: "Head of household", type: "text", required: true, order: 2, section: "Identification" },
+      { id: "f-3", key: "household_size", label: "Taille du menage", labelEn: "Household size", type: "number", required: true, validation: { min: 1, max: 20 }, order: 3, section: "Identification" },
+      { id: "f-4", key: "shelter_type", label: "Type d'abri", labelEn: "Shelter type", type: "select", required: true, options: [{ label: "Tente", value: "tent" }, { label: "Abri provisoire", value: "temporary" }, { label: "Hebergement", value: "hosted" }], order: 4, section: "Identification" },
+      { id: "f-5", key: "village", label: "Village", labelEn: "Village", type: "text", required: true, order: 5, section: "Identification" },
+      { id: "f-6", key: "gps", label: "Coordonnees GPS", labelEn: "GPS Coordinates", type: "gps", required: false, order: 6, section: "Conditions de vie" },
+      { id: "f-7", key: "vulnerability_score", label: "Score de vulnerabilite", labelEn: "Vulnerability score", type: "number", required: true, validation: { min: 1, max: 5 }, order: 7, section: "Conditions de vie" },
+      { id: "f-8", key: "needs", label: "Besoins prioritaires", labelEn: "Priority needs", type: "multi_select", required: true, options: [{ label: "Nourriture", value: "food" }, { label: "Eau potable", value: "water" }, { label: "Materiel d'abri", value: "shelter" }, { label: "Medicaments", value: "medicine" }], order: 8, section: "Besoins" },
     ],
   },
   states: [
-    { id: "st-1", key: "brouillon", label: "Brouillon", labelEn: "Draft", color: "#6B7280", isInitial: true, isTerminal: false, x: 60, y: 80 },
-    { id: "st-2", key: "soumis", label: "Soumis", labelEn: "Submitted", color: "#D97706", isInitial: false, isTerminal: false, x: 260, y: 80 },
-    { id: "st-3", key: "verifie", label: "Vérifié", labelEn: "Verified", color: "#2563EB", isInitial: false, isTerminal: false, x: 460, y: 80 },
-    { id: "st-4", key: "approuve", label: "Approuvé", labelEn: "Approved", color: "#16A34A", isInitial: false, isTerminal: false, x: 660, y: 80 },
-    { id: "st-5", key: "reserve", label: "Réservé", labelEn: "Reserved", color: "#C17A4E", isInitial: false, isTerminal: false, x: 460, y: 260 },
-    { id: "st-6", key: "distribue", label: "Distribué", labelEn: "Distributed", color: "#059669", isInitial: false, isTerminal: false, x: 260, y: 260 },
-    { id: "st-7", key: "confirme", label: "Confirmé", labelEn: "Confirmed", color: "#1B4F72", isInitial: false, isTerminal: true, x: 60, y: 260 },
+    { id: "s-draft", key: "draft", label: "Brouillon", labelEn: "Draft", color: "#6B7280", isInitial: true, isTerminal: false, x: 200, y: 50 },
+    { id: "s-submitted", key: "submitted", label: "Soumis", labelEn: "Submitted", color: "#2563EB", isInitial: false, isTerminal: false, x: 200, y: 150 },
+    { id: "s-verified", key: "verified", label: "Verifie", labelEn: "Verified", color: "#9333EA", isInitial: false, isTerminal: false, x: 200, y: 250 },
+    { id: "s-approved", key: "approved", label: "Approuve", labelEn: "Approved", color: "#16A34A", isInitial: false, isTerminal: false, x: 200, y: 350 },
+    { id: "s-reserved", key: "reserved", label: "Reserve", labelEn: "Reserved", color: "#D97706", isInitial: false, isTerminal: false, x: 200, y: 450 },
+    { id: "s-distributed", key: "distributed", label: "Distribue", labelEn: "Distributed", color: "#059669", isInitial: false, isTerminal: false, x: 200, y: 550 },
+    { id: "s-confirmed", key: "confirmed", label: "Confirme", labelEn: "Confirmed", color: "#1D4ED8", isInitial: false, isTerminal: true, x: 200, y: 650 },
   ],
   transitions: [
-    { id: "tr-1", key: "soumettre", label: "Soumettre", labelEn: "Submit", fromState: "st-1", toState: "st-2", requiredRoles: ["field_worker"] },
-    { id: "tr-2", key: "verifier", label: "Vérifier", labelEn: "Verify", fromState: "st-2", toState: "st-3", requiredRoles: ["supervisor"] },
-    { id: "tr-3", key: "approuver", label: "Approuver", labelEn: "Approve", fromState: "st-3", toState: "st-4", requiredRoles: ["supervisor"] },
-    { id: "tr-4", key: "reserver", label: "Réserver inventaire", labelEn: "Reserve Inventory", fromState: "st-4", toState: "st-5", requiredRoles: ["supervisor"], sideEffects: ["inventory_reserve"] },
-    { id: "tr-5", key: "distribuer", label: "Distribuer", labelEn: "Distribute", fromState: "st-5", toState: "st-6", requiredRoles: ["field_worker", "supervisor"] },
-    { id: "tr-6", key: "confirmer", label: "Confirmer réception", labelEn: "Confirm Receipt", fromState: "st-6", toState: "st-7", requiredRoles: ["field_worker"] },
+    { id: "t-1", key: "submit", label: "Soumettre", labelEn: "Submit", fromState: "s-draft", toState: "s-submitted", requiredRoles: ["field_worker"] },
+    { id: "t-2", key: "verify", label: "Verifier", labelEn: "Verify", fromState: "s-submitted", toState: "s-verified", requiredRoles: ["supervisor"] },
+    { id: "t-3", key: "approve", label: "Approuver", labelEn: "Approve", fromState: "s-verified", toState: "s-approved", requiredRoles: ["supervisor"] },
+    { id: "t-4", key: "reserve", label: "Reserver", labelEn: "Reserve", fromState: "s-approved", toState: "s-reserved", requiredRoles: ["supervisor"], sideEffects: ["inventory_reserve"] },
+    { id: "t-5", key: "distribute", label: "Distribuer", labelEn: "Distribute", fromState: "s-reserved", toState: "s-distributed", requiredRoles: ["field_worker"] },
+    { id: "t-6", key: "confirm", label: "Confirmer", labelEn: "Confirm", fromState: "s-distributed", toState: "s-confirmed", requiredRoles: ["field_worker"] },
   ],
   roles: [
-    { id: "rl-1", key: "field_worker", label: "Agent terrain", permissions: ["create", "update_own", "sync", "distribute"] },
-    { id: "rl-2", key: "supervisor", label: "Superviseur", permissions: ["verify", "approve", "reject", "reserve", "manage_conflicts", "view_all"] },
-    { id: "rl-3", key: "org_admin", label: "Administrateur", permissions: ["manage_workflows", "manage_users", "publish", "view_all", "export"] },
+    { id: "r-1", key: "field_worker", label: "Agent terrain", permissions: ["record:create", "record:read_own", "record:update_own", "sync:push", "sync:pull"] },
+    { id: "r-2", key: "supervisor", label: "Superviseur", permissions: ["record:create", "record:read_team", "record:verify", "record:approve", "sync:push", "sync:pull", "audit:view"] },
+    { id: "r-3", key: "org_admin", label: "Administrateur", permissions: ["record:create", "record:read_team", "record:verify", "record:approve", "sync:push", "sync:pull", "audit:view", "workflow:publish", "admin:manage_users"] },
   ],
   offlinePolicy: {
     maxOfflineHours: 72,
     allowedOperations: { create: true, update: true, delete: false, evidence: true },
     conflictStrategy: "manual",
-    manualResolutionFields: ["head_name", "size", "village"],
+    manualResolutionFields: ["household_size", "gps", "vulnerability_score"],
     autoResolutionNumeric: "average",
-    maxAttachmentSizeMb: 10,
-    allowedAttachmentTypes: ["image/jpeg", "image/png", "application/pdf"],
-    attachmentSyncPriority: "low",
+    maxAttachmentSizeMb: 5,
+    allowedAttachmentTypes: ["image/jpeg", "image/png"],
+    attachmentSyncPriority: "normal",
   },
-  status: "published",
-  createdAt: "2025-11-01T08:00:00Z",
-  updatedAt: "2026-06-25T14:30:00Z",
-  publishedAt: "2026-06-20T10:00:00Z",
-  author: "Céline M.",
+  status: "published", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), publishedAt: new Date().toISOString(), author: "celine",
 }
 
 const STATE_COLORS: Record<string, string> = {
-  brouillon: "#6B7280",
-  soumis: "#D97706",
-  verifie: "#2563EB",
-  approuve: "#16A34A",
-  reserve: "#C17A4E",
-  distribue: "#059669",
-  confirme: "#1B4F72",
+  draft: "#6B7280",
+  submitted: "#2563EB",
+  verified: "#9333EA",
+  approved: "#16A34A",
+  reserved: "#D97706",
+  distributed: "#059669",
+  confirmed: "#1D4ED8",
 }
 
 export default function WorkflowBuilder() {
@@ -166,7 +158,7 @@ export default function WorkflowBuilder() {
             <h3 className="text-[11px] uppercase tracking-[0.15em] text-soil font-semibold mb-3">{t("admin.entity")}</h3>
             <div className="space-y-1">
               <p className="text-sm font-medium text-ink-black">{workflow.entity.label}</p>
-              <p className="font-mono text-xs text-volcanic-ash">{workflow.entity.fields.length} champs</p>
+              <p className="font-mono text-xs text-volcanic-ash">{t("workflow.fieldsCount", { count: workflow.entity.fields.length })}</p>
             </div>
           </div>
 
@@ -276,7 +268,7 @@ export default function WorkflowBuilder() {
               <TabsTrigger value="fields" className="text-[11px] uppercase tracking-[0.1em]">{t("workflow.fields")}</TabsTrigger>
               <TabsTrigger value="roles" className="text-[11px] uppercase tracking-[0.1em]">{t("workflow.roles")}</TabsTrigger>
               <TabsTrigger value="publication" className="text-[11px] uppercase tracking-[0.1em]">{t("admin.publication")}</TabsTrigger>
-              <TabsTrigger value="ai" className="text-[11px] uppercase tracking-[0.1em]">IA</TabsTrigger>
+              <TabsTrigger value="ai" className="text-[11px] uppercase tracking-[0.1em]">{t("admin.ai")}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="properties" className="px-4 py-4 space-y-4">
@@ -287,7 +279,7 @@ export default function WorkflowBuilder() {
                     <p className="text-sm font-medium text-ink-black mt-1">{selectedState.label}</p>
                   </div>
                   <div>
-                    <label className="text-[11px] uppercase tracking-[0.1em] text-volcanic-ash font-medium">Clé</label>
+                    <label className="text-[11px] uppercase tracking-[0.1em] text-volcanic-ash font-medium">{t("admin.key")}</label>
                     <p className="font-mono text-sm text-volcanic-ash mt-1">{selectedState.key}</p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -296,10 +288,10 @@ export default function WorkflowBuilder() {
                   </div>
                   <div className="flex gap-2">
                     <Badge variant={selectedState.isInitial ? "info" : "default"} size="sm">
-                      {selectedState.isInitial ? "Initial" : "Standard"}
+                      {selectedState.isInitial ? t("admin.stateInitial") : t("admin.stateStandard")}
                     </Badge>
                     <Badge variant={selectedState.isTerminal ? "success" : "default"} size="sm">
-                      {selectedState.isTerminal ? "Terminal" : ""}
+                      {selectedState.isTerminal ? t("admin.stateTerminal") : ""}
                     </Badge>
                   </div>
                 </>
@@ -314,7 +306,7 @@ export default function WorkflowBuilder() {
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-ink-black">{field.label}</span>
                     <Badge variant={field.required ? "warning" : "default"} size="sm">
-                      {field.required ? t("common.required") : "optionnel"}
+                      {field.required ? t("common.required") : t("common.optional")}
                     </Badge>
                   </div>
                   <span className="font-mono text-xs text-volcanic-ash">{field.type}</span>
@@ -353,12 +345,12 @@ export default function WorkflowBuilder() {
                 <p className="font-display text-2xl text-lake-deep mt-1">v{workflow.version}</p>
               </div>
               <div>
-                <label className="text-[11px] uppercase tracking-[0.1em] text-volcanic-ash font-medium">Statut</label>
+                <label className="text-[11px] uppercase tracking-[0.1em] text-volcanic-ash font-medium">{t("records.status")}</label>
                 <p className="text-sm text-ink-black mt-1 capitalize">{workflow.status}</p>
               </div>
               {workflow.publishedAt && (
                 <div>
-                  <label className="text-[11px] uppercase tracking-[0.1em] text-volcanic-ash font-medium">Publié le</label>
+                  <label className="text-[11px] uppercase tracking-[0.1em] text-volcanic-ash font-medium">{t("admin.publishedOn")}</label>
                   <p className="text-sm text-ink-black mt-1">
                     {new Date(workflow.publishedAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" })}
                   </p>

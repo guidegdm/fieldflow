@@ -1,12 +1,14 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { useTranslation } from "react-i18next"
 import { useSyncStore } from "@/stores/syncStore"
 import { useStorageQuota } from "@/hooks/useStorageQuota"
 import { cn } from "@/lib/utils"
 import {
   simulateNetwork,
   getCurrentMode,
+  restoreNetwork,
   type NetworkMode,
 } from "@/lib/network-simulator"
 
@@ -18,6 +20,7 @@ const modes: { value: NetworkMode; label: string }[] = [
 ]
 
 export function ConnectivityBar() {
+  const { t } = useTranslation()
   const { isOnline, isSyncing, pendingCount, lastSyncAt, setOnline } =
     useSyncStore()
   const { usage, quota, percentageUsed, isNearLimit } = useStorageQuota()
@@ -36,7 +39,10 @@ export function ConnectivityBar() {
       }
     }
     window.addEventListener("keydown", handler)
-    return () => window.removeEventListener("keydown", handler)
+    return () => {
+      window.removeEventListener("keydown", handler)
+      restoreNetwork()
+    }
   }, [])
 
   const handleMode = useCallback(
@@ -52,22 +58,22 @@ export function ConnectivityBar() {
 
   if (isSyncing) {
     status = {
-      text: "◉ Synchronisation...",
+      text: `◉ ${t("common.syncing")}`,
       className: "bg-blue-50 text-ink-blue",
     }
   } else if (!isOnline) {
     status = {
-      text: "● Hors ligne",
+      text: `● ${t("common.offline")}`,
       className: "bg-gray-100 text-pencil",
     }
   } else if (failed) {
     status = {
-      text: "⚠ Sync en attente",
+      text: `⚠ ${t("common.pendingSync")}`,
       className: "bg-amber-50 text-warning-600",
     }
   } else {
     status = {
-      text: "● En ligne",
+      text: `● ${t("common.online")}`,
       className: "bg-green-50 text-success-500",
     }
   }
@@ -107,7 +113,7 @@ export function ConnectivityBar() {
       {isDev && showSim && (
         <div className="absolute top-full left-0 right-0 bg-white border border-graph-line shadow-md px-3 py-2 flex items-center gap-3 text-xs">
           <span className="text-pencil font-medium whitespace-nowrap">
-            Réseau
+            {t("connectivity.network")}
           </span>
           {modes.map((m) => (
             <label

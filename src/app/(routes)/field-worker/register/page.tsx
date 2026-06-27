@@ -8,6 +8,11 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { CheckCircle, ArrowLeft } from "lucide-react"
 import { generateId } from "@/lib/utils"
+import { db } from "@/lib/db/indexeddb"
+import { useAuthStore } from "@/stores/authStore"
+import { useSyncStore } from "@/stores/syncStore"
+import type { RecordData } from "@/types/record"
+import type { MutationEntry } from "@/types/sync"
 
 const SHELTER_OPTIONS = ["tente", "abri", "maison", "centre", "famille"] as const
 const NEED_OPTIONS = ["nourriture", "eau", "abri", "medical", "education", "protection"] as const
@@ -42,6 +47,8 @@ export default function RegisterPage() {
   const [form, setForm] = useState<FormData>(INITIAL_FORM)
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({})
   const [saved, setSaved] = useState(false)
+  const authStore = useAuthStore()
+  const syncStore = useSyncStore()
 
   function update<K extends keyof FormData>(key: K, value: FormData[K]) {
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -66,32 +73,46 @@ export default function RegisterPage() {
     return Object.keys(errs).length === 0
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!validate()) return
 
-    const id = generateId()
-    const record = {
-      id,
+    const record: RecordData = {
+      id: generateId(),
       workflowId: "wf-1",
       workflowVersion: 2,
       entityKey: "household",
-      status: "draft" as const,
-      syncStatus: "local" as const,
-      state: "draft",
+      status: "pending_sync",
+      syncStatus: "pending",
+      state: "s-draft",
       fields: { ...form },
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      createdBy: "user-1",
-      deviceId: "device-a",
+      createdBy: authStore.user?.id || "unknown",
+      deviceId: authStore.user?.deviceId || "unknown",
       version: 1,
     }
 
     try {
-      const existing = JSON.parse(localStorage.getItem("fieldflow-registrations") || "[]")
-      existing.unshift(record)
-      localStorage.setItem("fieldflow-registrations", JSON.stringify(existing))
-    } catch { /* localStorage unavailable */ }
+      await db.putRecord(record)
+      await db.enqueueMutation({
+        client_id: generateId(),
+        device_id: authStore.user?.deviceId || "unknown",
+        operation: "create",
+        resource: "record",
+        workflow_id: "wf-1",
+        record_id: record.id,
+        payload: record,
+        client_timestamp: Date.now(),
+        base_version: 0,
+        status: "PENDING",
+        retry_count: 0,
+        last_error: null,
+        enqueued_at: Date.now(),
+      })
+      const pendingMutations = await db.getPendingMutations()
+      syncStore.setPendingCount(pendingMutations.length)
+    } catch { /* IndexedDB unavailable */ }
 
     setSaved(true)
   }

@@ -24,6 +24,7 @@
     "pendingSync": "En attente de sync",
     "noData": "Aucune donnée",
     "required": "Obligatoire",
+    "optional": "Optionnel",
     "close": "Fermer"
   },
   "auth": {
@@ -59,6 +60,7 @@
     "states": "États",
     "transitions": "Transitions",
     "fields": "Champs",
+    "fieldsCount": "{{count}} champ(s)",
     "roles": "Rôles",
     "publish": "Publier",
     "published": "Publié",
@@ -122,7 +124,13 @@
     "properties": "Propriétés",
     "publication": "Publication",
     "entity": "Entité",
-    "noSelection": "Sélectionnez un élément"
+    "noSelection": "Sélectionnez un élément",
+    "ai": "IA",
+    "key": "Clé",
+    "stateInitial": "Initial",
+    "stateTerminal": "Terminal",
+    "stateStandard": "Standard",
+    "publishedOn": "Publié le"
   },
   "supervisor": {
     "approve": "Approuver",
@@ -209,6 +217,29 @@
     "need_medical": "Soins médicaux",
     "need_education": "Éducation",
     "need_protection": "Protection"
+  },
+  "sidebar": {
+    "dashboard": "Tableau de bord",
+    "workflows": "Workflows",
+    "forms": "Formulaires",
+    "users": "Utilisateurs",
+    "deploy": "Déploiement",
+    "audit": "Audit",
+    "settings": "Paramètres",
+    "queue": "File d'attente",
+    "conflicts": "Conflits",
+    "inventory": "Inventaire",
+    "reports": "Rapports"
+  },
+  "tabbar": {
+    "home": "Accueil",
+    "search": "Rechercher",
+    "scan": "Scanner",
+    "status": "Statut",
+    "add": "Ajouter"
+  },
+  "connectivity": {
+    "network": "Réseau"
   },
   "search": {
     "placeholder": "Rechercher un ménage...",

@@ -34,6 +34,7 @@ export function AIPanel() {
       credentials: "include",
       body: JSON.stringify({ messages: [...messages, userMsg], sessionId: "demo" }),
     })
+    if (!res.ok) { setStreaming(false); setMessages(prev => [...prev, { role: "assistant", content: "Erreur: le service IA est indisponible" }]); return }
     const reader = res.body!.getReader()
     const decoder = new TextDecoder()
     while (true) {

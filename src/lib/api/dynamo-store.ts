@@ -147,6 +147,15 @@ export const dynamoStore = {
     )
   },
 
+  async putOrgItem(item: Record<string, unknown>) {
+    await client.send(
+      new PutCommand({
+        TableName: "FieldFlowOrgs",
+        Item: item,
+      })
+    )
+  },
+
   async queryAuditEvents(recordId: string, limit = 50) {
     const result = await client.send(
       new QueryCommand({

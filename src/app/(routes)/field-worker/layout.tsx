@@ -1,10 +1,9 @@
-'use client'
+"use client"
 
+import { AppShell } from "@/components/layout/AppShell"
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuthStore } from "@/stores/authStore"
-import { ConnectivityBar } from "@/components/layout/ConnectivityBar"
-import { TabBar } from "@/components/layout/TabBar"
 
 export default function FieldWorkerLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -17,13 +16,5 @@ export default function FieldWorkerLayout({ children }: { children: React.ReactN
 
   if (!hasHydrated || !user || user.role !== "field_worker") return null
 
-  return (
-    <div className="min-h-screen bg-graph-paper">
-      <ConnectivityBar />
-      <main className="pt-7 pb-16 px-4 max-w-lg mx-auto">
-        {children}
-      </main>
-      <TabBar />
-    </div>
-  )
+  return <AppShell role="field_worker">{children}</AppShell>
 }

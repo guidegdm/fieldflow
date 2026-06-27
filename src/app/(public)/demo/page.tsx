@@ -11,17 +11,16 @@ import { User, Shield, Users, ChevronRight, WifiOff } from "lucide-react"
 const roleIcons = { field_worker: User, supervisor: Shield, org_admin: Users } as const
 
 function routeForRole(role: string) {
-  if (role === "field_worker") return "/field-worker/home"
-  if (role === "supervisor") return "/supervisor/dashboard"
-  return "/admin/dashboard"
+  if (role === "field_worker") return "/org/demo-org/field-worker/home"
+  if (role === "supervisor") return "/org/demo-org/supervisor/dashboard"
+  return "/org/demo-org/admin/dashboard"
 }
 
-export default function LoginPage() {
+export default function DemoPage() {
   const router = useRouter()
   const { t } = useTranslation()
   const user = useAuthStore((s) => s.user)
 
-  // Redirect already-authenticated users (effect, never during render).
   useEffect(() => {
     if (user) router.replace(routeForRole(user.role))
   }, [user, router])
@@ -34,7 +33,6 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-kivu-paper flex flex-col items-center justify-center px-4 py-10">
       <div className="w-full max-w-md">
-        {/* Masthead band */}
         <header className="border-b-2 border-ink-black pb-4 mb-6">
           <h1 className="font-display text-4xl text-lake-deep font-bold tracking-tight leading-none">
             {t("app.title")}
@@ -50,7 +48,6 @@ export default function LoginPage() {
           {t("auth.demo_accounts")}
         </p>
 
-        {/* Ruled account-slip list */}
         <ul className="border border-grid-line rounded-md bg-white divide-y divide-grid-line overflow-hidden">
           {DEMO_USERS.map((u) => {
             const Icon = roleIcons[u.role] || User
@@ -78,7 +75,7 @@ export default function LoginPage() {
         </ul>
 
         <p className="mt-4 text-center text-[11px] text-pencil">
-          {t("auth.demo_accounts")} · v0.1
+          {t("auth.demo_disclaimer")} &middot; v0.1
         </p>
       </div>
     </div>

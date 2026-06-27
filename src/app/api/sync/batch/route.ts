@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getStore } from "@/lib/api/in-memory-store"
+import { getAuthUser } from "@/lib/auth/middleware"
 import type { SyncBatchRequest, SyncBatchResponse, ConflictEntry } from "@/types/sync"
 import type { ConflictRecord } from "@/types/sync"
 import type { RecordData } from "@/types/record"
@@ -32,6 +33,9 @@ function buildFieldStrategy(
 }
 
 export async function POST(request: NextRequest) {
+  const user = await getAuthUser(request)
+  if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 })
+
   const body: SyncBatchRequest = await request.json()
   const store = getStore()
 
@@ -62,6 +66,7 @@ export async function POST(request: NextRequest) {
           createdBy: body.device_id,
           deviceId: body.device_id,
           version: 1,
+          orgId: user.orgId,
         }
         store.putRecord(record)
         store.storeMutation({ ...op, payload: record })
@@ -195,7 +200,11 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const serverChanges = store.getServerSince(body.device_seq)
+  let serverChanges = store.getServerSince(body.device_seq)
+  serverChanges = serverChanges.filter((m) => {
+    const rec = (m.payload as any)?.id ? store.getRecord((m.payload as any).id) : null
+    return !rec || (rec as any).orgId === user.orgId
+  })
 
   const deviceState = store.getDevice(body.device_id)
   if (deviceState) {

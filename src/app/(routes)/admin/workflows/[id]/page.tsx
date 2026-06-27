@@ -1,15 +1,19 @@
 "use client"
 
-import { useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { useTranslation } from "react-i18next"
 import { useParams, useRouter } from "next/navigation"
 import { useAuthStore } from "@/stores/authStore"
 import { useWorkflowStore } from "@/stores/workflowStore"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { ArrowRight, Plus, Trash2 } from "lucide-react"
-import type { WorkflowDefinition, WorkflowTransition } from "@/types/workflow"
+import { ArrowRight, Plus, Trash2, Save, Send, X, Sparkles } from "lucide-react"
+import { FieldPalette } from "@/components/builder/FieldPalette"
+import { FormCanvas } from "@/components/builder/FormCanvas"
+import { FieldEditor } from "@/components/builder/FieldEditor"
+import { WorkflowFlow } from "@/components/builder/WorkflowFlow"
+import { FormPreview } from "@/components/builder/FormPreview"
+import type { WorkflowDefinition } from "@/types/workflow"
 
 const DEMO_WORKFLOW: WorkflowDefinition = {
   id: "wf-1",
@@ -66,12 +70,20 @@ const DEMO_WORKFLOW: WorkflowDefinition = {
     allowedAttachmentTypes: ["image/jpeg", "image/png", "application/pdf"],
     attachmentSyncPriority: "low",
   },
-  status: "published",
+  status: "draft",
   createdAt: "2025-11-01T08:00:00Z",
   updatedAt: "2026-06-25T14:30:00Z",
-  publishedAt: "2026-06-20T10:00:00Z",
+  publishedAt: undefined,
   author: "Céline M.",
 }
+
+const MODE_TABS = [
+  { key: "fields", label: "📋 Fields" },
+  { key: "flow", label: "🔀 Flow" },
+  { key: "roles", label: "👥 Roles" },
+  { key: "settings", label: "⚙ Settings" },
+  { key: "preview", label: "📱 Preview" },
+]
 
 const STATE_COLORS: Record<string, string> = {
   brouillon: "#6B7280",
@@ -83,33 +95,97 @@ const STATE_COLORS: Record<string, string> = {
   confirme: "#1B4F72",
 }
 
+function StatePropertiesPanel() {
+  const { t } = useTranslation()
+  const { workflow, selectedStateId, updateState } = useWorkflowStore()
+  const state = workflow?.states.find((s) => s.id === selectedStateId)
+
+  if (!state) {
+    return (
+      <div className="p-6">
+        <p className="text-sm text-pencil italic">{t("admin.noSelection", "Sélectionnez un état")}</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="p-6 space-y-4">
+      <h3 className="text-[11px] uppercase tracking-[0.15em] text-soil font-semibold">
+        {t("admin.properties", "Propriétés")}
+      </h3>
+      <div>
+        <label className="text-[11px] uppercase tracking-[0.1em] text-volcanic-ash font-medium">{t("admin.stateLabel", "Label")}</label>
+        <p className="text-sm font-medium text-ink-black mt-1">{state.label}</p>
+      </div>
+      <div>
+        <label className="text-[11px] uppercase tracking-[0.1em] text-volcanic-ash font-medium">{"Clé"}</label>
+        <p className="font-mono text-sm text-volcanic-ash mt-1">{state.key}</p>
+      </div>
+      <div className="flex items-center gap-2">
+        <div className="h-4 w-4 rounded" style={{ backgroundColor: state.color }} />
+        <span className="text-sm text-ink-black">{state.color}</span>
+      </div>
+      <div className="flex gap-2">
+        <Badge variant={state.isInitial ? "info" : "default"} size="sm">
+          {state.isInitial ? "Initial" : ""}
+        </Badge>
+        <Badge variant={state.isTerminal ? "success" : "default"} size="sm">
+          {state.isTerminal ? "Terminal" : ""}
+        </Badge>
+      </div>
+    </div>
+  )
+}
+
+function AIPanel({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation()
+
+  return (
+    <div className="p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold text-ink-black flex items-center gap-2">
+          <Sparkles size={16} className="text-clay" />
+          {"Assistant IA"}
+        </h3>
+        <button onClick={onClose} className="text-pencil/40 hover:text-ink-black transition-colors">
+          <X size={16} />
+        </button>
+      </div>
+      <div className="flex gap-2">
+        <input
+          type="text"
+          placeholder={t("admin.aiPrompt", "Décrivez le formulaire dont vous avez besoin...")}
+          className="flex-1 h-10 rounded-md border border-[#CBD5E1] px-3 py-2 text-sm text-ink-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-blue"
+        />
+        <Button variant="primary" size="sm">
+          {t("admin.generate", "Générer")}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 export default function WorkflowBuilder() {
   const { t } = useTranslation()
   const params = useParams<{ id: string }>()
   const router = useRouter()
   const { user } = useAuthStore()
-  const {
-    workflow, setWorkflow, updateWorkflow,
-    selectedStateId,
-    addState, removeState,
-    addTransition, removeTransition,
-    publish,
-  } = useWorkflowStore()
+  const { workflow, setWorkflow, updateWorkflow, addState, removeState, addTransition, removeTransition, publish } = useWorkflowStore()
 
-  const selectState = (id: string | null) => useWorkflowStore.setState({ selectedStateId: id })
+  const [activeMode, setActiveMode] = useState("fields")
+  const [aiPanelOpen, setAiPanelOpen] = useState(false)
+  const [lastSaved, setLastSaved] = useState<Date | null>(null)
+  const [publishConfirm, setPublishConfirm] = useState(false)
 
   useEffect(() => {
-    if (params.id) setWorkflow(DEMO_WORKFLOW)
-  }, [params.id, setWorkflow])
+    if (params.id && !workflow) setWorkflow(DEMO_WORKFLOW)
+  }, [params.id, workflow, setWorkflow])
 
   useEffect(() => {
     if (!user || user.role !== "org_admin") router.push("/")
   }, [user, router])
 
-  const selectedState = useMemo(
-    () => workflow?.states.find((s) => s.id === selectedStateId) ?? null,
-    [workflow?.states, selectedStateId],
-  )
+  const { selectedStateId } = useWorkflowStore()
 
   const stateColor = (key: string) => STATE_COLORS[key] ?? "#6B7280"
 
@@ -118,271 +194,256 @@ export default function WorkflowBuilder() {
     return workflow.transitions
   }, [workflow])
 
-  const svgArrows = useMemo(() => {
-    if (!workflow) return []
-    return workflow.transitions
-      .map((tr) => {
-        const from = workflow.states.find((s) => s.id === tr.fromState)
-        const to = workflow.states.find((s) => s.id === tr.toState)
-        if (!from || !to) return null
-        return { transition: tr, from, to }
-      })
-      .filter(Boolean) as { transition: WorkflowTransition; from: typeof workflow.states[0]; to: typeof workflow.states[0] }[]
-  }, [workflow])
+  const handleSave = () => {
+    updateWorkflow({ updatedAt: new Date().toISOString() })
+    setLastSaved(new Date())
+  }
+
+  const handlePublish = async () => {
+    await publish()
+    setPublishConfirm(false)
+    setLastSaved(new Date())
+  }
+
+  const handleBack = () => {
+    if (workflow && !publishConfirm) {
+      const unsaved = lastSaved === null || (
+        workflow.updatedAt && new Date(workflow.updatedAt).getTime() > lastSaved.getTime()
+      )
+      if (unsaved && !window.confirm(t("admin.unsavedConfirm", "Des modifications non sauvegardées seront perdues. Quitter quand même ?")))
+        return
+    }
+    router.push("/admin/workflows")
+  }
 
   if (!user || user.role !== "org_admin") return null
   if (!workflow) return null
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] -m-8">
+    <div className="flex flex-col h-[calc(100vh-4rem)] -m-8 bg-kivu-paper">
+      {/* Toolbar */}
       <div className="flex items-center justify-between px-6 py-3 border-b-2 border-volcanic-ash/30 bg-white">
         <div className="flex items-center gap-4">
-          <button onClick={() => router.push("/admin/workflows")} className="text-sm text-volcanic-ash hover:text-lake-deep transition-colors">
-            ← {t("workflow.builder")}
+          <button
+            onClick={handleBack}
+            className="text-sm text-volcanic-ash hover:text-lake-deep transition-colors"
+          >
+            ← {t("workflow.builder", "Workflows")}
           </button>
           <span className="text-volcanic-ash/30">|</span>
-          <input
-            value={workflow.name}
-            onChange={(e) => updateWorkflow({ name: e.target.value })}
-            className="font-display text-xl text-lake-deep tracking-tight bg-transparent border-none outline-none focus:ring-0 p-0"
-          />
+          <span className="font-display text-xl text-lake-deep tracking-tight">
+            {workflow.name}
+          </span>
           <Badge variant={workflow.status === "published" ? "success" : "default"} size="sm">
-            {workflow.status === "published" ? t("workflow.published") : t("workflow.draft")}
+            {workflow.status === "published" ? t("workflow.published", "Publié") : t("workflow.draft", "Brouillon")}
           </Badge>
           <span className="font-mono text-xs text-volcanic-ash">v{workflow.version}</span>
         </div>
-        <div className="flex items-center gap-3">
-          <Button variant="secondary" size="sm">{t("common.save")}</Button>
-          <Button variant="primary" size="sm" onClick={publish}>
-            {t("workflow.publish")}
+        <div className="flex items-center gap-2">
+          {lastSaved && (
+            <span className="text-[10px] text-pencil/60">
+              {t("admin.saved", "Sauvegardé")} {lastSaved.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+            </span>
+          )}
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleSave}
+          >
+            <Save size={14} /> {t("common.save", "Sauvegarder")}
           </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => setPublishConfirm(true)}
+          >
+            <Send size={14} /> {t("workflow.publish", "Publier")}
+          </Button>
+          <button
+            onClick={() => setAiPanelOpen(!aiPanelOpen)}
+            className={`p-2 rounded-md transition-colors ${aiPanelOpen ? "bg-clay/10 text-clay" : "text-pencil hover:text-clay"}`}
+            title="Assistant IA"
+          >
+            <Sparkles size={18} />
+          </button>
         </div>
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
-        <div className="w-[20%] border-r-2 border-volcanic-ash/30 bg-white overflow-y-auto p-4 space-y-6">
-          <div>
-            <h3 className="text-[11px] uppercase tracking-[0.15em] text-soil font-semibold mb-3">{t("admin.entity")}</h3>
-            <div className="space-y-1">
-              <p className="text-sm font-medium text-ink-black">{workflow.entity.label}</p>
-              <p className="font-mono text-xs text-volcanic-ash">{workflow.entity.fields.length} champs</p>
-            </div>
+      {/* Publish Confirmation */}
+      {publishConfirm && (
+        <div className="px-6 py-3 bg-warning-500/5 border-b border-warning-500/20 flex items-center justify-between">
+          <p className="text-sm text-ink-black">
+            {t("admin.publishConfirm", "Publier une nouvelle version ? Cette action créera une version immuable.")}
+          </p>
+          <div className="flex gap-2">
+            <Button variant="secondary" size="sm" onClick={() => setPublishConfirm(false)}>
+              {t("common.cancel", "Annuler")}
+            </Button>
+            <Button variant="primary" size="sm" onClick={handlePublish}>
+              {t("workflow.publish", "Publier")}
+            </Button>
           </div>
+        </div>
+      )}
 
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-[11px] uppercase tracking-[0.15em] text-soil font-semibold">{t("workflow.states")}</h3>
-              <button onClick={addState} className="text-volcanic-ash hover:text-lake-deep transition-colors">
-                <Plus size={14} />
-              </button>
-            </div>
-            <div className="space-y-1">
-              {workflow.states.map((state) => (
-                <div
-                  key={state.id}
-                  onClick={() => selectState(state.id)}
-                  className={`flex items-center justify-between px-3 py-2 rounded-md cursor-pointer text-sm transition-colors ${
-                    selectedStateId === state.id
-                      ? "bg-clay/10 border border-clay/30"
-                      : "hover:bg-gray-50 border border-transparent"
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: stateColor(state.key) }} />
-                    <span className="text-ink-black">{state.label}</span>
-                  </div>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); removeState(state.id) }}
-                    className="text-volcanic-ash/50 hover:text-rebar transition-colors"
-                  >
-                    <Trash2 size={12} />
-                  </button>
-                </div>
-              ))}
-            </div>
+      {/* AI Panel */}
+      {aiPanelOpen && (
+        <div className="border-b border-graph-line bg-white">
+          <AIPanel onClose={() => setAiPanelOpen(false)} />
+        </div>
+      )}
+
+      {/* Content */}
+      <div className="flex-1 flex overflow-hidden">
+        {activeMode === "fields" && (
+          <div className="flex flex-1 overflow-hidden">
+            <aside className="w-56 border-r border-graph-line bg-white overflow-y-auto shrink-0">
+              <FieldPalette onOpenAI={() => setAiPanelOpen(!aiPanelOpen)} />
+            </aside>
+            <FormCanvas />
+            <aside className="w-80 border-l border-graph-line bg-white overflow-y-auto shrink-0">
+              <FieldEditor />
+            </aside>
           </div>
+        )}
 
-          <div>
-            <h3 className="text-[11px] uppercase tracking-[0.15em] text-soil font-semibold mb-3">{t("workflow.transitions")}</h3>
-            <div className="space-y-1">
-              {workflow.transitions.map((tr) => {
-                const from = workflow.states.find((s) => s.id === tr.fromState)
-                const to = workflow.states.find((s) => s.id === tr.toState)
-                return (
-                  <div key={tr.id} className="flex items-center gap-2 px-3 py-2 text-xs text-volcanic-ash">
-                    <span className="text-ink-black">{from?.label ?? "?"}</span>
-                    <ArrowRight size={12} className="text-clay" />
-                    <span className="text-ink-black">{to?.label ?? "?"}</span>
-                    <button
-                      onClick={() => removeTransition(tr.id)}
-                      className="ml-auto text-volcanic-ash/50 hover:text-rebar transition-colors"
-                    >
-                      <Trash2 size={10} />
+        {activeMode === "flow" && (
+          <div className="flex flex-1 overflow-hidden">
+            <aside className="w-56 border-r border-graph-line bg-white overflow-y-auto p-4 shrink-0">
+              <div className="space-y-4">
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-[11px] uppercase tracking-[0.15em] text-soil font-semibold">{t("workflow.states", "États")}</h3>
+                    <button onClick={addState} className="text-volcanic-ash hover:text-lake-deep transition-colors">
+                      <Plus size={14} />
                     </button>
                   </div>
-                )
-              })}
-            </div>
-          </div>
-        </div>
-
-        <div className="w-[55%] relative bg-kivu-paper overflow-hidden">
-          <svg className="absolute inset-0 w-full h-full pointer-events-none">
-            {svgArrows.map(({ transition, from, to }) => {
-              // Node box is 160x56; clip the connector to each node's edge so
-              // arrows stop at the border instead of crossing through labels.
-              const hw = 80
-              const hh = 28
-              const fcx = from.x + hw
-              const fcy = from.y + hh
-              const tcx = to.x + hw
-              const tcy = to.y + hh
-              const dx = tcx - fcx
-              const dy = tcy - fcy
-              const edge = (cx: number, cy: number, sx: number, sy: number) => {
-                if (sx === 0 && sy === 0) return { x: cx, y: cy }
-                const scale = 1 / Math.max(Math.abs(sx) / hw, Math.abs(sy) / hh)
-                return { x: cx + sx * scale, y: cy + sy * scale }
-              }
-              const start = edge(fcx, fcy, dx, dy)
-              const end = edge(tcx, tcy, -dx, -dy)
-              return (
-                <line
-                  key={transition.id}
-                  x1={start.x}
-                  y1={start.y}
-                  x2={end.x}
-                  y2={end.y}
-                  stroke="#708090"
-                  strokeWidth="2"
-                  strokeDasharray={transition.requiredRoles.length ? "0" : "6,3"}
-                  markerEnd="url(#arrowhead)"
-                />
-              )
-            })}
-            <defs>
-              <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-                <polygon points="0 0, 8 3, 0 6" fill="#708090" />
-              </marker>
-            </defs>
-          </svg>
-
-          {workflow.states.map((state) => (
-            <div
-              key={state.id}
-              onClick={() => selectState(state.id)}
-              className={`absolute flex items-center justify-center w-40 h-14 rounded-md border-2 cursor-pointer transition-shadow text-sm font-medium ${
-                selectedStateId === state.id ? "shadow-lg ring-2 ring-clay" : "shadow-sm"
-              }`}
-              style={{
-                left: state.x,
-                top: state.y,
-                backgroundColor: stateColor(state.key) + "15",
-                borderColor: stateColor(state.key),
-                color: stateColor(state.key),
-              }}
-            >
-              {state.label}
-            </div>
-          ))}
-        </div>
-
-        <div className="w-[25%] border-l-2 border-volcanic-ash/30 bg-white overflow-y-auto">
-          <Tabs defaultValue="properties">
-            <TabsList className="w-full px-4">
-              <TabsTrigger value="properties" className="text-[11px] uppercase tracking-[0.1em]">{t("admin.properties")}</TabsTrigger>
-              <TabsTrigger value="fields" className="text-[11px] uppercase tracking-[0.1em]">{t("workflow.fields")}</TabsTrigger>
-              <TabsTrigger value="roles" className="text-[11px] uppercase tracking-[0.1em]">{t("workflow.roles")}</TabsTrigger>
-              <TabsTrigger value="publication" className="text-[11px] uppercase tracking-[0.1em]">{t("admin.publication")}</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="properties" className="px-4 py-4 space-y-4">
-              {selectedState ? (
-                <>
-                  <div>
-                    <label className="text-[11px] uppercase tracking-[0.1em] text-volcanic-ash font-medium">{t("admin.stateLabel")}</label>
-                    <p className="text-sm font-medium text-ink-black mt-1">{selectedState.label}</p>
+                  <div className="space-y-1">
+                    {workflow.states.map((state) => (
+                      <div
+                        key={state.id}
+                        onClick={() => useWorkflowStore.setState({ selectedStateId: state.id })}
+                        className={`flex items-center justify-between px-3 py-2 rounded-md cursor-pointer text-sm transition-colors ${
+                          selectedStateId === state.id
+                            ? "bg-clay/10 border border-clay/30"
+                            : "hover:bg-gray-50 border border-transparent"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: stateColor(state.key) }} />
+                          <span className="text-ink-black truncate">{state.label}</span>
+                        </div>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); removeState(state.id) }}
+                          className="text-volcanic-ash/50 hover:text-rebar transition-colors shrink-0"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    ))}
                   </div>
-                  <div>
-                    <label className="text-[11px] uppercase tracking-[0.1em] text-volcanic-ash font-medium">Clé</label>
-                    <p className="font-mono text-sm text-volcanic-ash mt-1">{selectedState.key}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="h-4 w-4 rounded" style={{ backgroundColor: stateColor(selectedState.key) }} />
-                    <span className="text-sm text-ink-black">{stateColor(selectedState.key)}</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <Badge variant={selectedState.isInitial ? "info" : "default"} size="sm">
-                      {selectedState.isInitial ? "Initial" : "Standard"}
-                    </Badge>
-                    <Badge variant={selectedState.isTerminal ? "success" : "default"} size="sm">
-                      {selectedState.isTerminal ? "Terminal" : ""}
-                    </Badge>
-                  </div>
-                </>
-              ) : (
-                <p className="text-sm text-volcanic-ash italic">{t("admin.noSelection")}</p>
-              )}
-            </TabsContent>
-
-            <TabsContent value="fields" className="px-4 py-4 space-y-3">
-              {workflow.entity.fields.map((field) => (
-                <div key={field.id} className="p-3 rounded-md border border-volcanic-ash/20 space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-ink-black">{field.label}</span>
-                    <Badge variant={field.required ? "warning" : "default"} size="sm">
-                      {field.required ? t("common.required") : "optionnel"}
-                    </Badge>
-                  </div>
-                  <span className="font-mono text-xs text-volcanic-ash">{field.type}</span>
                 </div>
-              ))}
-              <button
-                onClick={() => useWorkflowStore.getState().addField()}
-                className="w-full py-2 text-sm text-clay hover:text-clay/80 transition-colors flex items-center justify-center gap-1"
-              >
-                <Plus size={14} /> {t("workflow.fields")}
-              </button>
-            </TabsContent>
 
-            <TabsContent value="roles" className="px-4 py-4 space-y-3">
+                <div>
+                  <h3 className="text-[11px] uppercase tracking-[0.15em] text-soil font-semibold mb-3">{t("workflow.transitions", "Transitions")}</h3>
+                  <div className="space-y-1">
+                    {workflow.transitions.map((tr) => {
+                      const from = workflow.states.find((s) => s.id === tr.fromState)
+                      const to = workflow.states.find((s) => s.id === tr.toState)
+                      return (
+                        <div key={tr.id} className="flex items-center gap-2 px-3 py-2 text-xs text-volcanic-ash">
+                          <span className="text-ink-black truncate">{from?.label ?? "?"}</span>
+                          <ArrowRight size={12} className="text-clay shrink-0" />
+                          <span className="text-ink-black truncate">{to?.label ?? "?"}</span>
+                          <button
+                            onClick={() => removeTransition(tr.id)}
+                            className="ml-auto text-volcanic-ash/50 hover:text-rebar transition-colors shrink-0"
+                          >
+                            <Trash2 size={10} />
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+            </aside>
+            <WorkflowFlow />
+            <aside className="w-80 border-l border-graph-line bg-white overflow-y-auto shrink-0">
+              <StatePropertiesPanel />
+            </aside>
+          </div>
+        )}
+
+        {activeMode === "roles" && (
+          <div className="flex-1 overflow-y-auto p-8">
+            <h2 className="font-display text-xl text-lake-deep tracking-tight mb-6">{t("workflow.roles", "Rôles")}</h2>
+            <div className="space-y-3 max-w-2xl">
               {workflow.roles.map((role) => (
-                <div key={role.id} className="p-3 rounded-md border border-volcanic-ash/20">
+                <div key={role.id} className="p-4 rounded-md border border-graph-line bg-white">
                   <p className="text-sm font-medium text-ink-black">{role.label}</p>
-                  <div className="flex flex-wrap gap-1 mt-2">
+                  <div className="flex flex-wrap gap-1.5 mt-2">
                     {role.permissions.map((perm) => (
-                      <span key={perm} className="text-[10px] uppercase tracking-[0.05em] bg-kivu-paper text-volcanic-ash px-1.5 py-0.5 rounded">
+                      <span
+                        key={perm}
+                        className="text-[10px] uppercase tracking-[0.05em] bg-kivu-paper text-volcanic-ash px-1.5 py-0.5 rounded"
+                      >
                         {perm}
                       </span>
                     ))}
                   </div>
                 </div>
               ))}
-            </TabsContent>
+            </div>
+          </div>
+        )}
 
-            <TabsContent value="publication" className="px-4 py-4 space-y-4">
+        {activeMode === "settings" && (
+          <div className="flex-1 overflow-y-auto p-8 space-y-6">
+            <h2 className="font-display text-xl text-lake-deep tracking-tight mb-6">{t("workflow.settings", "Paramètres")}</h2>
+            <div className="max-w-xl space-y-4">
               <div>
-                <label className="text-[11px] uppercase tracking-[0.1em] text-volcanic-ash font-medium">{t("admin.version")}</label>
+                <label className="text-[11px] uppercase tracking-[0.1em] text-volcanic-ash font-medium">{t("admin.version", "Version")}</label>
                 <p className="font-display text-2xl text-lake-deep mt-1">v{workflow.version}</p>
               </div>
               <div>
-                <label className="text-[11px] uppercase tracking-[0.1em] text-volcanic-ash font-medium">Statut</label>
+                <label className="text-[11px] uppercase tracking-[0.1em] text-volcanic-ash font-medium">{t("admin.status", "Statut")}</label>
                 <p className="text-sm text-ink-black mt-1 capitalize">{workflow.status}</p>
               </div>
               {workflow.publishedAt && (
                 <div>
-                  <label className="text-[11px] uppercase tracking-[0.1em] text-volcanic-ash font-medium">Publié le</label>
+                  <label className="text-[11px] uppercase tracking-[0.1em] text-volcanic-ash font-medium">{t("admin.publishedOn", "Publié le")}</label>
                   <p className="text-sm text-ink-black mt-1">
                     {new Date(workflow.publishedAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" })}
                   </p>
                 </div>
               )}
-              <Button variant="primary" className="w-full" onClick={publish}>
-                {t("workflow.publish")}
-              </Button>
-            </TabsContent>
-          </Tabs>
-        </div>
+            </div>
+          </div>
+        )}
+
+        {activeMode === "preview" && (
+          <div className="flex-1 overflow-auto flex items-center justify-center p-8 bg-kivu-paper">
+            <FormPreview />
+          </div>
+        )}
+      </div>
+
+      {/* Mode Tabs */}
+      <div className="border-t border-graph-line bg-white flex">
+        {MODE_TABS.map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => setActiveMode(key)}
+            className={`flex-1 py-3 text-sm font-medium transition-colors ${
+              activeMode === key
+                ? "border-t-2 border-ink-blue text-ink-blue bg-ink-blue/5"
+                : "border-t-2 border-transparent text-pencil hover:text-ink-black"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
     </div>
   )

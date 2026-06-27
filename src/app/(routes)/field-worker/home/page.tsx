@@ -7,6 +7,7 @@ import { SyncButton } from "@/components/sync/SyncButton"
 import { ChevronRight, AlertTriangle, Clock, MapPin } from "lucide-react"
 import Link from "next/link"
 import type { RecordData } from "@/types/record"
+import type { ConflictRecord } from "@/types/sync"
 
 const statusDot: Record<string, string> = {
   draft: "bg-pencil",
@@ -25,6 +26,7 @@ export default function FieldWorkerHome() {
   const { pendingCount } = useSyncStore()
   const [records, setRecords] = useState<RecordData[]>([])
   const [loading, setLoading] = useState(true)
+  const [conflictCount, setConflictCount] = useState(0)
   const loaded = useRef(false)
 
   useEffect(() => {
@@ -35,6 +37,8 @@ export default function FieldWorkerHome() {
         const { db } = await import("@/lib/db/indexeddb")
         const all = await db.getAllRecords()
         setRecords(all)
+        const conflicts: ConflictRecord[] = await db.getConflicts()
+        setConflictCount(conflicts.filter(c => c.status === "OPEN").length)
       } catch { /* IndexedDB not ready */ }
       setLoading(false)
     }
@@ -66,6 +70,17 @@ export default function FieldWorkerHome() {
 
   return (
     <div className="py-4 space-y-6">
+      {conflictCount > 0 && (
+        <Link
+          href="/field-worker/conflicts"
+          className="flex items-center gap-2 px-4 py-3 rounded-md bg-warning-500/10 border border-warning-500/40 text-warning-600 hover:bg-warning-500/15 transition-colors text-sm font-medium"
+        >
+          <AlertTriangle size={18} className="shrink-0 text-warning-500" />
+          <span>{t("home.conflictsBanner", { count: conflictCount })}</span>
+          <ChevronRight size={16} className="ml-auto shrink-0 text-warning-500/60" />
+        </Link>
+      )}
+
       <div className="flex items-center justify-between">
         <h1 className="font-display text-2xl font-bold text-ink-black tracking-tight">{t("dashboard.fieldWorker")}</h1>
         <SyncButton />

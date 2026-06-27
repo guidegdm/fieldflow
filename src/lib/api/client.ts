@@ -12,6 +12,11 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
   return res.json()
 }
 
+export function getOrgIdFromPath(path: string): string | null {
+  const match = path.match(/\/org\/([^/]+)/)
+  return match ? match[1] : null
+}
+
 export async function apiGet<T>(path: string, params?: Record<string, string>): Promise<T> {
   let url: string
   if (typeof window !== "undefined") {

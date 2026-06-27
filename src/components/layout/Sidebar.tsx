@@ -1,3 +1,6 @@
+/**
+ * @deprecated Use `Drawer` instead. `AppShell` renders `Drawer` on desktop.
+ */
 "use client"
 
 import { useAuthStore } from "@/stores/authStore"

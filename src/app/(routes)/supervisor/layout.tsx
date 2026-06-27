@@ -1,33 +1,20 @@
 "use client"
 
+import { AppShell } from "@/components/layout/AppShell"
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { useTranslation } from "react-i18next"
 import { useAuthStore } from "@/stores/authStore"
-import { Sidebar } from "@/components/layout/Sidebar"
 
 export default function SupervisorLayout({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user)
   const hasHydrated = useAuthStore((s) => s.hasHydrated)
   const router = useRouter()
-  const { t } = useTranslation()
 
   useEffect(() => {
     if (hasHydrated && (!user || user.role !== "supervisor")) router.push("/")
   }, [hasHydrated, user, router])
 
-  if (!hasHydrated || !user || user.role !== "supervisor") {
-    return (
-      <div className="flex h-screen items-center justify-center bg-surgical-white">
-        <p className="text-sm text-chart-gray">{t("common.loading")}</p>
-      </div>
-    )
-  }
+  if (!hasHydrated || !user || user.role !== "supervisor") return null
 
-  return (
-    <div className="flex min-h-screen bg-surgical-white">
-      <Sidebar role="supervisor" />
-      <main className="flex-1 ml-64 p-6">{children}</main>
-    </div>
-  )
+  return <AppShell role="supervisor">{children}</AppShell>
 }

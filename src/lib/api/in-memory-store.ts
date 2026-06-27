@@ -13,6 +13,8 @@ class Store {
   private conflicts = new Map<string, ConflictRecord>()
   private criticalOps = new Map<string, { itemId: string; quantity: number; timestamp: number }>()
   private inventory = new Map<string, { id: string; name: string; total: number; reserved: number }>()
+  private orgs = new Map<string, any>()
+  private userProfiles = new Map<string, any>()
   private auditEvents: AuditEvent[] = []
   private inventoryLedger: InventoryLedgerEntry[] = []
   private inventoryLocks = new Set<string>()
@@ -34,6 +36,11 @@ class Store {
   getServerSince(seq: number): MutationEntry[] {
     return Array.from(this.mutations.values()).filter((m) => m.client_timestamp > seq)
   }
+
+  putOrg(o: any) { this.orgs.set(o.id, o) }
+  getOrg(id: string) { return this.orgs.get(id) }
+  putUserProfile(p: any) { this.userProfiles.set(p.userId || p.email, p) }
+  getUserProfile(userId: string) { return this.userProfiles.get(userId) }
 
   putDevice(d: DeviceState) { this.devices.set(d.device_id, d) }
   getDevice(deviceId: string) { return this.devices.get(deviceId) }

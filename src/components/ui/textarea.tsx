@@ -11,9 +11,9 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ className, label, error, id, ...props }, ref) => {
     const textareaId = id || props.name
     return (
-      <div className="space-y-1">
+      <div>
         {label && (
-          <label htmlFor={textareaId} className="text-sm font-medium text-pencil">
+          <label htmlFor={textareaId} className="block text-sm font-medium text-pencil mb-1">
             {label}
           </label>
         )}
@@ -22,7 +22,7 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           id={textareaId}
           className={cn(
             "flex min-h-[80px] w-full rounded-md border px-3 py-2 text-sm text-ink-black placeholder:text-pencil/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-blue focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50 resize-y",
-            error ? "border-danger-500" : "border-[#CBD5E1]",
+            error ? "border-danger-500" : "border-graph-line",
             className
           )}
           aria-invalid={!!error}
@@ -30,7 +30,7 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           {...props}
         />
         {error && (
-          <p id={`${textareaId}-error`} className="text-sm text-danger-500" role="alert">
+          <p id={`${textareaId}-error`} className="text-sm text-danger-500 mt-1" role="alert">
             {error}
           </p>
         )}

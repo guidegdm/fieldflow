@@ -16,7 +16,7 @@ export function LanguageToggle() {
   return (
     <button
       onClick={toggle}
-      className="inline-flex items-center rounded-full bg-gray-100 p-0.5 text-xs font-medium"
+      className="inline-flex items-center rounded-full bg-graph-line p-0.5 text-xs font-medium"
       aria-label="Toggle language"
     >
       <span

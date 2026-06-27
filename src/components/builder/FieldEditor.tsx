@@ -86,7 +86,7 @@ export function FieldEditor() {
               updates.options = [{ label: "Option 1", value: "option_1" }]
             updateField(field.id, updates as Partial<typeof field>)
           }}
-          className="flex h-10 w-full rounded-md border border-[#CBD5E1] bg-white px-3 py-2 text-sm text-ink-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-blue"
+          className="flex h-10 w-full rounded-md border border-graph-line bg-white px-3 py-2 text-sm text-ink-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-blue"
         >
           {FIELD_TYPES.map((type) => (
             <option key={type} value={type}>

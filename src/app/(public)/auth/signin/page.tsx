@@ -72,7 +72,7 @@ export default function SignInPage() {
                 type="email"
                 autoComplete="email"
                 required
-                className="w-full h-10 px-3 rounded-md border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-ink-blue focus:border-transparent"
+                className="w-full h-10 px-3 rounded-md border border-graph-line text-sm focus:outline-none focus:ring-2 focus:ring-ink-blue focus:border-transparent"
               />
             </div>
             <div>
@@ -85,7 +85,7 @@ export default function SignInPage() {
                 type="password"
                 autoComplete="current-password"
                 required
-                className="w-full h-10 px-3 rounded-md border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-ink-blue focus:border-transparent"
+                className="w-full h-10 px-3 rounded-md border border-graph-line text-sm focus:outline-none focus:ring-2 focus:ring-ink-blue focus:border-transparent"
               />
             </div>
 
@@ -113,13 +113,13 @@ export default function SignInPage() {
                 const redirectUri = window.location.origin + "/auth/callback"
                 window.location.href = `https://${domain}/oauth2/authorize?identity_provider=Google&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=CODE&client_id=${clientId}&scope=email+openid+profile`
               }}
-              className="w-full h-10 rounded-md border border-gray-300 text-sm font-medium text-ink-black hover:bg-gray-50 transition-colors"
+              className="w-full h-10 rounded-md border border-graph-line text-sm font-medium text-ink-black hover:bg-graph-paper transition-colors"
             >
               {t("signin.google")}
             </button>
             <button
               onClick={() => alert("Passkey coming soon")}
-              className="w-full h-10 rounded-md border border-gray-300 text-sm font-medium text-ink-black hover:bg-gray-50 transition-colors"
+              className="w-full h-10 rounded-md border border-graph-line text-sm font-medium text-ink-black hover:bg-graph-paper transition-colors"
             >
               {t("signin.passkey")}
             </button>

@@ -74,7 +74,7 @@ export default function SignUpPage() {
                 type="email"
                 autoComplete="email"
                 required
-                className="w-full h-10 px-3 rounded-md border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-ink-blue focus:border-transparent"
+                className="w-full h-10 px-3 rounded-md border border-graph-line text-sm focus:outline-none focus:ring-2 focus:ring-ink-blue focus:border-transparent"
               />
             </div>
             <div>
@@ -87,7 +87,7 @@ export default function SignUpPage() {
                 type="text"
                 autoComplete="name"
                 required
-                className="w-full h-10 px-3 rounded-md border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-ink-blue focus:border-transparent"
+                className="w-full h-10 px-3 rounded-md border border-graph-line text-sm focus:outline-none focus:ring-2 focus:ring-ink-blue focus:border-transparent"
               />
             </div>
             <div>
@@ -100,7 +100,7 @@ export default function SignUpPage() {
                 type="password"
                 autoComplete="new-password"
                 required
-                className="w-full h-10 px-3 rounded-md border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-ink-blue focus:border-transparent"
+                className="w-full h-10 px-3 rounded-md border border-graph-line text-sm focus:outline-none focus:ring-2 focus:ring-ink-blue focus:border-transparent"
               />
             </div>
 
@@ -115,7 +115,7 @@ export default function SignUpPage() {
                 name="orgName"
                 type="text"
                 required
-                className="w-full h-10 px-3 rounded-md border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-ink-blue focus:border-transparent"
+                className="w-full h-10 px-3 rounded-md border border-graph-line text-sm focus:outline-none focus:ring-2 focus:ring-ink-blue focus:border-transparent"
               />
             </div>
             <div>
@@ -125,7 +125,7 @@ export default function SignUpPage() {
               <select
                 id="orgSector"
                 name="orgSector"
-                className="w-full h-10 px-3 rounded-md border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-ink-blue focus:border-transparent bg-white"
+                className="w-full h-10 px-3 rounded-md border border-graph-line text-sm focus:outline-none focus:ring-2 focus:ring-ink-blue focus:border-transparent bg-white"
               >
                 {SECTORS.map((sector) => (
                   <option key={sector} value={sector}>

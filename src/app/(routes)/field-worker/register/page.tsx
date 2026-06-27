@@ -21,8 +21,7 @@ interface FormData {
   household_size: string
   shelter_type: string
   village: string
-  latitude: string
-  longitude: string
+  location: string
   vulnerability_score: number
   needs: string[]
   notes: string
@@ -34,8 +33,7 @@ const INITIAL_FORM: FormData = {
   household_size: "",
   shelter_type: "",
   village: "",
-  latitude: "",
-  longitude: "",
+  location: "",
   vulnerability_score: 1,
   needs: [],
   notes: "",
@@ -253,29 +251,15 @@ export default function RegisterPage() {
               />
             </FieldWrapper>
 
-            <div className="min-h-[48px]">
-              <label className="block text-sm font-medium text-pencil mb-1">
-                {t("records.gpsCoordinates")}
-              </label>
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <Input
-                    placeholder={t("register.latitude")}
-                    value={form.latitude}
-                    onChange={(e) => update("latitude", e.target.value)}
-                    className="h-11"
-                  />
-                </div>
-                <div className="flex-1">
-                  <Input
-                    placeholder={t("register.longitude")}
-                    value={form.longitude}
-                    onChange={(e) => update("longitude", e.target.value)}
-                    className="h-11"
-                  />
-                </div>
-              </div>
-            </div>
+            <FieldWrapper label={t("records.location", "Adresse / Lieu")}>
+              <Input
+                name="location"
+                value={form.location}
+                onChange={(e) => update("location", e.target.value)}
+                placeholder={t("register.locationPlaceholder", "Ex: Camp Mugunga, Goma")}
+                className="h-11"
+              />
+            </FieldWrapper>
           </div>
         </section>
 
@@ -340,7 +324,7 @@ export default function RegisterPage() {
         </section>
       </form>
 
-      <div className="fixed bottom-0 left-0 right-0 border-t border-graph-line bg-white p-4">
+      <div className="fixed bottom-16 left-0 right-0 z-50 border-t border-graph-line bg-white p-4">
         <Button
           type="submit"
           variant="primary"

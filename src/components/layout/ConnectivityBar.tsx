@@ -98,7 +98,7 @@ export function ConnectivityBar() {
       {showStorage && (
         <div className="h-1 bg-gray-200">
           <div
-            className={cn("h-full transition-all", isNearLimit ? "bg-emergency-red" : "bg-exposed-wire")}
+            className={cn("h-full transition-all", isNearLimit ? "bg-warning-500" : "bg-warning-500")}
             style={{ width: `${Math.min(percentageUsed, 100)}%` }}
           />
         </div>

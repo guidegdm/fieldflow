@@ -9,33 +9,6 @@ import { ArrowLeft, CheckCircle, Clock, AlertTriangle, XCircle, ShieldCheck, Git
 import type { RecordData } from "@/types/record"
 import { formatDate } from "@/lib/utils"
 
-const SAMPLE_RECORDS: RecordData[] = [
-  {
-    id: "rec-1", workflowId: "wf-1", workflowVersion: 2, entityKey: "household",
-    status: "draft", syncStatus: "local", state: "draft",
-    fields: { household_name: "Mukwege Family", head_of_household: "Denis Mukwege", household_size: 6, shelter_type: "tente", village: "Bukavu Centre", latitude: "-2.5025", longitude: "28.8608", vulnerability_score: 3, needs: ["nourriture", "medical"] },
-    createdAt: Date.now() - 3600000, updatedAt: Date.now() - 3600000, createdBy: "user-1", deviceId: "device-a", version: 1,
-  },
-  {
-    id: "rec-2", workflowId: "wf-1", workflowVersion: 2, entityKey: "household",
-    status: "pending_sync", syncStatus: "pending", state: "submitted",
-    fields: { household_name: "Nkunda Family", head_of_household: "Laurent Nkunda", household_size: 4, shelter_type: "abri", village: "Goma", latitude: "-1.6743", longitude: "29.2434", vulnerability_score: 4, needs: ["nourriture", "eau", "abri"] },
-    createdAt: Date.now() - 7200000, updatedAt: Date.now() - 7200000, createdBy: "user-1", deviceId: "device-a", version: 1,
-  },
-  {
-    id: "rec-3", workflowId: "wf-1", workflowVersion: 2, entityKey: "household",
-    status: "synced", syncStatus: "synced", state: "verified",
-    fields: { household_name: "Kabange Family", head_of_household: "Marie Kabange", household_size: 8, shelter_type: "maison", village: "Uvira" },
-    createdAt: Date.now() - 86400000, updatedAt: Date.now() - 36000000, createdBy: "user-1", deviceId: "device-a", version: 2, syncedAt: Date.now() - 36000000,
-  },
-  {
-    id: "rec-4", workflowId: "wf-1", workflowVersion: 2, entityKey: "household",
-    status: "in_conflict", syncStatus: "conflict", state: "verified",
-    fields: { household_name: "Bizimana Family", head_of_household: "Jean Bizimana", household_size: 5, shelter_type: "tente", village: "Minova" },
-    createdAt: Date.now() - 172800000, updatedAt: Date.now() - 86400000, createdBy: "user-2", deviceId: "device-b", version: 3,
-  },
-]
-
 const statusConfig: Record<string, { label: string; color: string; border: string; bg: string; icon: typeof AlertTriangle }> = {
   draft: { label: "Brouillon", color: "text-pencil", border: "border-pencil", bg: "bg-pencil/5", icon: Clock },
   pending_sync: { label: "En attente", color: "text-warning-500", border: "border-warning-500", bg: "bg-warning-500/5", icon: Clock },
@@ -105,8 +78,11 @@ export default function RecordDetailPage() {
         const found = await db.getRecord(id)
         if (found) { setRecord(found); setLoading(false); return }
       } catch { /* IndexedDB not ready */ }
-      const found = SAMPLE_RECORDS.find((r) => r.id === id)
-      if (found) setRecord(found)
+      try {
+        const res = await fetch("/api/workflows/wf-1/records", { credentials: "include" })
+        const records = res.ok ? await res.json() : []
+        if (Array.isArray(records)) setRecord(records.find((r: RecordData) => r.id === id) ?? null)
+      } catch { setRecord(null) }
       setLoading(false)
     }
     load()

@@ -58,8 +58,8 @@ export function Sidebar({ role }: SidebarProps) {
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
                 isActive
-                  ? "bg-blue-50 text-lake-deep"
-                  : "text-pencil hover:bg-gray-50 hover:text-ink-black",
+                  ? "bg-ink-blue/5 text-lake-deep"
+                  : "text-pencil hover:bg-graph-paper hover:text-ink-black",
               )}
             >
               {link.icon}
@@ -76,13 +76,13 @@ export function Sidebar({ role }: SidebarProps) {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-ink-black truncate">{user.name}</p>
-            <span className="inline-block text-[11px] uppercase tracking-wider text-pencil bg-gray-100 px-1.5 py-0.5 rounded">
+            <span className="inline-block text-[11px] uppercase tracking-wider text-pencil bg-graph-paper px-1.5 py-0.5 rounded">
               {role}
             </span>
           </div>
           <button
             onClick={logout}
-            className="p-1.5 text-pencil hover:text-rebar hover:bg-gray-100 rounded-md transition-colors"
+            className="p-1.5 text-pencil hover:text-rebar hover:bg-graph-paper rounded-md transition-colors"
             aria-label="Déconnexion"
           >
             <LogOut size={16} />

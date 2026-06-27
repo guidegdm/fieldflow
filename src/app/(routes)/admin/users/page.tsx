@@ -6,8 +6,9 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Select } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
-import { DEMO_USERS, type UserRole } from "@/types/auth"
+import type { UserRole } from "@/types/auth"
 import { UserPlus, X, ChevronDown, Check } from "lucide-react"
 
 interface UserRow {
@@ -34,19 +35,17 @@ export default function AdminUsersPage() {
   const [editingRole, setEditingRole] = useState<string | null>(null)
 
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      setUsers(
-        DEMO_USERS.map((u) => ({
-          id: u.id,
-          name: u.name,
-          email: u.email,
-          role: u.role,
-          active: true,
-        })),
-      )
-      setLoading(false)
-    }, 600)
-    return () => clearTimeout(timeout)
+    fetch("/api/admin/users", { credentials: "include" })
+      .then((res) => res.ok ? res.json() : [])
+      .then((data) => setUsers(data.map((u: UserRow & { userId?: string }) => ({
+        id: u.id || u.userId || u.email,
+        name: u.name,
+        email: u.email,
+        role: u.role,
+        active: u.active !== false,
+      }))))
+      .catch(() => setUsers([]))
+      .finally(() => setLoading(false))
   }, [])
 
   const handleInvite = () => {
@@ -106,17 +105,16 @@ export default function AdminUsersPage() {
                 <label className="block text-sm font-medium text-pencil mb-1">
                   {t("admin.inviteRole")}
                 </label>
-                <select
+                <Select
                   value={inviteRole}
                   onChange={(e) => setInviteRole(e.target.value as UserRole)}
-                  className="flex h-11 w-full rounded-md border border-graph-line px-3 py-2 text-sm text-ink-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-blue"
                 >
                   {ROLES.map((r) => (
                     <option key={r.value} value={r.value}>
                       {isFr ? r.label : r.labelEn}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <Button variant="secondary" onClick={() => setInviteOpen(false)}>
@@ -165,10 +163,10 @@ export default function AdminUsersPage() {
                   <TableCell>
                     {editingRole === u.id ? (
                       <div className="flex items-center gap-1">
-                        <select
+                        <Select
                           value={u.role}
                           onChange={(e) => handleRoleChange(u.id, e.target.value as UserRole)}
-                          className="h-8 rounded border border-graph-line px-2 text-xs text-ink-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-blue"
+                          className="h-8 px-2 text-xs"
                           autoFocus
                         >
                           {ROLES.map((r) => (
@@ -176,7 +174,7 @@ export default function AdminUsersPage() {
                               {isFr ? r.label : r.labelEn}
                             </option>
                           ))}
-                        </select>
+                        </Select>
                         <button onClick={() => setEditingRole(null)} className="text-pencil hover:text-ink-black">
                           <Check size={14} />
                         </button>

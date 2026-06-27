@@ -5,23 +5,41 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useTranslation } from "react-i18next"
 import { LogIn } from "lucide-react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
 import { useAuthStore } from "@/stores/authStore"
+
+const signInSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(1),
+})
+
+const otpSchema = z.object({
+  code: z.string().min(4).max(12),
+})
+
+type SignInValues = z.infer<typeof signInSchema>
+type OtpValues = z.infer<typeof otpSchema>
+type AuthChallenge = { challengeName: "EMAIL_OTP" | "SMS_MFA" | "SOFTWARE_TOKEN_MFA"; session: string; email: string } | null
 
 export default function SignInPage() {
   const { t } = useTranslation()
   const router = useRouter()
   const setAuthFromApi = useAuthStore((s) => s.setAuthFromApi)
   const [error, setError] = useState("")
-  const [loading, setLoading] = useState(false)
+  const [challenge, setChallenge] = useState<AuthChallenge>(null)
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<SignInValues>({
+    resolver: zodResolver(signInSchema),
+    defaultValues: { email: "", password: "" },
+  })
+  const { register: registerOtp, handleSubmit: handleOtpSubmit, formState: { errors: otpErrors, isSubmitting: otpSubmitting } } = useForm<OtpValues>({
+    resolver: zodResolver(otpSchema),
+    defaultValues: { code: "" },
+  })
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
+  const onSubmit = async ({ email, password }: SignInValues) => {
     setError("")
-    setLoading(true)
-
-    const form = e.currentTarget
-    const email = (form.elements.namedItem("email") as HTMLInputElement).value
-    const password = (form.elements.namedItem("password") as HTMLInputElement).value
 
     try {
       const res = await fetch("/api/auth/login", {
@@ -38,12 +56,40 @@ export default function SignInPage() {
       }
 
       const data = await res.json()
-      setAuthFromApi(data.user, data.org)
+      if (data.challenge && data.session) {
+        setChallenge({ challengeName: data.challenge, session: data.session, email: data.email || email })
+        return
+      }
+      setAuthFromApi(data.user, data.org, data.orgs)
       router.push(data.user.role === "field_worker" ? "/field-worker/home" : "/supervisor/dashboard")
     } catch {
       setError("Erreur réseau")
-    } finally {
-      setLoading(false)
+    }
+  }
+
+  const onOtpSubmit = async ({ code }: OtpValues) => {
+    if (!challenge) return
+    setError("")
+
+    try {
+      const res = await fetch("/api/auth/otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ ...challenge, code }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        setError(data.error || "Code invalide")
+        return
+      }
+
+      const data = await res.json()
+      setAuthFromApi(data.user, data.org, data.orgs)
+      router.push(data.user.role === "field_worker" ? "/field-worker/home" : data.user.role === "supervisor" ? "/supervisor/dashboard" : "/admin/dashboard")
+    } catch {
+      setError("Erreur réseau")
     }
   }
 
@@ -61,19 +107,21 @@ export default function SignInPage() {
             </div>
           )}
 
-          <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+          {!challenge ? (
+          <form className="mt-6 space-y-4" onSubmit={handleSubmit(onSubmit)}>
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-soil mb-1">
                 {t("signin.email")}
               </label>
               <input
                 id="email"
-                name="email"
                 type="email"
                 autoComplete="email"
-                required
+                {...register("email")}
+                aria-invalid={!!errors.email}
                 className="w-full h-10 px-3 rounded-md border border-graph-line text-sm focus:outline-none focus:ring-2 focus:ring-ink-blue focus:border-transparent"
               />
+              {errors.email && <p className="mt-1 text-sm text-danger-500">{t("common.required")}</p>}
             </div>
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-soil mb-1">
@@ -81,23 +129,57 @@ export default function SignInPage() {
               </label>
               <input
                 id="password"
-                name="password"
                 type="password"
                 autoComplete="current-password"
-                required
+                {...register("password")}
+                aria-invalid={!!errors.password}
                 className="w-full h-10 px-3 rounded-md border border-graph-line text-sm focus:outline-none focus:ring-2 focus:ring-ink-blue focus:border-transparent"
               />
+              {errors.password && <p className="mt-1 text-sm text-danger-500">{t("common.required")}</p>}
             </div>
 
             <button
               type="submit"
-              disabled={loading}
-              className="w-full h-10 rounded-md bg-ink-blue text-white font-medium text-sm hover:bg-blue-900 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+              disabled={isSubmitting}
+              className="w-full h-10 rounded-md bg-ink-blue text-white font-medium text-sm hover:bg-ink-blue/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
             >
               <LogIn size={16} />
-              {loading ? "Connexion..." : t("signin.submit")}
+              {isSubmitting ? "Connexion..." : t("signin.submit")}
             </button>
           </form>
+          ) : (
+            <form className="mt-6 space-y-4" onSubmit={handleOtpSubmit(onOtpSubmit)}>
+              <div>
+                <label htmlFor="code" className="block text-sm font-medium text-soil mb-1">
+                  {challenge.challengeName === "EMAIL_OTP" ? "Code email" : challenge.challengeName === "SMS_MFA" ? "Code SMS" : "Code authenticator"}
+                </label>
+                <input
+                  id="code"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  {...registerOtp("code")}
+                  aria-invalid={!!otpErrors.code}
+                  className="w-full h-10 px-3 rounded-md border border-graph-line text-sm focus:outline-none focus:ring-2 focus:ring-ink-blue focus:border-transparent"
+                />
+                {otpErrors.code && <p className="mt-1 text-sm text-danger-500">{t("common.required")}</p>}
+              </div>
+              <button
+                type="submit"
+                disabled={otpSubmitting}
+                className="w-full h-10 rounded-md bg-ink-blue text-white font-medium text-sm hover:bg-ink-blue/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                <LogIn size={16} />
+                {otpSubmitting ? "Vérification..." : "Vérifier"}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setChallenge(null); setError("") }}
+                className="w-full h-10 rounded-md border border-graph-line text-sm font-medium text-ink-black hover:bg-graph-paper transition-colors"
+              >
+                Retour
+              </button>
+            </form>
+          )}
 
           <div className="mt-3 text-right">
             <Link href="/auth/signin" className="text-xs text-pencil hover:text-ink-black">

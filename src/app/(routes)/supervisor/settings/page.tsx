@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Select } from "@/components/ui/select"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 
 const LANGUAGES = [
@@ -37,7 +38,7 @@ export default function SupervisorSettingsPage() {
 
   return (
     <div className="max-w-3xl space-y-8">
-      <h1 className="font-display text-4xl text-lake-deep tracking-tight">{t("supervisor.settings", "Paramètres")}</h1>
+      <h1 className="font-display text-4xl text-iodine-brown tracking-tight">{t("supervisor.settings", "Paramètres")}</h1>
 
       <Card>
         <CardHeader>
@@ -45,33 +46,27 @@ export default function SupervisorSettingsPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-pencil mb-1">
-              {t("supervisor.language", "Langue")}
-            </label>
-            <select
+            <Select
+              label={t("supervisor.language", "Langue")}
               value={language}
               onChange={(e) => setLanguage(e.target.value)}
-              className="flex h-11 w-full rounded-md border border-graph-line px-3 py-2 text-sm text-ink-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-blue"
             >
               {LANGUAGES.map((l) => (
                 <option key={l.value} value={l.value}>{l.label}</option>
               ))}
-            </select>
+            </Select>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-pencil mb-1">
-              {t("supervisor.syncInterval", "Intervalle de synchronisation")}
-            </label>
-            <select
+            <Select
+              label={t("supervisor.syncInterval", "Intervalle de synchronisation")}
               value={syncInterval}
               onChange={(e) => setSyncInterval(e.target.value)}
-              className="flex h-11 w-full rounded-md border border-graph-line px-3 py-2 text-sm text-ink-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-blue"
             >
               {SYNC_INTERVALS.map((s) => (
                 <option key={s.value} value={s.value}>{s.label}</option>
               ))}
-            </select>
+            </Select>
           </div>
 
           <div className="flex items-center gap-3">
@@ -80,7 +75,7 @@ export default function SupervisorSettingsPage() {
               type="checkbox"
               checked={offlineMode}
               onChange={(e) => setOfflineMode(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-ink-blue focus:ring-ink-blue"
+              className="h-4 w-4 rounded border-graph-line text-ink-blue focus:ring-ink-blue"
             />
             <label htmlFor="offlineMode" className="text-sm text-ink-black">
               {t("supervisor.offlineMode", "Mode hors-ligne prioritaire")}

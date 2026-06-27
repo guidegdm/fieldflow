@@ -56,7 +56,7 @@ export default function FieldWorkerHome() {
     return (
       <Link
         href={`/field-worker/record/${r.id}`}
-        className="flex items-center gap-3 px-3 py-2.5 rounded-md border border-graph-line bg-white min-h-[44px] hover:bg-gray-50 transition-colors"
+        className="flex items-center gap-3 px-3 py-2.5 rounded-md border border-graph-line bg-white min-h-[44px] hover:bg-graph-paper transition-colors"
       >
         <span className={`w-2 h-2 rounded-full shrink-0 ${statusDot[r.status] || "bg-pencil"}`} />
         <span className="flex-1 min-w-0">
@@ -88,7 +88,7 @@ export default function FieldWorkerHome() {
 
       {loading && records.length === 0 ? (
         <div className="space-y-2">
-          {[1,2,3,4,5].map(i => <div key={i} className="h-[44px] rounded-md bg-gray-100 animate-pulse" />)}
+          {[1,2,3,4,5].map(i => <div key={i} className="h-[44px] rounded-md bg-graph-paper animate-pulse" />)}
         </div>
       ) : records.length === 0 ? (
         <div className="text-center py-12">

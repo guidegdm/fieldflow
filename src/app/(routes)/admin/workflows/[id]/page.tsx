@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo, useRef } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useTranslation } from "react-i18next"
 import { useParams, useRouter } from "next/navigation"
 import { useAuthStore } from "@/stores/authStore"
@@ -13,69 +13,6 @@ import { FormCanvas } from "@/components/builder/FormCanvas"
 import { FieldEditor } from "@/components/builder/FieldEditor"
 import { WorkflowFlow } from "@/components/builder/WorkflowFlow"
 import { FormPreview } from "@/components/builder/FormPreview"
-import type { WorkflowDefinition } from "@/types/workflow"
-
-const DEMO_WORKFLOW: WorkflowDefinition = {
-  id: "wf-1",
-  version: 3,
-  name: "Enregistrement et Distribution Humanitaire",
-  nameEn: "Humanitarian Registration & Distribution",
-  description: "Workflow de bout en bout pour l'enregistrement et la distribution d'aide humanitaire",
-  descriptionEn: "End-to-end workflow for humanitarian registration and aid distribution",
-  entity: {
-    id: "ent-1",
-    key: "household",
-    label: "Ménage",
-    labelEn: "Household",
-    fields: [
-      { id: "f-1", key: "head_name", label: "Chef de ménage", labelEn: "Head of Household", type: "text", required: true, order: 0, section: "default" },
-      { id: "f-2", key: "size", label: "Taille du ménage", labelEn: "Household Size", type: "number", required: true, order: 1, section: "default" },
-      { id: "f-3", key: "village", label: "Village", labelEn: "Village", type: "text", required: true, order: 2, section: "default" },
-      { id: "f-4", key: "shelter", label: "Type d'abri", labelEn: "Shelter Type", type: "select", required: false, order: 3, section: "default", options: [{ label: "Tente", value: "tent" }, { label: "Brique", value: "brick" }, { label: "Abri temporaire", value: "temporary" }] },
-      { id: "f-5", key: "vulnerability", label: "Score de vulnérabilité", labelEn: "Vulnerability Score", type: "number", required: true, order: 4, section: "assessment" },
-      { id: "f-6", key: "gps", label: "Coordonnées GPS", labelEn: "GPS Coordinates", type: "gps", required: false, order: 5, section: "assessment" },
-      { id: "f-7", key: "photo", label: "Photo du chef", labelEn: "Head Photo", type: "photo", required: false, order: 6, section: "evidence" },
-      { id: "f-8", key: "notes", label: "Notes", labelEn: "Notes", type: "textarea", required: false, order: 7, section: "notes" },
-    ],
-  },
-  states: [
-    { id: "st-1", key: "brouillon", label: "Brouillon", labelEn: "Draft", color: "#6B7280", isInitial: true, isTerminal: false, x: 60, y: 80 },
-    { id: "st-2", key: "soumis", label: "Soumis", labelEn: "Submitted", color: "#D97706", isInitial: false, isTerminal: false, x: 260, y: 80 },
-    { id: "st-3", key: "verifie", label: "Vérifié", labelEn: "Verified", color: "#2563EB", isInitial: false, isTerminal: false, x: 460, y: 80 },
-    { id: "st-4", key: "approuve", label: "Approuvé", labelEn: "Approved", color: "#16A34A", isInitial: false, isTerminal: false, x: 660, y: 80 },
-    { id: "st-5", key: "reserve", label: "Réservé", labelEn: "Reserved", color: "#C17A4E", isInitial: false, isTerminal: false, x: 460, y: 260 },
-    { id: "st-6", key: "distribue", label: "Distribué", labelEn: "Distributed", color: "#059669", isInitial: false, isTerminal: false, x: 260, y: 260 },
-    { id: "st-7", key: "confirme", label: "Confirmé", labelEn: "Confirmed", color: "#1B4F72", isInitial: false, isTerminal: true, x: 60, y: 260 },
-  ],
-  transitions: [
-    { id: "tr-1", key: "soumettre", label: "Soumettre", labelEn: "Submit", fromState: "st-1", toState: "st-2", requiredRoles: ["field_worker"] },
-    { id: "tr-2", key: "verifier", label: "Vérifier", labelEn: "Verify", fromState: "st-2", toState: "st-3", requiredRoles: ["supervisor"] },
-    { id: "tr-3", key: "approuver", label: "Approuver", labelEn: "Approve", fromState: "st-3", toState: "st-4", requiredRoles: ["supervisor"] },
-    { id: "tr-4", key: "reserver", label: "Réserver inventaire", labelEn: "Reserve Inventory", fromState: "st-4", toState: "st-5", requiredRoles: ["supervisor"], sideEffects: ["inventory_reserve"] },
-    { id: "tr-5", key: "distribuer", label: "Distribuer", labelEn: "Distribute", fromState: "st-5", toState: "st-6", requiredRoles: ["field_worker", "supervisor"] },
-    { id: "tr-6", key: "confirmer", label: "Confirmer réception", labelEn: "Confirm Receipt", fromState: "st-6", toState: "st-7", requiredRoles: ["field_worker"] },
-  ],
-  roles: [
-    { id: "rl-1", key: "field_worker", label: "Agent terrain", permissions: ["create", "update_own", "sync", "distribute"] },
-    { id: "rl-2", key: "supervisor", label: "Superviseur", permissions: ["verify", "approve", "reject", "reserve", "manage_conflicts", "view_all"] },
-    { id: "rl-3", key: "org_admin", label: "Administrateur", permissions: ["manage_workflows", "manage_users", "publish", "view_all", "export"] },
-  ],
-  offlinePolicy: {
-    maxOfflineHours: 72,
-    allowedOperations: { create: true, update: true, delete: false, evidence: true },
-    conflictStrategy: "manual",
-    manualResolutionFields: ["head_name", "size", "village"],
-    autoResolutionNumeric: "average",
-    maxAttachmentSizeMb: 10,
-    allowedAttachmentTypes: ["image/jpeg", "image/png", "application/pdf"],
-    attachmentSyncPriority: "low",
-  },
-  status: "draft",
-  createdAt: "2025-11-01T08:00:00Z",
-  updatedAt: "2026-06-25T14:30:00Z",
-  publishedAt: undefined,
-  author: "Céline M.",
-}
 
 const MODE_TABS = [
   { key: "fields", label: "📋 Fields" },
@@ -152,7 +89,8 @@ function AIPanel({ onClose }: { onClose: () => void }) {
       const res = await fetch("/api/ai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: prompt }),
+        credentials: "include",
+        body: JSON.stringify({ messages: [{ role: "user", content: prompt }] }),
       })
 
       if (!res.ok) {
@@ -178,7 +116,7 @@ function AIPanel({ onClose }: { onClose: () => void }) {
           if (line.startsWith("data: ") && line !== "data: [DONE]") {
             try {
               const parsed = JSON.parse(line.slice(6))
-              setResponse((prev) => prev + (parsed.text || ""))
+              setResponse((prev) => prev + (parsed.content || parsed.text || ""))
             } catch { /* skip malformed */ }
           }
         }
@@ -215,7 +153,7 @@ function AIPanel({ onClose }: { onClose: () => void }) {
         </Button>
       </div>
       {response && (
-        <div className="mt-3 p-3 rounded-md bg-gray-50 border border-graph-line text-sm text-ink-black whitespace-pre-wrap">
+        <div className="mt-3 p-3 rounded-md bg-graph-paper border border-graph-line text-sm text-ink-black whitespace-pre-wrap">
           {response}
         </div>
       )}
@@ -236,7 +174,11 @@ export default function WorkflowBuilder() {
   const [publishConfirm, setPublishConfirm] = useState(false)
 
   useEffect(() => {
-    if (params.id && !workflow) setWorkflow(DEMO_WORKFLOW)
+    if (!params.id || workflow) return
+    fetch(`/api/workflows/${params.id}/definition`, { credentials: "include" })
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => { if (data) setWorkflow(data) })
+      .catch(() => {})
   }, [params.id, workflow, setWorkflow])
 
   useEffect(() => {
@@ -384,7 +326,7 @@ export default function WorkflowBuilder() {
                         className={`flex items-center justify-between px-3 py-2 rounded-md cursor-pointer text-sm transition-colors ${
                           selectedStateId === state.id
                             ? "bg-clay/10 border border-clay/30"
-                            : "hover:bg-gray-50 border border-transparent"
+                            : "hover:bg-graph-paper border border-transparent"
                         }`}
                       >
                         <div className="flex items-center gap-2 min-w-0">

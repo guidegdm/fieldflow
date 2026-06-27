@@ -19,4 +19,5 @@ export interface RecordData {
   syncedAt?: number
   createdBy?: string
   orgId?: string
+  expiresAt?: number
 }

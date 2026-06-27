@@ -29,7 +29,7 @@ const TableRow = forwardRef<HTMLTableRowElement, React.HTMLAttributes<HTMLTableR
     <tr
       ref={ref}
       className={cn(
-        "h-12 border-b border-graph-line transition-colors hover:bg-blue-50 data-[state=selected]:bg-graph-paper",
+        "h-12 border-b border-graph-line transition-colors hover:bg-ink-blue/5 data-[state=selected]:bg-graph-paper",
         className
       )}
       {...props}

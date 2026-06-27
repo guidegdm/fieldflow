@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { setSessionCookie } from "@/lib/auth/middleware"
+import { createSessionToken, setAccessCookie, setRefreshCookie, setSessionCookie, verifyCognitoJWT } from "@/lib/auth/middleware"
 
 export async function GET(request: Request) {
   const url = new URL(request.url)
@@ -33,16 +33,25 @@ export async function GET(request: Request) {
     return NextResponse.redirect(redirectUrl)
   }
 
-  const tokens = (await tokenRes.json()) as { access_token?: string; id_token?: string }
+  const tokens = (await tokenRes.json()) as { access_token?: string; id_token?: string; refresh_token?: string }
   const token = tokens.access_token || tokens.id_token
 
-  if (!token) {
+  if (!token || !tokens.id_token) {
     const redirectUrl = new URL("/auth/signin", url.origin)
     redirectUrl.searchParams.set("error", "no_token")
     return NextResponse.redirect(redirectUrl)
   }
 
+  const authUser = await verifyCognitoJWT(tokens.id_token)
+  if (!authUser) {
+    const redirectUrl = new URL("/auth/signin", url.origin)
+    redirectUrl.searchParams.set("error", "invalid_token")
+    return NextResponse.redirect(redirectUrl)
+  }
+
   const response = NextResponse.redirect(new URL("/admin/dashboard", url.origin))
-  response.headers.set("Set-Cookie", setSessionCookie(token, 86400))
+  response.headers.set("Set-Cookie", setAccessCookie(token, 3600))
+  if (tokens.refresh_token) response.headers.append("Set-Cookie", setRefreshCookie(tokens.refresh_token))
+  response.headers.append("Set-Cookie", setSessionCookie(createSessionToken(authUser, 3600), 3600))
   return response
 }

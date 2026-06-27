@@ -1,11 +1,14 @@
 export type OperationType = "create" | "update" | "delete" | "attach_evidence"
-export type MutationStatus = "PENDING" | "SENDING" | "ACKED" | "FAILED" | "CONFLICT"
+export type MutationStatus = "PENDING" | "SENDING" | "ACKED" | "FAILED" | "CONFLICT" | "POISON"
 
 export interface MutationEntry {
   client_id: string; device_id: string; operation: OperationType
   resource: string; workflow_id: string; record_id: string | null
   payload: unknown; client_timestamp: number; base_version: number
+  base_fields?: Record<string, unknown>
   status: MutationStatus; retry_count: number; last_error: string | null; enqueued_at: number
+  server_seq?: number
+  poison_until?: number
 }
 
 export interface SyncBatchRequest { device_id: string; device_seq: number; operations: MutationEntry[] }
@@ -16,7 +19,7 @@ export interface ConflictEntry {
   field: string
   local_value: unknown
   server_value: unknown
-  strategy: "last_write_wins" | "server_authoritative" | "manual" | "average" | "max" | "min"
+  strategy: "last_write_wins" | "server_authoritative" | "manual" | "average" | "max" | "min" | "set_union" | "append_only"
   field_strategy: string
   auto_resolved: boolean
   resolved_value?: unknown
@@ -63,6 +66,8 @@ export interface InventoryLedgerEntry {
 export interface DeviceState {
   key: string; device_id: string; last_seq: number; last_sync_at: number | null
   pending_count: number; version: number; user_id: string; workflow_id: string; workflow_version: number
+  orgId?: string
+  expiresAt?: number
 }
 
 export interface ConflictRecord {

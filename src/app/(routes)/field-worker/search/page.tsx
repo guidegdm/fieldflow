@@ -1,40 +1,10 @@
 'use client'
 
-import { useState, useMemo } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { useTranslation } from "react-i18next"
 import { ChevronRight, Search as SearchIcon } from "lucide-react"
 import Link from "next/link"
 import type { RecordData } from "@/types/record"
-
-const SAMPLE_RECORDS: RecordData[] = [
-  {
-    id: "rec-1", workflowId: "wf-1", workflowVersion: 2, entityKey: "household",
-    status: "draft", syncStatus: "local", state: "draft",
-    fields: { household_name: "Mukwege Family", head_of_household: "Denis Mukwege", household_size: 6, shelter_type: "tente", village: "Bukavu Centre" },
-    createdAt: Date.now() - 3600000, updatedAt: Date.now() - 3600000, createdBy: "user-1", deviceId: "device-a", version: 1,
-  },
-  {
-    id: "rec-2", workflowId: "wf-1", workflowVersion: 2, entityKey: "household",
-    status: "pending_sync", syncStatus: "pending", state: "submitted",
-    fields: { household_name: "Nkunda Family", head_of_household: "Laurent Nkunda", household_size: 4, shelter_type: "abri", village: "Goma" },
-    createdAt: Date.now() - 7200000, updatedAt: Date.now() - 7200000, createdBy: "user-1", deviceId: "device-a", version: 1,
-  },
-  {
-    id: "rec-3", workflowId: "wf-1", workflowVersion: 2, entityKey: "household",
-    status: "synced", syncStatus: "synced", state: "verified",
-    fields: { household_name: "Kabange Family", head_of_household: "Marie Kabange", household_size: 8, shelter_type: "maison", village: "Uvira" },
-    createdAt: Date.now() - 86400000, updatedAt: Date.now() - 36000000, createdBy: "user-1", deviceId: "device-a", version: 2, syncedAt: Date.now() - 36000000,
-  },
-  {
-    id: "rec-4", workflowId: "wf-1", workflowVersion: 2, entityKey: "household",
-    status: "in_conflict", syncStatus: "conflict", state: "verified",
-    fields: { household_name: "Bizimana Family", head_of_household: "Jean Bizimana", household_size: 5, shelter_type: "tente", village: "Minova" },
-    createdAt: Date.now() - 172800000, updatedAt: Date.now() - 86400000, createdBy: "user-2", deviceId: "device-b", version: 3,
-  },
-  { id: "rec-5", workflowId: "wf-1", workflowVersion: 2, entityKey: "household", status: "synced", syncStatus: "synced", state: "verified", fields: { household_name: "Mugisha Family", head_of_household: "Alice Mugisha", household_size: 3, shelter_type: "centre", village: "Kinshasa" }, createdAt: Date.now() - 259200000, updatedAt: Date.now() - 172800000, createdBy: "user-1", deviceId: "device-a", version: 2 },
-  { id: "rec-6", workflowId: "wf-1", workflowVersion: 2, entityKey: "household", status: "draft", syncStatus: "local", state: "draft", fields: { household_name: "Habimana Family", head_of_household: "Pierre Habimana", household_size: 7, shelter_type: "maison", village: "Butembo" }, createdAt: Date.now() - 43200000, updatedAt: Date.now() - 43200000, createdBy: "user-1", deviceId: "device-a", version: 1 },
-  { id: "rec-7", workflowId: "wf-1", workflowVersion: 2, entityKey: "household", status: "approved", syncStatus: "synced", state: "approved", fields: { household_name: "Uwimana Family", head_of_household: "Grace Uwimana", household_size: 5, shelter_type: "tente", village: "Goma" }, createdAt: Date.now() - 604800000, updatedAt: Date.now() - 432000000, createdBy: "user-2", deviceId: "device-b", version: 4 },
-]
 
 type FilterKey = "all" | "pending" | "verified" | "synced"
 
@@ -61,9 +31,27 @@ export default function SearchPage() {
   const { t } = useTranslation()
   const [query, setQuery] = useState("")
   const [activeFilter, setActiveFilter] = useState<FilterKey>("all")
+  const [records, setRecords] = useState<RecordData[]>([])
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const { db } = await import("@/lib/db/indexeddb")
+        const local = await db.getAllRecords()
+        if (local.length > 0) setRecords(local)
+      } catch { /* IndexedDB can be unavailable */ }
+
+      try {
+        const res = await fetch("/api/workflows/wf-1/records", { credentials: "include" })
+        const server = res.ok ? await res.json() : []
+        if (Array.isArray(server)) setRecords(server)
+      } catch { /* keep local records */ }
+    }
+    load()
+  }, [])
 
   const filtered = useMemo(() => {
-    let results = SAMPLE_RECORDS
+    let results = records
 
     if (activeFilter === "pending") {
       results = results.filter((r) => r.syncStatus === "pending" || r.syncStatus === "local")
@@ -84,7 +72,7 @@ export default function SearchPage() {
     }
 
     return results
-  }, [query, activeFilter])
+  }, [query, activeFilter, records])
 
   return (
     <div className="py-4 space-y-4">
@@ -109,7 +97,7 @@ export default function SearchPage() {
             className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors min-h-[32px] ${
               activeFilter === f.key
                 ? "bg-ink-blue text-white"
-                : "bg-white border border-grid-line text-pencil hover:bg-gray-50"
+                : "bg-white border border-grid-line text-pencil hover:bg-graph-paper"
             }`}
           >
             {t(f.labelKey)}
@@ -127,7 +115,7 @@ export default function SearchPage() {
             <Link
               key={r.id}
               href={`/field-worker/record/${r.id}`}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-md border border-graph-line bg-white min-h-[44px] hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-3 px-3 py-2.5 rounded-md border border-graph-line bg-white min-h-[44px] hover:bg-graph-paper transition-colors"
             >
               <span className={`w-2 h-2 rounded-full shrink-0 ${statusDot[r.status] || "bg-pencil"}`} />
               <span className="flex-1 min-w-0">

@@ -4,26 +4,41 @@ import { useState, useEffect } from "react"
 import { useTranslation } from "react-i18next"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
-import { DEMO_USERS } from "@/types/auth"
+import type { UserRole } from "@/types/auth"
+
+interface UserRow {
+  id: string
+  name: string
+  email: string
+  role: UserRole
+}
 
 export default function AdminDashboard() {
   const { t } = useTranslation()
   const [data, setData] = useState({ workflows: 1, records: 0, users: 4, conflicts: 0 })
   const [workflows, setWorkflows] = useState<{ name: string; version: number; status: string; count: number }[]>([])
+  const [users, setUsers] = useState<UserRow[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function load() {
       try {
-        const [recordsRes, wfRes] = await Promise.all([
-          fetch("/api/workflows/wf-1/records", { credentials: "include" }).then(r => r.json()),
-          fetch("/api/workflows/wf-1/definition", { credentials: "include" }).then(r => r.json()),
+        const [statsRes, workflowsRes, usersRes] = await Promise.all([
+          fetch("/api/admin/stats", { credentials: "include" }).then(r => r.json()),
+          fetch("/api/workflows", { credentials: "include" }).then(r => r.json()),
+          fetch("/api/admin/users", { credentials: "include" }).then(r => r.ok ? r.json() : []),
         ])
-        const recs = recordsRes.records || []
-        setData(d => ({ ...d, records: recs.length, conflicts: recs.filter((r: any) => r.syncStatus === "conflict").length }))
-        if (wfRes.id) setWorkflows([{ name: wfRes.name || "Enregistrement Humanitaire", version: wfRes.version || 2, status: wfRes.status || "published", count: recs.length }])
+        setData({ workflows: statsRes.workflows ?? 0, records: statsRes.records ?? 0, users: usersRes.length, conflicts: statsRes.conflicts ?? 0 })
+        setUsers(usersRes)
+        setWorkflows(workflowsRes.map((wf: { name: string; version: number; status: string; recordCount?: number }) => ({
+          name: wf.name,
+          version: wf.version,
+          status: wf.status,
+          count: wf.recordCount ?? 0,
+        })))
       } catch {
-        setWorkflows([{ name: "Enregistrement et Distribution Humanitaire", version: 2, status: "published", count: 2 }])
+        setWorkflows([])
+        setUsers([])
       }
       setLoading(false)
     }
@@ -54,7 +69,7 @@ export default function AdminDashboard() {
         <div className="lg:col-span-2 rounded-lg border border-graph-line bg-white p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-medium text-ink-black">{t("admin.workflows", "Workflows")}</h2>
-            <Link href="/admin/workflows/new" className="rounded-md bg-ink-blue text-white px-4 py-2 text-sm font-medium hover:bg-blue-900">+ Nouveau</Link>
+            <Link href="/admin/workflows/new" className="rounded-md bg-ink-blue text-white px-4 py-2 text-sm font-medium hover:bg-ink-blue/90">+ Nouveau</Link>
           </div>
           {workflows.map((wf) => (
             <Link key={wf.name} href="/admin/workflows/wf-1" className="flex items-center justify-between py-3 border-b border-graph-line last:border-0 hover:bg-graph-paper -mx-2 px-2 rounded">
@@ -70,7 +85,7 @@ export default function AdminDashboard() {
         <div className="rounded-lg border border-graph-line bg-white p-6">
           <h2 className="font-medium text-ink-black mb-4">{t("admin.users", "Utilisateurs")}</h2>
           <div className="space-y-3">
-            {DEMO_USERS.map((u) => (
+            {users.map((u) => (
               <div key={u.id} className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded bg-clay flex items-center justify-center text-white text-xs font-semibold shrink-0">{u.name.charAt(0)}</div>
                 <div className="flex-1 min-w-0">

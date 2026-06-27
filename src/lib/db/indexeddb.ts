@@ -38,7 +38,8 @@ export const db = {
   async getPendingMutations(): Promise<MutationEntry[]> {
     const d = await getDB()
     const all = await d.getAll("mutations")
-    return all.filter(m => m.status === "PENDING" || m.status === "FAILED")
+    const now = Date.now()
+    return all.filter(m => m.status === "PENDING" || m.status === "FAILED" || (m.status === "POISON" && (m.poison_until ?? 0) <= now))
   },
 
   async updateMutationStatus(clientId: string, status: MutationStatus) {
@@ -55,6 +56,23 @@ export const db = {
     await d.delete("mutations", clientId)
   },
 
+  async markMutationFailed(clientId: string, reason: string, maxRetries = 10, cooldownMs = 30 * 60 * 1000) {
+    const d = await getDB()
+    const m = await d.get("mutations", clientId)
+    if (!m) return
+    const retryCount = (m.retry_count ?? 0) + 1
+    m.retry_count = retryCount
+    m.last_error = reason
+    if (retryCount >= maxRetries) {
+      m.status = "POISON"
+      m.poison_until = Date.now() + cooldownMs
+    } else {
+      m.status = "FAILED"
+      m.poison_until = undefined
+    }
+    await d.put("mutations", m)
+  },
+
   async putRecord(record: RecordData) {
     const d = await getDB()
     await d.put("records", record)
@@ -63,6 +81,11 @@ export const db = {
   async getRecord(id: string): Promise<RecordData | undefined> {
     const d = await getDB()
     return d.get("records", id)
+  },
+
+  async deleteRecord(id: string) {
+    const d = await getDB()
+    await d.delete("records", id)
   },
 
   async getAllRecords(): Promise<RecordData[]> {

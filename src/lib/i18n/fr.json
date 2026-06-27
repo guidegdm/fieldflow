@@ -189,13 +189,13 @@
     "resolved": "Résolu"
   },
   "engineering": {
-    "dsqlLedger": "Registre DSQL",
+    "inventoryLedger": "Registre inventaire",
     "syncVisualization": "Visualisation sync",
     "deviceStatus": "État des appareils",
     "operationLog": "Journal des opérations",
     "tabs": {
       "sync": "Sync",
-      "dsqlLedger": "Registre DSQL",
+      "inventoryLedger": "Registre inventaire",
       "appareils": "Appareils"
     },
     "syncOps": {
@@ -204,7 +204,7 @@
       "acked": "Confirmé",
       "conflict": "Conflit"
     },
-    "dsql": {
+    "ledger": {
       "horodatage": "Horodatage",
       "cle": "Clé d'idempotence",
       "article": "Article",
@@ -212,7 +212,7 @@
       "statut": "Statut",
       "resultat": "Résultat",
       "committed": "COMMITTED",
-      "serializationFailure": "SERIALIZATION_FAILURE"
+      "serializationFailure": "CONDITIONAL_CHECK_FAILED"
     },
     "devices": {
       "id": "ID Appareil",

@@ -3,8 +3,12 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useRouter } from "next/navigation"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { ArrowLeft, CheckCircle } from "lucide-react"
 import { generateId } from "@/lib/utils"
@@ -15,19 +19,21 @@ import type { RecordData } from "@/types/record"
 const SHELTER_OPTIONS = ["tente", "abri", "maison", "centre", "famille"] as const
 const NEED_OPTIONS = ["nourriture", "eau", "abri", "medical", "education", "protection"] as const
 
-interface FormData {
-  household_name: string
-  head_of_household: string
-  household_size: string
-  shelter_type: string
-  village: string
-  location: string
-  vulnerability_score: number
-  needs: string[]
-  notes: string
-}
+const registerSchema = z.object({
+  household_name: z.string().min(1),
+  head_of_household: z.string().min(1),
+  household_size: z.string().min(1).refine((value) => !Number.isNaN(Number(value)) && Number(value) > 0),
+  shelter_type: z.string().min(1),
+  village: z.string().min(1),
+  location: z.string(),
+  vulnerability_score: z.number().min(1).max(5),
+  needs: z.array(z.string()),
+  notes: z.string(),
+})
 
-const INITIAL_FORM: FormData = {
+type RegistrationForm = z.infer<typeof registerSchema>
+
+const INITIAL_FORM: RegistrationForm = {
   household_name: "",
   head_of_household: "",
   household_size: "",
@@ -42,40 +48,24 @@ const INITIAL_FORM: FormData = {
 export default function RegisterPage() {
   const { t } = useTranslation()
   const router = useRouter()
-  const [form, setForm] = useState<FormData>(INITIAL_FORM)
-  const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({})
   const [saved, setSaved] = useState(false)
-  const [saving, setSaving] = useState(false)
+  const { register, handleSubmit, setValue, watch, formState: { errors, isSubmitting } } = useForm<RegistrationForm>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: INITIAL_FORM,
+  })
 
-  function update<K extends keyof FormData>(key: K, value: FormData[K]) {
-    setForm((prev) => ({ ...prev, [key]: value }))
-    if (errors[key]) setErrors((prev) => ({ ...prev, [key]: undefined }))
-  }
+  const vulnerabilityScore = watch("vulnerability_score")
+  const selectedNeeds = watch("needs")
 
   function toggleNeed(need: string) {
-    setForm((prev) => ({
-      ...prev,
-      needs: prev.needs.includes(need) ? prev.needs.filter((n) => n !== need) : [...prev.needs, need],
-    }))
+    setValue(
+      "needs",
+      selectedNeeds.includes(need) ? selectedNeeds.filter((n) => n !== need) : [...selectedNeeds, need],
+      { shouldDirty: true, shouldValidate: true },
+    )
   }
 
-  function validate(): boolean {
-    const errs: Partial<Record<keyof FormData, string>> = {}
-    if (!form.household_name.trim()) errs.household_name = t("common.required")
-    if (!form.head_of_household.trim()) errs.head_of_household = t("common.required")
-    if (!form.household_size.trim() || isNaN(Number(form.household_size))) errs.household_size = t("common.required")
-    if (!form.shelter_type) errs.shelter_type = t("common.required")
-    if (!form.village.trim()) errs.village = t("common.required")
-    setErrors(errs)
-    return Object.keys(errs).length === 0
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!validate()) return
-
-    setSaving(true)
-
+  async function onSubmit(form: RegistrationForm) {
     const id = generateId()
     const now = Date.now()
 
@@ -117,8 +107,6 @@ export default function RegisterPage() {
       setSaved(true)
     } catch {
       console.error("Failed to save record")
-    } finally {
-      setSaving(false)
     }
   }
 
@@ -160,7 +148,7 @@ export default function RegisterPage() {
         {t("records.newRegistration")}
       </h1>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
+      <form id="field-register-form" onSubmit={handleSubmit(onSubmit)} className="space-y-8">
         <section>
           <h2 className="font-serif text-lg font-semibold text-ink-black border-b border-graph-line pb-2 mb-4">
             {t("register.identification")}
@@ -170,13 +158,11 @@ export default function RegisterPage() {
             <FieldWrapper
               label={t("records.householdName")}
               required
-              error={errors.household_name}
+              error={errors.household_name ? t("common.required") : undefined}
             >
               <Input
-                name="household_name"
-                value={form.household_name}
-                onChange={(e) => update("household_name", e.target.value)}
-                error={errors.household_name}
+                {...register("household_name")}
+                error={errors.household_name ? t("common.required") : undefined}
                 className="h-11"
               />
             </FieldWrapper>
@@ -184,13 +170,11 @@ export default function RegisterPage() {
             <FieldWrapper
               label={t("records.headOfHousehold")}
               required
-              error={errors.head_of_household}
+              error={errors.head_of_household ? t("common.required") : undefined}
             >
               <Input
-                name="head_of_household"
-                value={form.head_of_household}
-                onChange={(e) => update("head_of_household", e.target.value)}
-                error={errors.head_of_household}
+                {...register("head_of_household")}
+                error={errors.head_of_household ? t("common.required") : undefined}
                 className="h-11"
               />
             </FieldWrapper>
@@ -198,15 +182,13 @@ export default function RegisterPage() {
             <FieldWrapper
               label={t("records.householdSize")}
               required
-              error={errors.household_size}
+              error={errors.household_size ? t("common.required") : undefined}
             >
               <Input
-                name="household_size"
                 type="number"
                 min="1"
-                value={form.household_size}
-                onChange={(e) => update("household_size", e.target.value)}
-                error={errors.household_size}
+                {...register("household_size")}
+                error={errors.household_size ? t("common.required") : undefined}
                 className="h-11"
               />
             </FieldWrapper>
@@ -222,40 +204,34 @@ export default function RegisterPage() {
             <FieldWrapper
               label={t("records.shelterType")}
               required
-              error={errors.shelter_type}
+              error={errors.shelter_type ? t("common.required") : undefined}
             >
-              <select
-                name="shelter_type"
-                value={form.shelter_type}
-                onChange={(e) => update("shelter_type", e.target.value)}
-                className="h-11 w-full rounded-md border border-graph-line bg-white px-3 py-2 text-sm text-ink-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-blue"
+              <Select
+                {...register("shelter_type")}
+                error={errors.shelter_type ? t("common.required") : undefined}
               >
                 <option value="">—</option>
                 {SHELTER_OPTIONS.map((opt) => (
                   <option key={opt} value={opt}>{t(`register.shelter_${opt}`)}</option>
                 ))}
-              </select>
+              </Select>
             </FieldWrapper>
 
             <FieldWrapper
               label={t("records.village")}
               required
-              error={errors.village}
+              error={errors.village ? t("common.required") : undefined}
             >
               <Input
-                name="village"
-                value={form.village}
-                onChange={(e) => update("village", e.target.value)}
-                error={errors.village}
+                {...register("village")}
+                error={errors.village ? t("common.required") : undefined}
                 className="h-11"
               />
             </FieldWrapper>
 
             <FieldWrapper label={t("records.location", "Adresse / Lieu")}>
               <Input
-                name="location"
-                value={form.location}
-                onChange={(e) => update("location", e.target.value)}
+                {...register("location")}
                 placeholder={t("register.locationPlaceholder", "Ex: Camp Mugunga, Goma")}
                 className="h-11"
               />
@@ -278,12 +254,11 @@ export default function RegisterPage() {
                   type="range"
                   min="1"
                   max="5"
-                  value={form.vulnerability_score}
-                  onChange={(e) => update("vulnerability_score", Number(e.target.value))}
+                  {...register("vulnerability_score", { valueAsNumber: true })}
                   className="flex-1 accent-ink-blue h-11"
                 />
                 <span className="text-sm font-mono text-ink-black min-w-[1.5rem] text-center">
-                  {form.vulnerability_score}/5
+                  {vulnerabilityScore}/5
                 </span>
               </div>
             </div>
@@ -296,11 +271,11 @@ export default function RegisterPage() {
                 {NEED_OPTIONS.map((need) => (
                   <label
                     key={need}
-                    className="flex items-center gap-3 min-h-[48px] cursor-pointer rounded-md px-3 hover:bg-gray-50"
+                    className="flex items-center gap-3 min-h-[48px] cursor-pointer rounded-md px-3 hover:bg-graph-paper"
                   >
                     <input
                       type="checkbox"
-                      checked={form.needs.includes(need)}
+                      checked={selectedNeeds.includes(need)}
                       onChange={() => toggleNeed(need)}
                       className="w-4 h-4 rounded border-graph-line text-ink-blue accent-ink-blue"
                     />
@@ -314,9 +289,7 @@ export default function RegisterPage() {
 
             <FieldWrapper label={t("records.notes")}>
               <Textarea
-                name="notes"
-                value={form.notes}
-                onChange={(e) => update("notes", e.target.value)}
+                {...register("notes")}
                 className="min-h-[80px]"
               />
             </FieldWrapper>
@@ -327,11 +300,11 @@ export default function RegisterPage() {
       <div className="fixed bottom-16 left-0 right-0 z-50 border-t border-graph-line bg-white p-4">
         <Button
           type="submit"
+          form="field-register-form"
           variant="primary"
           size="lg"
           className="w-full"
-          loading={saving}
-          onClick={handleSubmit}
+          loading={isSubmitting}
         >
           {t("common.save")}
         </Button>

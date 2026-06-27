@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Select } from "@/components/ui/select"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Info } from "lucide-react"
 
@@ -52,36 +53,30 @@ export default function AdminSettingsPage() {
             onChange={(e) => setOrgName(e.target.value)}
           />
           <div>
-            <label className="block text-sm font-medium text-pencil mb-1">
-              {t("admin.orgSector")}
-            </label>
-            <select
+            <Select
+              label={t("admin.orgSector")}
               value={sector}
               onChange={(e) => setSector(e.target.value)}
-              className="flex h-11 w-full rounded-md border border-graph-line px-3 py-2 text-sm text-ink-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-blue"
             >
               {SECTORS.map((s) => (
                 <option key={s.value} value={s.value}>
                   {isFr ? s.label : s.labelEn}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-pencil mb-1">
-              {t("admin.orgSize")}
-            </label>
-            <select
+            <Select
+              label={t("admin.orgSize")}
               value={size}
               onChange={(e) => setSize(e.target.value)}
-              className="flex h-11 w-full rounded-md border border-graph-line px-3 py-2 text-sm text-ink-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-blue"
             >
               {SIZES.map((s) => (
                 <option key={s} value={s}>
                   {s}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <Input
             label={t("admin.region")}

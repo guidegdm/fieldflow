@@ -19,10 +19,6 @@ type Row = {
   updatedAt: string
 }
 
-const FALLBACK: Row[] = [
-  { id: "wf-1", name: "Enregistrement et Distribution Humanitaire", version: 3, status: "published", recordCount: 12, updatedAt: "2026-06-25T14:30:00Z" },
-]
-
 export default function AdminWorkflowsIndex() {
   const { t } = useTranslation()
   const router = useRouter()
@@ -35,24 +31,20 @@ export default function AdminWorkflowsIndex() {
     loaded.current = true
     async function load() {
       try {
-        const { db } = await import("@/lib/db/indexeddb")
-        const all = await db.getAllWorkflows()
-        if (all.length > 0) {
-          setRows(
-            all.map((w: WorkflowDefinition) => ({
-              id: w.id,
-              name: w.name,
-              version: w.version,
-              status: w.status ?? "published",
-              recordCount: 0,
-              updatedAt: w.updatedAt,
-            })),
-          )
-        } else {
-          setRows(FALLBACK)
-        }
+        const res = await fetch("/api/workflows", { credentials: "include" })
+        const all = res.ok ? await res.json() : []
+        setRows(
+          all.map((w: WorkflowDefinition & { recordCount?: number }) => ({
+            id: w.id,
+            name: w.name,
+            version: w.version,
+            status: w.status ?? "published",
+            recordCount: w.recordCount ?? 0,
+            updatedAt: w.updatedAt,
+          })),
+        )
       } catch {
-        setRows(FALLBACK)
+        setRows([])
       }
       setLoading(false)
     }
@@ -108,7 +100,7 @@ export default function AdminWorkflowsIndex() {
                 >
                   <TableCell className="font-medium text-ink-black">{wf.name}</TableCell>
                   <TableCell>
-                    <span className="font-mono text-xs bg-gray-100 text-chart-gray px-2 py-0.5 rounded-full">
+                    <span className="font-mono text-xs bg-graph-paper text-chart-gray px-2 py-0.5 rounded-full">
                       v{wf.version}
                     </span>
                   </TableCell>

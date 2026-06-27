@@ -1,15 +1,34 @@
-export const runtime = "edge"
+import { NextRequest } from "next/server"
+import { z } from "zod"
+import { getAuthUser } from "@/lib/auth/middleware"
 
-export async function POST(request: Request) {
+const chatMessageSchema = z.object({
+  role: z.enum(["system", "user", "assistant"]),
+  content: z.string().min(1).max(8000),
+})
+
+const chatRequestSchema = z.object({
+  messages: z.array(chatMessageSchema).min(1).max(40),
+})
+
+export async function POST(request: NextRequest) {
   try {
-    const { messages } = await request.json()
+    const user = await getAuthUser(request)
+    if (!user) {
+      return new Response(JSON.stringify({ error: "Non authentifié" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      })
+    }
 
-    if (!messages || !Array.isArray(messages)) {
+    const parsed = chatRequestSchema.safeParse(await request.json())
+    if (!parsed.success) {
       return new Response(JSON.stringify({ error: "Messages requis" }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
       })
     }
+    const { messages } = parsed.data
 
     const systemMsg = {
       role: "system",

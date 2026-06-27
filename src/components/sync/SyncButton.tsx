@@ -11,7 +11,7 @@ export function SyncButton() {
     <button
       onClick={sync}
       disabled={isSyncing}
-      className="relative inline-flex items-center justify-center w-10 h-10 rounded-lg border border-grid-line bg-white hover:bg-gray-50 disabled:opacity-50 transition-colors"
+      className="relative inline-flex items-center justify-center w-10 h-10 rounded-lg border border-grid-line bg-white hover:bg-graph-paper disabled:opacity-50 transition-colors"
       aria-label="Synchroniser"
     >
       <RefreshCw size={18} className={cn("text-pencil", isSyncing && "animate-spin")} />

@@ -16,22 +16,50 @@ export async function pushBatch(): Promise<SyncBatchResponse> {
   return apiPost<SyncBatchResponse>("/api/sync/batch", request)
 }
 
-export async function fullSync(): Promise<void> {
+async function applyServerChanges(changes: SyncBatchResponse["server_changes"]) {
+  for (const change of changes) {
+    if (change.operation === "create" || change.operation === "update") {
+      await db.putRecord(change.payload as RecordData)
+    } else if (change.operation === "delete") {
+      const payload = change.payload as { id?: string }
+      if (payload.id) await db.deleteRecord(payload.id)
+    }
+  }
+}
+
+async function saveConflicts(response: SyncBatchResponse, deviceId: string, pendingMutations = new Map<string, { workflow_id: string }>()) {
+  for (const c of response.conflicts) {
+    const mutation = pendingMutations.get(c.client_id)
+    const conflictRecord: ConflictRecord = {
+      id: generateId(),
+      workflow_id: mutation?.workflow_id || "",
+      record_id: c.record_id,
+      field: c.field,
+      value_a: c.server_value,
+      device_a: "",
+      value_b: c.local_value,
+      device_b: deviceId,
+      status: "OPEN",
+      created_at: Date.now(),
+    }
+    await db.saveConflict(conflictRecord)
+    await db.updateMutationStatus(c.client_id, "CONFLICT")
+  }
+}
+
+export async function fullSync(): Promise<SyncBatchResponse> {
   const [deviceState, pendingMutations] = await Promise.all([db.getDeviceState(), db.getPendingMutations()])
 
   if (pendingMutations.length === 0) {
     const response = await pushBatch()
-    for (const change of response.server_changes) {
-      if (change.operation === "create" || change.operation === "update") {
-        await db.putRecord(change.payload as RecordData)
-      }
-    }
+    await applyServerChanges(response.server_changes)
+    await saveConflicts(response, deviceState.device_id)
     await db.updateDeviceState({
       last_seq: response.last_seq,
       last_sync_at: response.server_timestamp,
       pending_count: 0,
     })
-    return
+    return response
   }
 
   const response = await pushBatch()
@@ -44,36 +72,18 @@ export async function fullSync(): Promise<void> {
   }
 
   for (const f of response.failed) {
-    await db.updateMutationStatus(f.client_id, "FAILED")
+    await db.markMutationFailed(f.client_id, f.reason)
   }
 
-  for (const change of response.server_changes) {
-    if (change.operation === "create" || change.operation === "update") {
-      await db.putRecord(change.payload as RecordData)
-    }
-  }
+  await applyServerChanges(response.server_changes)
 
-  for (const c of response.conflicts) {
-    const mutation = mutationMap.get(c.client_id)
-    const conflictRecord: ConflictRecord = {
-      id: generateId(),
-      workflow_id: mutation?.workflow_id || "",
-      record_id: c.record_id,
-      field: c.field,
-      value_a: c.server_value,
-      device_a: "",
-      value_b: c.local_value,
-      device_b: deviceState.device_id,
-      status: "OPEN",
-      created_at: Date.now(),
-    }
-    await db.saveConflict(conflictRecord)
-    await db.updateMutationStatus(c.client_id, "CONFLICT")
-  }
+  await saveConflicts(response, deviceState.device_id, mutationMap)
 
   await db.updateDeviceState({
     last_seq: response.last_seq,
     last_sync_at: response.server_timestamp,
     pending_count: 0,
   })
+
+  return response
 }

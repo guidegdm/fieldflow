@@ -18,7 +18,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 
 interface TabBarProps {
-  role: "admin" | "supervisor" | "field_worker"
+  role: "admin" | "supervisor" | "field_worker" | "engineering"
 }
 
 type TabItem = { label: string; href: string; icon: typeof Home }
@@ -62,6 +62,15 @@ const configByRole: Record<string, TabConfig> = {
     plusHref: "/admin/workflows/new",
     plusLabel: "Nouveau workflow",
     plusIndex: 3,
+  },
+  engineering: {
+    tabs: [
+      { label: "Engineering", href: "/engineering", icon: Activity },
+      { label: "Admin", href: "/admin/dashboard", icon: LayoutDashboard },
+    ],
+    plusHref: "/engineering",
+    plusLabel: "Engineering",
+    plusIndex: 1,
   },
 }
 

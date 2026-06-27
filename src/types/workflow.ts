@@ -1,5 +1,6 @@
 export interface WorkflowDefinition {
   id: string
+  orgId?: string
   version: number
   name: string
   nameEn: string
@@ -15,6 +16,7 @@ export interface WorkflowDefinition {
   updatedAt: string
   publishedAt?: string
   author: string
+  expiresAt?: number
 }
 
 export interface WorkflowEntity {

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useTranslation } from "react-i18next"
-import { Package, AlertTriangle, CheckCircle2, Shield, Info } from "lucide-react"
+import { Package, AlertTriangle, CheckCircle2, XCircle, Info } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -30,23 +30,7 @@ export default function SupervisorInventory() {
         setItems(data)
         setPageLoading(false)
         return
-      } catch { /* API not available */ }
-      try {
-        const { db } = await import("@/lib/db/indexeddb")
-        const state = await db.getDeviceState()
-        if (state.device_id) {
-          setItems([
-            { itemId: "inv-nfi-kit", label: "NFI Kit A", total: 3, available: 3 },
-            { itemId: "inv-food-parcel", label: "Food Parcel 7-day", total: 8, available: 8 },
-          ])
-          setPageLoading(false)
-          return
-        }
-      } catch { /* DB not ready */ }
-      setItems([
-        { itemId: "inv-nfi-kit", label: "NFI Kit A", total: 3, available: 3 },
-        { itemId: "inv-food-parcel", label: "Food Parcel 7-day", total: 8, available: 8 },
-      ])
+      } catch { setItems([]) }
       setPageLoading(false)
     }
     load()
@@ -88,9 +72,9 @@ export default function SupervisorInventory() {
         <AlertDescription className="text-iodine-brown">
           Dans un camp de 1 200 familles avec seulement 50 kits d&apos;aide, chaque allocation doit &ecirc;tre
           atomique. Deux travailleurs ne peuvent pas r&eacute;server le dernier kit simultan&eacute;ment.
-          FieldFlow utilise des <strong>transactions fortement coh&eacute;rentes</strong> (DSQL SERIALIZABLE)
-          pour garantir qu&apos;un article n&apos;est jamais allou&eacute; deux fois &mdash; m&ecirc;me
-          si deux superviseurs approuvent en m&ecirc;me temps depuis des appareils diff&eacute;rents.
+          FieldFlow utilise DynamoDB avec des cl&eacute;s d&apos;idempotence et des mises &agrave; jour
+          conditionnelles pour garantir qu&apos;un article n&apos;est jamais allou&eacute; deux fois &mdash;
+          m&ecirc;me si deux superviseurs approuvent en m&ecirc;me temps depuis des appareils diff&eacute;rents.
         </AlertDescription>
       </Alert>
 
@@ -105,7 +89,7 @@ export default function SupervisorInventory() {
       {pageLoading ? (
         <div className="grid grid-cols-2 gap-4 animate-pulse">
           {[1, 2].map(i => (
-            <div key={i} className="h-52 bg-gray-200 rounded-lg" />
+            <div key={i} className="h-52 bg-graph-line rounded-lg" />
           ))}
         </div>
       ) : (

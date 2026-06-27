@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { z } from "zod"
 import { getStore } from "@/lib/api/in-memory-store"
 import { getAuthUser } from "@/lib/auth/middleware"
 import type { SyncBatchRequest, SyncBatchResponse, ConflictEntry } from "@/types/sync"
@@ -6,17 +7,46 @@ import type { ConflictRecord } from "@/types/sync"
 import type { RecordData } from "@/types/record"
 import type { WorkflowField } from "@/types/workflow"
 
+const mutationSchema = z.object({
+  client_id: z.string().min(1),
+  device_id: z.string().min(1),
+  operation: z.enum(["create", "update", "delete", "attach_evidence"]),
+  resource: z.string().min(1),
+  workflow_id: z.string().min(1),
+  record_id: z.string().min(1).nullable(),
+  payload: z.unknown(),
+  client_timestamp: z.number().int().nonnegative(),
+  base_version: z.number().int().nonnegative(),
+  base_fields: z.record(z.string(), z.unknown()).optional(),
+  status: z.enum(["PENDING", "SENDING", "ACKED", "FAILED", "CONFLICT", "POISON"]),
+  retry_count: z.number().int().nonnegative(),
+  last_error: z.string().nullable(),
+  enqueued_at: z.number().int().nonnegative(),
+})
+
+const syncBatchSchema = z.object({
+  device_id: z.string().min(1),
+  device_seq: z.number().int().nonnegative(),
+  operations: z.array(mutationSchema).max(100),
+})
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {}
+}
+
 function buildFieldStrategy(
   strategy: string, field: string, fieldType: string,
   localValue: unknown, serverValue: unknown, resolvedValue: unknown,
-  clientTs: number, serverTs: number,
+  operationServerTs: number, recordServerTs: number,
 ): string {
   switch (strategy) {
     case "last_write_wins":
-      if (clientTs >= serverTs) {
-        return `Auto-resolved via last_write_wins: client timestamp ${new Date(clientTs).toISOString()} ≥ server timestamp ${new Date(serverTs).toISOString()}`
+      if (operationServerTs >= recordServerTs) {
+        return `Auto-resolved via last_write_wins: operation server timestamp ${new Date(operationServerTs).toISOString()} ≥ record timestamp ${new Date(recordServerTs).toISOString()}`
       }
-      return `Auto-resolved via last_write_wins: server timestamp ${new Date(serverTs).toISOString()} > client timestamp ${new Date(clientTs).toISOString()}`
+      return `Auto-resolved via last_write_wins: record timestamp ${new Date(recordServerTs).toISOString()} > operation server timestamp ${new Date(operationServerTs).toISOString()}`
     case "server_authoritative":
       return "Server authoritative field — client value discarded in favour of server value"
     case "manual":
@@ -27,16 +57,38 @@ function buildFieldStrategy(
       return `Auto-resolved via max: max(${String(localValue)}, ${String(serverValue)}) = ${String(resolvedValue)}`
     case "min":
       return `Auto-resolved via min: min(${String(localValue)}, ${String(serverValue)}) = ${String(resolvedValue)}`
+    case "set_union":
+      return `Auto-resolved via set_union for field "${field}"`
+    case "append_only":
+      return `Auto-resolved via append_only for field "${field}"`
     default:
       return `Applied strategy: ${strategy}`
   }
+}
+
+function uniqueValues(values: unknown[]): unknown[] {
+  const seen = new Set<string>()
+  const result: unknown[] = []
+  for (const value of values) {
+    const key = JSON.stringify(value)
+    if (seen.has(key)) continue
+    seen.add(key)
+    result.push(value)
+  }
+  return result
 }
 
 export async function POST(request: NextRequest) {
   const user = await getAuthUser(request)
   if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 })
 
-  const body: SyncBatchRequest = await request.json()
+  let body: SyncBatchRequest
+  try {
+    body = syncBatchSchema.parse(await request.json()) as SyncBatchRequest
+  } catch {
+    return NextResponse.json({ error: "Requête invalide" }, { status: 400 })
+  }
+
   const store = getStore()
 
   const acked: string[] = []
@@ -44,14 +96,22 @@ export async function POST(request: NextRequest) {
   const conflicts: SyncBatchResponse["conflicts"] = []
 
   for (const op of body.operations) {
-    if (store.hasMutation(op.client_id)) {
+    if (await store.hasMutationForOrg(op.client_id, user.orgId)) {
       acked.push(op.client_id)
       continue
     }
 
     try {
+      const operationServerTs = Date.now()
+      const workflow = await store.getWorkflowForOrgAsync(op.workflow_id, user.orgId)
+      if (!workflow) {
+        failed.push({ client_id: op.client_id, reason: "WORKFLOW_NOT_FOUND" })
+        continue
+      }
+
       if (op.operation === "create") {
-        const payload = (op.payload as any)?.fields || op.payload
+        const payloadObject = asRecord(op.payload)
+        const payload = asRecord(payloadObject.fields ?? op.payload)
         const record: RecordData = {
           id: op.record_id || crypto.randomUUID(),
           workflowId: op.workflow_id,
@@ -61,39 +121,49 @@ export async function POST(request: NextRequest) {
           syncStatus: "pending",
           state: "draft",
           fields: payload as Record<string, unknown>,
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
+          createdAt: operationServerTs,
+          updatedAt: operationServerTs,
           createdBy: body.device_id,
           deviceId: body.device_id,
           version: 1,
           orgId: user.orgId,
         }
-        store.putRecord(record)
-        store.storeMutation({ ...op, payload: record })
+        await store.putRecordForOrg(record)
+        await store.storeMutationForOrg({ ...op, payload: record }, user.orgId)
         acked.push(op.client_id)
       } else if (op.operation === "update") {
-        const existing = store.getRecord(op.record_id!)
+        const existing = await store.getRecordForOrg(op.record_id!, user.orgId)
         if (!existing) {
           failed.push({ client_id: op.client_id, reason: "RECORD_NOT_FOUND" })
           continue
         }
 
-        const incomingFields = (op.payload as any)?.fields || op.payload as Record<string, unknown>
+        const payloadObject = asRecord(op.payload)
+        const incomingFields = asRecord(payloadObject.fields ?? op.payload)
         const opConflicts: ConflictEntry[] = []
         const mergedFields: Record<string, unknown> = {}
 
         if (op.base_version < existing.version) {
-          const workflow = store.getWorkflow(op.workflow_id)
           const offlinePolicy = workflow?.offlinePolicy
           const wfFieldMap = new Map<string, WorkflowField>(
             (workflow?.entity?.fields ?? []).map((f: WorkflowField) => [f.key, f])
           )
 
           for (const [field, localValue] of Object.entries(incomingFields)) {
-            const serverValue = (existing.fields as any)[field]
+            const serverValue = existing.fields[field]
+            const hasBaseValue = op.base_fields && Object.prototype.hasOwnProperty.call(op.base_fields, field)
+            const baseValue = hasBaseValue ? op.base_fields?.[field] : undefined
             const isSame = JSON.stringify(serverValue) === JSON.stringify(localValue)
+            const serverChangedSinceBase = hasBaseValue
+              ? JSON.stringify(serverValue) !== JSON.stringify(baseValue)
+              : true
 
             if (isSame || serverValue === undefined) {
+              mergedFields[field] = localValue
+              continue
+            }
+
+            if (!serverChangedSinceBase) {
               mergedFields[field] = localValue
               continue
             }
@@ -110,6 +180,14 @@ export async function POST(request: NextRequest) {
               strategy = "manual"
               autoResolved = false
               resolvedValue = serverValue
+            } else if (fieldType === "multi_select" && Array.isArray(localValue) && Array.isArray(serverValue)) {
+              strategy = "set_union"
+              resolvedValue = uniqueValues([...serverValue, ...localValue])
+              autoResolved = true
+            } else if (fieldType === "textarea" && typeof localValue === "string" && typeof serverValue === "string") {
+              strategy = "append_only"
+              resolvedValue = serverValue.includes(localValue) ? serverValue : `${serverValue}\n${localValue}`.trim()
+              autoResolved = true
             } else if (fieldType === "number" && offlinePolicy?.autoResolutionNumeric) {
               strategy = offlinePolicy.autoResolutionNumeric
               const a = Number(localValue)
@@ -124,13 +202,13 @@ export async function POST(request: NextRequest) {
               autoResolved = true
             } else {
               strategy = "last_write_wins"
-              resolvedValue = op.client_timestamp >= existing.updatedAt ? localValue : serverValue
+              resolvedValue = operationServerTs >= existing.updatedAt ? localValue : serverValue
               autoResolved = true
             }
 
             const field_strategy = buildFieldStrategy(
               strategy, field, fieldType, localValue, serverValue,
-              resolvedValue, op.client_timestamp, existing.updatedAt,
+              resolvedValue, operationServerTs, existing.updatedAt,
             )
 
             if (autoResolved) mergedFields[field] = resolvedValue
@@ -166,13 +244,16 @@ export async function POST(request: NextRequest) {
         }
 
         existing.fields = { ...existing.fields, ...mergedFields }
+        if (typeof payloadObject.status === "string") existing.status = payloadObject.status
+        if (typeof payloadObject.state === "string") existing.state = payloadObject.state
+        if (typeof payloadObject.syncStatus === "string") existing.syncStatus = payloadObject.syncStatus
         existing.version += 1
-        existing.updatedAt = Date.now()
+        existing.updatedAt = operationServerTs
 
         const hasEscalated = opConflicts.some((c) => !c.auto_resolved)
-        existing.syncStatus = hasEscalated ? "conflict" : "synced"
-        store.putRecord(existing)
-        store.storeMutation({ ...op, payload: existing })
+        existing.syncStatus = hasEscalated ? "conflict" : existing.syncStatus || "synced"
+        await store.putRecordForOrg(existing)
+        await store.storeMutationForOrg({ ...op, payload: existing }, user.orgId)
 
         for (const ec of opConflicts.filter((c) => !c.auto_resolved)) {
           const cr: ConflictRecord = {
@@ -187,11 +268,24 @@ export async function POST(request: NextRequest) {
             status: "OPEN",
             created_at: Date.now(),
           }
-          store.putConflict(cr)
+          await store.putConflictForOrg(cr, user.orgId)
         }
 
         acked.push(op.client_id)
         if (opConflicts.length > 0) conflicts.push(...opConflicts)
+      } else if (op.operation === "delete") {
+        const existing = await store.getRecordForOrg(op.record_id!, user.orgId)
+        if (!existing) {
+          failed.push({ client_id: op.client_id, reason: "RECORD_NOT_FOUND" })
+          continue
+        }
+
+        await store.deleteRecordForOrg(existing.id, user.orgId)
+        await store.storeMutationForOrg({
+          ...op,
+          payload: { id: existing.id, orgId: user.orgId, deletedAt: operationServerTs },
+        }, user.orgId)
+        acked.push(op.client_id)
       } else {
         failed.push({ client_id: op.client_id, reason: "OPERATION_NOT_SUPPORTED" })
       }
@@ -200,18 +294,21 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  let serverChanges = store.getServerSince(body.device_seq)
+  let serverChanges = await store.getServerSinceForOrg(user.orgId, body.device_seq)
   serverChanges = serverChanges.filter((m) => {
-    const rec = (m.payload as any)?.id ? store.getRecord((m.payload as any).id) : null
-    return !rec || (rec as any).orgId === user.orgId
+    const payload = asRecord(m.payload)
+    const recordId = typeof payload.id === "string" ? payload.id : null
+    const rec = recordId ? (m.payload as { orgId?: string }) : null
+    return rec?.orgId === user.orgId
   })
 
-  const deviceState = store.getDevice(body.device_id)
+  const lastSeq = await store.getCurrentSeqForOrg(user.orgId)
+  const deviceState = await store.getDeviceForOrg(body.device_id, user.orgId)
   if (deviceState) {
-    deviceState.last_seq = store.getCurrentSeq()
+    deviceState.last_seq = lastSeq
     deviceState.last_sync_at = Date.now()
     deviceState.pending_count = 0
-    store.putDevice(deviceState)
+    await store.putDeviceForOrg(deviceState)
   }
 
   return NextResponse.json({
@@ -219,7 +316,7 @@ export async function POST(request: NextRequest) {
     failed,
     conflicts,
     server_changes: serverChanges,
-    last_seq: store.getCurrentSeq(),
+    last_seq: lastSeq,
     server_timestamp: Date.now(),
   } satisfies SyncBatchResponse)
 }

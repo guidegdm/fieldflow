@@ -1,6 +1,7 @@
 "use client"
 
 import { useAuthStore } from "@/stores/authStore"
+import { OrgSwitcher } from "@/components/layout/OrgSwitcher"
 import { cn } from "@/lib/utils"
 import { usePathname, useRouter } from "next/navigation"
 import Link from "next/link"
@@ -9,7 +10,7 @@ import {
   Activity, Inbox, AlertTriangle, Package, Plus, Menu, LogOut,
 } from "lucide-react"
 
-interface DrawerProps { role: "admin" | "supervisor" | "field_worker"; open: boolean; onToggle: () => void }
+interface DrawerProps { role: "admin" | "supervisor" | "field_worker" | "engineering"; open: boolean; onToggle: () => void }
 
 const navByRole: Record<string, { label: string; href: string; icon: React.ReactNode }[]> = {
   field_worker: [
@@ -32,15 +33,20 @@ const navByRole: Record<string, { label: string; href: string; icon: React.React
     { label: "Utilisateurs", href: "/admin/users", icon: <Users size={20} /> },
     { label: "Paramètres", href: "/admin/settings", icon: <Settings size={20} /> },
   ],
+  engineering: [
+    { label: "Engineering", href: "/engineering", icon: <Activity size={20} /> },
+    { label: "Admin", href: "/admin/dashboard", icon: <LayoutDashboard size={20} /> },
+  ],
 }
 
 export function Drawer({ role, open, onToggle }: DrawerProps) {
-  const { user, logout, org } = useAuthStore()
+  const { user, logout } = useAuthStore()
   const pathname = usePathname()
   const router = useRouter()
   const items = navByRole[role] ?? navByRole.field_worker
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await fetch("/api/auth/logout", { method: "POST", credentials: "include" }).catch(() => {})
     logout()
     router.push("/")
   }
@@ -58,9 +64,9 @@ export function Drawer({ role, open, onToggle }: DrawerProps) {
         </button>
       </div>
 
-      {open && org && (
+      {open && (
         <div className="px-3 pb-2">
-          <p className="text-xs font-medium text-lake-deep truncate">{org.name || "Organisation"}</p>
+          <OrgSwitcher />
         </div>
       )}
 

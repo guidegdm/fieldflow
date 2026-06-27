@@ -189,13 +189,13 @@
     "resolved": "Resolved"
   },
   "engineering": {
-    "dsqlLedger": "DSQL Ledger",
+    "inventoryLedger": "Inventory Ledger",
     "syncVisualization": "Sync Visualization",
     "deviceStatus": "Device Status",
     "operationLog": "Operation Log",
     "tabs": {
       "sync": "Sync",
-      "dsqlLedger": "DSQL Ledger",
+      "inventoryLedger": "Inventory Ledger",
       "appareils": "Devices"
     },
     "syncOps": {
@@ -204,7 +204,7 @@
       "acked": "Acknowledged",
       "conflict": "Conflict"
     },
-    "dsql": {
+    "ledger": {
       "horodatage": "Timestamp",
       "cle": "Idempotency Key",
       "article": "Item",
@@ -212,7 +212,7 @@
       "statut": "Status",
       "resultat": "Result",
       "committed": "COMMITTED",
-      "serializationFailure": "SERIALIZATION_FAILURE"
+      "serializationFailure": "CONDITIONAL_CHECK_FAILED"
     },
     "devices": {
       "id": "Device ID",

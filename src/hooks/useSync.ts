@@ -14,9 +14,9 @@ export function useSync() {
       const pending = await db.getPendingMutations()
       setPendingCount(pending.length)
       const result = await retryWithBackoff(() => fullSync())
-      setConflicts((result as any)?.conflicts ?? [])
+      setConflicts(await db.getConflicts())
       setLastSync(Date.now())
-      setPendingCount((result as any)?.acked ? Math.max(0, pending.length - (result as any).acked.length) : 0)
+      setPendingCount(Math.max(0, pending.length - result.acked.length))
     } catch {
       setLastSync(Date.now())
     } finally {

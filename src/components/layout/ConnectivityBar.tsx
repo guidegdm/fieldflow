@@ -53,12 +53,12 @@ export function ConnectivityBar() {
   if (isSyncing) {
     status = {
       text: "◉ Synchronisation...",
-      className: "bg-blue-50 text-ink-blue",
+      className: "bg-ink-blue/5 text-ink-blue",
     }
   } else if (!isOnline) {
     status = {
       text: "● Hors ligne",
-      className: "bg-gray-100 text-pencil",
+      className: "bg-graph-paper text-pencil",
     }
   } else if (failed) {
     status = {
@@ -96,7 +96,7 @@ export function ConnectivityBar() {
       </div>
 
       {showStorage && (
-        <div className="h-1 bg-gray-200">
+        <div className="h-1 bg-graph-line">
           <div
             className={cn("h-full transition-all", isNearLimit ? "bg-warning-500" : "bg-warning-500")}
             style={{ width: `${Math.min(percentageUsed, 100)}%` }}

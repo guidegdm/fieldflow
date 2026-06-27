@@ -58,18 +58,18 @@ export default function SupervisorConflicts() {
   if (loading) {
     return (
       <div className="space-y-6 animate-pulse">
-        <div className="h-9 w-48 bg-gray-200 rounded" />
-        <div className="h-4 w-32 bg-gray-200 rounded mt-3" />
+        <div className="h-9 w-48 bg-graph-line rounded" />
+        <div className="h-4 w-32 bg-graph-line rounded mt-3" />
         <div className="grid grid-cols-2 gap-4">
-          <div className="h-48 bg-gray-200 rounded-lg" />
-          <div className="h-48 bg-gray-200 rounded-lg" />
+          <div className="h-48 bg-graph-line rounded-lg" />
+          <div className="h-48 bg-graph-line rounded-lg" />
         </div>
         <div className="flex gap-3">
-          <div className="h-10 w-28 bg-gray-200 rounded-lg" />
-          <div className="h-10 w-28 bg-gray-200 rounded-lg" />
-          <div className="h-10 w-36 bg-gray-200 rounded-lg" />
+          <div className="h-10 w-28 bg-graph-line rounded-lg" />
+          <div className="h-10 w-28 bg-graph-line rounded-lg" />
+          <div className="h-10 w-36 bg-graph-line rounded-lg" />
         </div>
-        <div className="h-24 bg-gray-200 rounded-lg" />
+        <div className="h-24 bg-graph-line rounded-lg" />
       </div>
     )
   }

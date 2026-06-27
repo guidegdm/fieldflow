@@ -1,9 +1,9 @@
 export function exponentialBackoff(attempt: number, baseDelay = 1000, maxDelay = 300000): number {
   const delay = Math.min(baseDelay * Math.pow(2, attempt), maxDelay)
-  return delay + Math.random() * 1000
+  return delay * (0.75 + Math.random() * 0.5)
 }
 
-export async function retryWithBackoff<T>(fn: () => Promise<T>, maxAttempts = 9): Promise<T> {
+export async function retryWithBackoff<T>(fn: () => Promise<T>, maxAttempts = 10): Promise<T> {
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try { return await fn() }
     catch (err) {

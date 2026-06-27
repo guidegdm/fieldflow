@@ -3,6 +3,7 @@
 import { useTranslation } from "react-i18next"
 import { useWorkflowStore } from "@/stores/workflowStore"
 import { Input } from "@/components/ui/input"
+import { Select } from "@/components/ui/select"
 import { Trash2 } from "lucide-react"
 
 const FIELD_TYPES = [
@@ -74,10 +75,8 @@ export function FieldEditor() {
       />
 
       <div>
-        <label className="text-sm font-medium text-pencil mb-1 block">
-          {t("workflow.fieldType", "Type")}
-        </label>
-        <select
+        <Select
+          label={t("workflow.fieldType", "Type")}
           value={field.type}
           onChange={(e) => {
             const type = e.target.value
@@ -86,14 +85,14 @@ export function FieldEditor() {
               updates.options = [{ label: "Option 1", value: "option_1" }]
             updateField(field.id, updates as Partial<typeof field>)
           }}
-          className="flex h-10 w-full rounded-md border border-graph-line bg-white px-3 py-2 text-sm text-ink-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-blue"
+          className="h-10"
         >
           {FIELD_TYPES.map((type) => (
             <option key={type} value={type}>
               {TYPE_LABELS[type] ?? type}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
 
       <label className="flex items-center gap-2.5 cursor-pointer py-1">

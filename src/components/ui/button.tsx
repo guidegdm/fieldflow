@@ -12,7 +12,7 @@ const buttonVariants = cva(
         secondary: "border border-ink-blue text-ink-blue bg-transparent hover:bg-ink-blue/5",
         tertiary: "text-ink-blue bg-transparent hover:bg-ink-blue/5",
         danger: "bg-danger-500 text-white hover:bg-danger-500/90 active:bg-danger-500/80",
-        ghost: "bg-transparent text-pencil hover:bg-gray-100",
+        ghost: "bg-transparent text-pencil hover:bg-graph-paper",
       },
       size: {
         sm: "h-8 px-3 text-sm",

@@ -50,7 +50,7 @@ export default function FieldWorkerStatus() {
       {/* Connection state band */}
       <div
         className={`flex items-center gap-3 px-4 py-3 rounded-md border ${
-          isOnline ? "border-success-500/30 bg-success-500/5" : "border-pencil/30 bg-gray-50"
+          isOnline ? "border-success-500/30 bg-success-500/5" : "border-pencil/30 bg-graph-paper"
         }`}
       >
         {isOnline ? (
@@ -109,7 +109,7 @@ export default function FieldWorkerStatus() {
               {quota.quota > 0 ? `${quota.percentageUsed.toFixed(1)} %` : "—"}
             </span>
           </div>
-          <div className="h-2 w-full rounded-full bg-gray-100 overflow-hidden">
+          <div className="h-2 w-full rounded-full bg-graph-paper overflow-hidden">
             <div
               className={`h-full rounded-full ${quota.isNearLimit ? "bg-ink-red" : "bg-ink-blue"}`}
               style={{ width: `${Math.min(100, quota.percentageUsed)}%` }}

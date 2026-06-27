@@ -26,7 +26,7 @@ export default function SupervisorDashboard() {
   useEffect(() => {
     fetch("/api/workflows/wf-1/records", { credentials: "include" })
       .then(res => res.json())
-      .then(data => setRecords(data.records || []))
+      .then(data => setRecords(Array.isArray(data) ? data : []))
       .catch(() => setRecords([]))
       .finally(() => setLoading(false))
   }, [])

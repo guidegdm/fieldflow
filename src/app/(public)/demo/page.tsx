@@ -1,12 +1,12 @@
-'use client'
+"use client"
 
-import { useEffect } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useTranslation } from "react-i18next"
+import { Building2, ChevronDown, ChevronRight, Shield, User, Users, WifiOff } from "lucide-react"
 
 import { useAuthStore } from "@/stores/authStore"
-import { DEMO_USERS } from "@/types/auth"
-import { User, Shield, Users, ChevronRight, WifiOff } from "lucide-react"
+import { DEMO_ORGS, DEMO_SCENARIOS, DEMO_USERS, ORG_MEMBERSHIPS, type DemoOrgKey } from "@/types/auth"
 
 const roleIcons = { field_worker: User, supervisor: Shield, org_admin: Users } as const
 
@@ -20,19 +20,50 @@ export default function DemoPage() {
   const router = useRouter()
   const { t } = useTranslation()
   const user = useAuthStore((s) => s.user)
+  const setAuthFromApi = useAuthStore((s) => s.setAuthFromApi)
+  const [expandedOrgKey, setExpandedOrgKey] = useState<DemoOrgKey>("AHK")
+  const [loadingKey, setLoadingKey] = useState<string | null>(null)
 
   useEffect(() => {
     if (user) router.replace(routeForRole(user.role))
   }, [user, router])
 
-  const handleLogin = (email: string, role: string) => {
-    useAuthStore.getState().login(email)
-    router.push(routeForRole(role))
+  const usersByOrg = useMemo(() => {
+    return DEMO_SCENARIOS.map((scenario) => ({
+      ...scenario,
+      org: DEMO_ORGS[scenario.orgKey],
+      memberships: ORG_MEMBERSHIPS
+        .filter((membership) => membership.orgKey === scenario.orgKey)
+        .map((membership) => ({
+          ...membership,
+          user: DEMO_USERS.find((candidate) => candidate.id === membership.userId)!,
+        }))
+        .filter((membership) => membership.user),
+    }))
+  }, [])
+
+  const handleLogin = async (email: string, demoOrgKey: DemoOrgKey) => {
+    const key = `${email}-${demoOrgKey}`
+    setLoadingKey(key)
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email, demoOrgKey }),
+      })
+      if (!res.ok) return
+      const data = await res.json()
+      setAuthFromApi(data.user, data.org, data.orgs)
+      router.push(routeForRole(data.user.role))
+    } finally {
+      setLoadingKey(null)
+    }
   }
 
   return (
     <div className="min-h-screen bg-kivu-paper flex flex-col items-center justify-center px-4 py-10">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-2xl">
         <header className="border-b-2 border-ink-black pb-4 mb-6">
           <h1 className="font-display text-4xl text-lake-deep font-bold tracking-tight leading-none">
             {t("app.title")}
@@ -48,31 +79,59 @@ export default function DemoPage() {
           {t("auth.demo_accounts")}
         </p>
 
-        <ul className="border border-grid-line rounded-md bg-white divide-y divide-grid-line overflow-hidden">
-          {DEMO_USERS.map((u) => {
-            const Icon = roleIcons[u.role] || User
+        <div className="space-y-3">
+          {usersByOrg.map((scenario) => {
+            const expanded = expandedOrgKey === scenario.orgKey
             return (
-              <li key={u.email}>
+              <section key={scenario.orgKey} className="border border-grid-line rounded-md bg-white overflow-hidden">
                 <button
-                  onClick={() => handleLogin(u.email, u.role)}
-                  className="group w-full flex items-center gap-3 px-4 py-3 min-h-[56px] text-left hover:bg-graph-paper focus-visible:outline-none focus-visible:bg-graph-paper focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink-blue transition-colors"
+                  type="button"
+                  onClick={() => setExpandedOrgKey(scenario.orgKey)}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-graph-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink-blue"
                 >
-                  <span className="flex h-9 w-9 items-center justify-center rounded border border-grid-line bg-graph-paper text-ink-blue shrink-0">
-                    <Icon size={18} strokeWidth={2} />
+                  <span className="flex h-10 w-10 items-center justify-center rounded border border-grid-line bg-graph-paper text-lake-deep shrink-0">
+                    <Building2 size={19} />
                   </span>
-                  <span className="flex-1 min-w-0">
-                    <span className="block font-medium text-ink-black truncate">{u.name}</span>
-                    <span className="block font-mono text-[11px] text-pencil truncate">{u.email}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold text-ink-black truncate">{scenario.org.name}</span>
+                    <span className="block text-xs text-pencil truncate">{scenario.description}</span>
                   </span>
-                  <span className="inline-flex items-center rounded-[3px] border border-ink-blue px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink-blue shrink-0">
-                    {t(`roles.${u.role}`)}
-                  </span>
-                  <ChevronRight size={16} className="text-pencil/60 group-hover:text-ink-black shrink-0" />
+                  {expanded ? <ChevronDown size={16} className="text-pencil" /> : <ChevronRight size={16} className="text-pencil" />}
                 </button>
-              </li>
+
+                {expanded && (
+                  <ul className="border-t border-grid-line divide-y divide-grid-line">
+                    {scenario.memberships.map(({ user: demoUser, role }) => {
+                      const Icon = roleIcons[role] || User
+                      const loading = loadingKey === `${demoUser.email}-${scenario.orgKey}`
+                      return (
+                        <li key={`${scenario.orgKey}-${demoUser.email}`}>
+                          <button
+                            onClick={() => handleLogin(demoUser.email, scenario.orgKey)}
+                            disabled={loadingKey !== null}
+                            className="group w-full flex items-center gap-3 px-4 py-3 min-h-[56px] text-left hover:bg-graph-paper focus-visible:outline-none focus-visible:bg-graph-paper focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink-blue transition-colors"
+                          >
+                            <span className="flex h-9 w-9 items-center justify-center rounded border border-grid-line bg-graph-paper text-ink-blue shrink-0">
+                              <Icon size={18} strokeWidth={2} />
+                            </span>
+                            <span className="flex-1 min-w-0">
+                              <span className="block font-medium text-ink-black truncate">{loading ? "Creating demo..." : demoUser.name}</span>
+                              <span className="block font-mono text-[11px] text-pencil truncate">{demoUser.email}</span>
+                            </span>
+                            <span className="inline-flex items-center rounded-[3px] border border-ink-blue px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink-blue shrink-0">
+                              {t(`roles.${role}`)}
+                            </span>
+                            <ChevronRight size={16} className="text-pencil/60 group-hover:text-ink-black shrink-0" />
+                          </button>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+              </section>
             )
           })}
-        </ul>
+        </div>
 
         <p className="mt-4 text-center text-[11px] text-pencil">
           {t("auth.demo_disclaimer")} &middot; v0.1

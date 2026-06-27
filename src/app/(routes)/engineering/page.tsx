@@ -6,7 +6,6 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import { DEMO_USERS } from "@/types/auth"
 
 type OpStatus = "pending" | "sending" | "acked" | "conflict"
 
@@ -15,7 +14,7 @@ interface SyncOp {
   status: OpStatus
 }
 
-interface DsqlRow {
+interface LedgerRow {
   id: string
   horodatage: string
   cle: string
@@ -34,62 +33,24 @@ interface Device {
   status: "online" | "offline" | "attention"
 }
 
-// TODO: fetch from sync API
-
-// TODO: fetch from DSQL ledger API
-const dsqlLedger: DsqlRow[] = [
-  {
-    id: "tx-001",
-    horodatage: "2024-03-15 14:32:18.142",
-    cle: "idem-a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    article: "Riz 25kg",
-    qte: 10,
-    statut: "committed",
-    resultat: "Réservé — solde: 90",
-  },
-  {
-    id: "tx-002",
-    horodatage: "2024-03-15 14:32:19.001",
-    cle: "idem-b2c3d4e5-f6a7-8901-bcde-f12345678901",
-    article: "Huile 1L",
-    qte: 25,
-    statut: "committed",
-    resultat: "Réservé — solde: 75",
-  },
-  {
-    id: "tx-003",
-    horodatage: "2024-03-15 14:32:20.887",
-    cle: "idem-c3d4e5f6-a7b8-9012-cdef-123456789012",
-    article: "Tentes famille",
-    qte: 5,
-    statut: "serializationFailure",
-    resultat: "ÉCHEC — conflit version ligne",
-  },
-  {
-    id: "tx-004",
-    horodatage: "2024-03-15 14:32:22.413",
-    cle: "idem-d4e5f6a7-b8c9-0123-defa-234567890123",
-    article: "Riz 25kg",
-    qte: 15,
-    statut: "committed",
-    resultat: "Réservé — solde: 75",
-  },
-]
-
 export default function EngineeringPage() {
   const { t } = useTranslation()
   const [devices, setDevices] = useState<Device[]>([])
   const [operations, setOperations] = useState<SyncOp[]>([])
+  const [ledgerRows, setLedgerRows] = useState<LedgerRow[]>([])
 
   useEffect(() => {
-    setDevices(DEMO_USERS.map((u, i) => ({
-      id: u.deviceId,
-      user: u.name,
-      lastActivity: i < 2 ? new Date().toISOString().slice(0, 16).replace("T", " ") : "2024-03-15 12:15",
-      pending: i === 1 ? 0 : 2,
-      version: "2.1.0",
-      status: (i < 2 ? "online" : i === 2 ? "attention" : "offline") as Device["status"],
-    })))
+    async function loadSnapshot() {
+      try {
+        const res = await fetch("/api/engineering/snapshot", { credentials: "include" })
+        if (!res.ok) return
+        const data = await res.json()
+        setDevices(data.devices ?? [])
+        setOperations(data.operations ?? [])
+        setLedgerRows(data.ledger ?? [])
+      } catch { /* snapshot is optional */ }
+    }
+    loadSnapshot()
   }, [])
 
   useEffect(() => {
@@ -111,15 +72,15 @@ export default function EngineeringPage() {
         for (const m of mutations) {
           ops.push({ id: `op-${String(++opIndex).padStart(3, "0")}`, status: "sending" })
         }
-        setOperations(ops)
+        if (ops.length > 0) setOperations(ops)
       } catch { /* DB not ready */ }
     }
     load()
   }, [])
 
   const statusConfig: Record<OpStatus, { label: string; ring: string; bg: string }> = {
-    pending: { label: "engineering.syncOps.pending", ring: "ring-[#F59E0B]", bg: "bg-[#F59E0B]" },
-    sending: { label: "engineering.syncOps.sending", ring: "ring-blue-500", bg: "bg-blue-500" },
+    pending: { label: "engineering.syncOps.pending", ring: "ring-warning-500", bg: "bg-warning-500" },
+    sending: { label: "engineering.syncOps.sending", ring: "ring-info-500", bg: "bg-info-500" },
     acked: { label: "engineering.syncOps.acked", ring: "ring-success-500", bg: "bg-success-500" },
     conflict: { label: "engineering.syncOps.conflict", ring: "ring-rebar", bg: "bg-rebar" },
   }
@@ -131,17 +92,17 @@ export default function EngineeringPage() {
     { status: "conflict" as OpStatus, count: operations.filter((o) => o.status === "conflict").length },
   ]
 
-  function DsqlStatusBadge({ statut }: { statut: DsqlRow["statut"] }) {
+  function LedgerStatusBadge({ statut }: { statut: LedgerRow["statut"] }) {
     if (statut === "committed") {
       return (
         <Badge variant="success" size="sm" className="rounded-none border-0 font-mono text-xs">
-          {t("engineering.dsql.committed")}
+          {t("engineering.ledger.committed")}
         </Badge>
       )
     }
     return (
       <Badge variant="danger" size="sm" className="rounded-none border-0 font-mono text-xs">
-        {t("engineering.dsql.serializationFailure")}
+        {t("engineering.ledger.serializationFailure")}
       </Badge>
     )
   }
@@ -150,7 +111,7 @@ export default function EngineeringPage() {
     const colors = {
       online: "bg-success-500",
       offline: "bg-concrete",
-      attention: "bg-[#F59E0B]",
+      attention: "bg-warning-500",
     }
     return <span className={cn("inline-block h-2 w-2 rounded-full", colors[deviceStatus])} />
   }
@@ -169,10 +130,10 @@ export default function EngineeringPage() {
               {t("engineering.tabs.sync")}
             </TabsTrigger>
             <TabsTrigger
-              value="dsql"
+              value="ledger"
               className="aria-selected:border-starlight aria-selected:text-starlight text-concrete hover:text-starlight"
             >
-              {t("engineering.tabs.dsqlLedger")}
+              {t("engineering.tabs.inventoryLedger")}
             </TabsTrigger>
             <TabsTrigger
               value="appareils"
@@ -191,8 +152,8 @@ export default function EngineeringPage() {
                     key={p.status}
                     className={cn(
                       "flex flex-col items-center border-2 px-6 py-3",
-                      p.status === "pending" && "border-[#F59E0B] text-[#F59E0B]",
-                      p.status === "sending" && "border-blue-500 text-blue-400",
+                      p.status === "pending" && "border-warning-500 text-warning-500",
+                      p.status === "sending" && "border-info-500 text-info-500",
                       p.status === "acked" && "border-success-500 text-success-500",
                       p.status === "conflict" && "border-rebar text-rebar",
                     )}
@@ -225,33 +186,33 @@ export default function EngineeringPage() {
             </div>
           </TabsContent>
 
-          <TabsContent value="dsql" className="mt-6">
+          <TabsContent value="ledger" className="mt-6">
             <div className="border-2 border-concrete">
               <Table>
                 <TableHeader>
                   <TableRow className="border-b-2 border-concrete hover:bg-transparent">
                     <TableHead className="bg-concrete-dark px-4 py-3 font-mono text-xs uppercase tracking-wide text-concrete">
-                      {t("engineering.dsql.horodatage")}
+                      {t("engineering.ledger.horodatage")}
                     </TableHead>
                     <TableHead className="bg-concrete-dark px-4 py-3 font-mono text-xs uppercase tracking-wide text-concrete">
-                      {t("engineering.dsql.cle")}
+                      {t("engineering.ledger.cle")}
                     </TableHead>
                     <TableHead className="bg-concrete-dark px-4 py-3 font-mono text-xs uppercase tracking-wide text-concrete">
-                      {t("engineering.dsql.article")}
+                      {t("engineering.ledger.article")}
                     </TableHead>
                     <TableHead className="bg-concrete-dark px-4 py-3 font-mono text-xs uppercase tracking-wide text-concrete">
-                      {t("engineering.dsql.qte")}
+                      {t("engineering.ledger.qte")}
                     </TableHead>
                     <TableHead className="bg-concrete-dark px-4 py-3 font-mono text-xs uppercase tracking-wide text-concrete">
-                      {t("engineering.dsql.statut")}
+                      {t("engineering.ledger.statut")}
                     </TableHead>
                     <TableHead className="bg-concrete-dark px-4 py-3 font-mono text-xs uppercase tracking-wide text-concrete">
-                      {t("engineering.dsql.resultat")}
+                      {t("engineering.ledger.resultat")}
                     </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {dsqlLedger.map((row) => (
+                  {ledgerRows.map((row) => (
                     <TableRow key={row.id} className="border-b-2 border-concrete hover:bg-white/5">
                       <TableCell className="px-4 py-3 font-mono text-xs text-starlight">
                         {row.horodatage}
@@ -266,7 +227,7 @@ export default function EngineeringPage() {
                         {row.qte}
                       </TableCell>
                       <TableCell className="px-4 py-3">
-                        <DsqlStatusBadge statut={row.statut} />
+                        <LedgerStatusBadge statut={row.statut} />
                       </TableCell>
                       <TableCell className="px-4 py-3 font-mono text-xs text-starlight">
                         {row.resultat}

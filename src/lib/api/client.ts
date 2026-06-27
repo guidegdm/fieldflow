@@ -1,15 +1,32 @@
 export async function apiPost<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(path, {
+  let res = await fetch(path, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
     body: JSON.stringify(body),
   })
+  if (res.status === 401 && await refreshAuth()) {
+    res = await fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(body),
+    })
+  }
   if (!res.ok) {
     const err = await res.text()
     throw new Error(`POST ${path} failed: ${res.status} ${err}`)
   }
   return res.json()
+}
+
+async function refreshAuth(): Promise<boolean> {
+  try {
+    const res = await fetch("/api/auth/refresh", { method: "POST", credentials: "include" })
+    return res.ok
+  } catch {
+    return false
+  }
 }
 
 export function getOrgIdFromPath(path: string): string | null {
@@ -31,7 +48,10 @@ export async function apiGet<T>(path: string, params?: Record<string, string>): 
     }
   }
 
-  const res = await fetch(url, { credentials: "include" })
+  let res = await fetch(url, { credentials: "include" })
+  if (res.status === 401 && await refreshAuth()) {
+    res = await fetch(url, { credentials: "include" })
+  }
   if (!res.ok) {
     const err = await res.text()
     throw new Error(`GET ${path} failed: ${res.status} ${err}`)

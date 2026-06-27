@@ -15,13 +15,13 @@ export default function LandingPage() {
         <div className="mt-10 flex flex-wrap gap-4">
           <Link
             href="/demo"
-            className="inline-flex items-center rounded-md bg-ink-blue text-white px-6 py-3 font-medium text-sm hover:bg-blue-900 transition-colors"
+            className="inline-flex items-center rounded-md bg-ink-blue text-white px-6 py-3 font-medium text-sm hover:bg-ink-blue/90 transition-colors"
           >
             Essayer la démo
           </Link>
           <Link
             href="/auth/signup"
-            className="inline-flex items-center rounded-md border border-ink-blue text-ink-blue px-6 py-3 font-medium text-sm hover:bg-blue-50 transition-colors"
+            className="inline-flex items-center rounded-md border border-ink-blue text-ink-blue px-6 py-3 font-medium text-sm hover:bg-ink-blue/5 transition-colors"
           >
             Créer un compte
           </Link>
@@ -83,7 +83,7 @@ export default function LandingPage() {
         </h2>
         <Link
           href="/auth/signup"
-          className="mt-8 inline-flex items-center rounded-md bg-ink-blue text-white px-8 py-3 font-medium text-sm hover:bg-blue-900 transition-colors"
+          className="mt-8 inline-flex items-center rounded-md bg-ink-blue text-white px-8 py-3 font-medium text-sm hover:bg-ink-blue/90 transition-colors"
         >
           Créer un compte gratuit
         </Link>

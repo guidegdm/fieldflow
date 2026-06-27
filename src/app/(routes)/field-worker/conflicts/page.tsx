@@ -65,9 +65,9 @@ export default function FieldWorkerConflicts() {
   if (loading) {
     return (
       <div className="py-4 space-y-6 animate-pulse">
-        <div className="h-5 w-32 bg-gray-200 rounded" />
-        <div className="h-9 w-48 bg-gray-200 rounded mt-1" />
-        <div className="h-4 w-24 bg-gray-200 rounded mt-2" />
+        <div className="h-5 w-32 bg-graph-line rounded" />
+        <div className="h-9 w-48 bg-graph-line rounded mt-1" />
+        <div className="h-4 w-24 bg-graph-line rounded mt-2" />
       </div>
     )
   }

@@ -18,7 +18,7 @@ export function Header() {
         </Link>
         <Link
           href="/auth/signup"
-          className="rounded-md bg-ink-blue text-white px-4 py-2 font-medium text-sm hover:bg-blue-900 transition-colors"
+          className="rounded-md bg-ink-blue text-white px-4 py-2 font-medium text-sm hover:bg-ink-blue/90 transition-colors"
         >
           Commencer
         </Link>

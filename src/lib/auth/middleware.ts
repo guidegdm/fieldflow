@@ -98,15 +98,25 @@ export async function verifyCognitoJWT(token: string): Promise<AuthUser | null> 
   } catch { return null }
 }
 
+const sessionTokens = new Map<string, AuthUser>()
+
+export function registerSessionToken(token: string, user: AuthUser) {
+  sessionTokens.set(token, user)
+}
+
 export async function getAuthUser(request: NextRequest): Promise<AuthUser | null> {
   const cookieToken = request.cookies.get("ff_session")?.value
   if (cookieToken) {
-    if (!cookieToken.startsWith("demo-")) {
+    const sessionUser = sessionTokens.get(cookieToken)
+    if (sessionUser) return sessionUser
+
+    const demo = DEMO_TOKENS[cookieToken]
+    if (demo) return { sub: cookieToken, email: `${cookieToken}@demo`, name: demo.name, role: demo.role, groups: [demo.role], orgId: "demo-org" }
+
+    if (!cookieToken.startsWith("demo-") && !cookieToken.startsWith("session-")) {
       const user = await verifyCognitoJWT(cookieToken)
       if (user) return user
     }
-    const demo = DEMO_TOKENS[cookieToken]
-    if (demo) return { sub: cookieToken, email: `${cookieToken}@demo`, name: demo.name, role: demo.role, groups: [demo.role], orgId: "demo-org" }
   }
 
   const authHeader = request.headers.get("authorization")

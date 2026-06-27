@@ -11,9 +11,9 @@ import { User, Shield, Users, ChevronRight, WifiOff } from "lucide-react"
 const roleIcons = { field_worker: User, supervisor: Shield, org_admin: Users } as const
 
 function routeForRole(role: string) {
-  if (role === "field_worker") return "/org/demo-org/field-worker/home"
-  if (role === "supervisor") return "/org/demo-org/supervisor/dashboard"
-  return "/org/demo-org/admin/dashboard"
+  if (role === "field_worker") return "/field-worker/home"
+  if (role === "supervisor") return "/supervisor/dashboard"
+  return "/admin/dashboard"
 }
 
 export default function DemoPage() {

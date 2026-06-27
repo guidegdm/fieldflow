@@ -71,8 +71,13 @@ export async function POST(request: Request) {
     }
 
     const store = getStore()
-    await store.putOrgAsync({ id: orgId, name: orgName, sector: orgSector || "other", createdAt: now, createdBy: email })
-    await store.putUserProfileAsync({ userId: email, email, name, role: "org_admin", orgId, active: true, createdAt: now })
+    try {
+      await store.putOrgAsync({ id: orgId, name: orgName, sector: orgSector || "other", createdAt: now, createdBy: email })
+      await store.putUserProfileAsync({ userId: email, email, name, role: "org_admin", orgId, active: true, createdAt: now })
+    } catch (error) {
+      console.error("[signup] store write failed", error)
+      return NextResponse.json({ error: "Impossible de créer l'organisation. Vérifiez la configuration DynamoDB." }, { status: 503 })
+    }
 
     const sessionToken = createSessionToken({
       sub: email, email, name, role: "org_admin", groups: ["Administrators"], orgId,
@@ -105,7 +110,8 @@ export async function POST(request: Request) {
     } catch { /* signed context still supports local signup fallback */ }
 
     return response
-  } catch {
+  } catch (error) {
+    console.error("[signup] unexpected failure", error)
     return NextResponse.json({ error: "Erreur lors de l'inscription" }, { status: 500 })
   }
 }

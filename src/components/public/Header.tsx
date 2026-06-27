@@ -1,27 +1,30 @@
 "use client"
 
 import Link from "next/link"
+import { useTranslation } from "react-i18next"
 import { LanguageToggle } from "@/components/layout/LanguageToggle"
 
 export function Header() {
+  const { t } = useTranslation()
+
   return (
-    <header className="flex items-center justify-between px-8 py-4 border-b border-grid-line bg-graph-paper/95 backdrop-blur">
-      <Link href="/" className="flex items-center gap-2.5 font-display text-xl font-bold text-lake-deep tracking-tight">
+    <header className="sticky top-0 z-40 flex items-center justify-between gap-3 border-b border-grid-line bg-graph-paper/95 px-4 py-3 backdrop-blur sm:px-6 lg:px-8">
+      <Link href="/" className="flex min-w-0 items-center gap-2.5 font-display text-lg font-bold tracking-tight text-lake-deep sm:text-xl">
         <img src="/brand/fieldflow-logo-square.webp" alt="" className="h-8 w-8 rounded-sm object-contain" />
-        <span>FieldFlow</span>
+        <span className="hidden sm:inline">FieldFlow</span>
       </Link>
-      <nav className="flex items-center gap-4 text-sm">
-        <Link href="/demo" className="text-pencil hover:text-ink-black transition-colors">
-          Démo
+      <nav className="flex shrink-0 items-center gap-2 text-sm sm:gap-4">
+        <Link href="/demo" className="hidden text-pencil transition-colors hover:text-ink-black sm:inline">
+          {t("publicHeader.demo")}
         </Link>
-        <Link href="/auth/signin" className="text-pencil hover:text-ink-black transition-colors">
-          Connexion
+        <Link href="/auth/signin" className="hidden text-pencil transition-colors hover:text-ink-black min-[430px]:inline">
+          {t("publicHeader.signin")}
         </Link>
         <Link
           href="/auth/signup"
-          className="rounded-md bg-ink-blue text-white px-4 py-2 font-medium text-sm hover:bg-ink-blue/90 transition-colors"
+          className="rounded-md bg-ink-blue px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-ink-blue/90 sm:px-4"
         >
-          Commencer
+          {t("publicHeader.start")}
         </Link>
         <LanguageToggle />
       </nav>

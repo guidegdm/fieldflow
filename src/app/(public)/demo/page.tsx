@@ -6,9 +6,14 @@ import { useTranslation } from "react-i18next"
 import { Building2, ChevronDown, ChevronRight, Shield, User, Users, WifiOff } from "lucide-react"
 
 import { useAuthStore } from "@/stores/authStore"
+import { hydrateDemoWorkspaceOffline } from "@/lib/demo/offline-demo-cache"
 import { DEMO_ORGS, DEMO_SCENARIOS, DEMO_USERS, ORG_MEMBERSHIPS, type DemoOrgKey } from "@/types/auth"
 
 const roleIcons = { field_worker: User, supervisor: Shield, org_admin: Users } as const
+
+function hydrationBudget(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms))
+}
 
 function routeForRole(role: string) {
   if (role === "field_worker") return "/field-worker/home"
@@ -23,8 +28,11 @@ export default function DemoPage() {
   const setAuthFromApi = useAuthStore((s) => s.setAuthFromApi)
   const [expandedOrgKey, setExpandedOrgKey] = useState<DemoOrgKey>("AHK")
   const [loadingKey, setLoadingKey] = useState<string | null>(null)
+  const [error, setError] = useState("")
+  const [ready, setReady] = useState(false)
 
   useEffect(() => {
+    setReady(true)
     if (user) router.replace(routeForRole(user.role))
   }, [user, router])
 
@@ -45,6 +53,7 @@ export default function DemoPage() {
   const handleLogin = async (email: string, demoOrgKey: DemoOrgKey) => {
     const key = `${email}-${demoOrgKey}`
     setLoadingKey(key)
+    setError("")
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
@@ -52,9 +61,17 @@ export default function DemoPage() {
         credentials: "include",
         body: JSON.stringify({ email, demoOrgKey }),
       })
-      if (!res.ok) return
+      if (!res.ok) {
+        setError(t("demo.loginFailed"))
+        return
+      }
       const data = await res.json()
       setAuthFromApi(data.user, data.org, data.orgs)
+      try {
+        await Promise.race([hydrateDemoWorkspaceOffline(data.user), hydrationBudget(10000)])
+      } catch {
+        // Demo auth must still enter the app; the user can sync once the session is active.
+      }
       router.push(routeForRole(data.user.role))
     } finally {
       setLoadingKey(null)
@@ -78,6 +95,11 @@ export default function DemoPage() {
         <p className="text-[11px] font-semibold text-pencil uppercase tracking-[0.12em] mb-2">
           {t("auth.demo_accounts")}
         </p>
+        {error && (
+          <div className="mb-3 rounded-md border border-danger-500/30 bg-danger-500/10 px-3 py-2 text-sm text-danger-500">
+            {error}
+          </div>
+        )}
 
         <div className="space-y-3">
           {usersByOrg.map((scenario) => {
@@ -108,14 +130,14 @@ export default function DemoPage() {
                         <li key={`${scenario.orgKey}-${demoUser.email}`}>
                           <button
                             onClick={() => handleLogin(demoUser.email, scenario.orgKey)}
-                            disabled={loadingKey !== null}
+                            disabled={!ready || loadingKey !== null}
                             className="group w-full flex items-center gap-3 px-4 py-3 min-h-[56px] text-left hover:bg-graph-paper focus-visible:outline-none focus-visible:bg-graph-paper focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink-blue transition-colors"
                           >
                             <span className="flex h-9 w-9 items-center justify-center rounded border border-grid-line bg-graph-paper text-ink-blue shrink-0">
                               <Icon size={18} strokeWidth={2} />
                             </span>
                             <span className="flex-1 min-w-0">
-                              <span className="block font-medium text-ink-black truncate">{loading ? "Creating demo..." : demoUser.name}</span>
+                              <span className="block font-medium text-ink-black truncate">{loading ? t("demo.creating") : demoUser.name}</span>
                               <span className="block font-mono text-[11px] text-pencil truncate">{demoUser.email}</span>
                             </span>
                             <span className="inline-flex items-center rounded-[3px] border border-ink-blue px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink-blue shrink-0">

@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { ArrowRight, Boxes, GitBranch, RadioTower, ShieldCheck, Waypoints } from "lucide-react"
+import { ArrowRight, Boxes, GitBranch, RadioTower, ShieldCheck } from "lucide-react"
 
 const metrics = [
   { label: "Local-first records", value: "IndexedDB" },
@@ -19,23 +19,23 @@ const workflow = [
 const capabilities = [
   {
     icon: RadioTower,
-    title: "Network-tolerant operations",
-    body: "Field teams keep registering households, evidence, and decisions when the connection disappears.",
+    title: "Keep the mission open",
+    body: "When the signal drops, the work continues. Teams can keep serving people, recording proof, and moving the day forward.",
   },
   {
     icon: GitBranch,
-    title: "Conflict-aware sync",
-    body: "Changes carry base values and workflow versions, so supervisors can see what changed instead of losing work.",
+    title: "No more lost fieldwork",
+    body: "Every change comes back with context. Supervisors see the story behind the data instead of guessing which version survived.",
   },
   {
     icon: Boxes,
-    title: "Transactional inventory",
-    body: "DynamoDB transactions protect critical reservations with idempotency receipts and conditional stock updates.",
+    title: "Protect scarce supplies",
+    body: "Food, medicine, kits, vouchers: FieldFlow helps teams reserve what exists, prevent double allocation, and account for every decision.",
   },
   {
     icon: ShieldCheck,
-    title: "Tenant-safe demo workspaces",
-    body: "Every anonymous demo install receives private org copies, while DynamoDB TTL prepares cleanup.",
+    title: "A real demo, safely isolated",
+    body: "Visitors can try the full product without sharing a sandbox. Their workspace is theirs, and the next person gets a clean one.",
   },
 ]
 
@@ -46,21 +46,17 @@ export default function LandingPage() {
         <img
           src="/brand/fieldflow-logo-square.webp"
           alt=""
-          className="pointer-events-none absolute right-[-7rem] top-8 z-0 h-[34rem] w-[34rem] opacity-[0.13] md:right-8 md:top-10 md:opacity-[0.18]"
+          className="pointer-events-none absolute right-0 top-8 z-0 h-96 w-96 opacity-[0.11] md:right-8 md:top-10 md:h-[34rem] md:w-[34rem] md:opacity-[0.18]"
         />
         <div className="absolute inset-0 z-0 bg-[linear-gradient(#E5E7EB_1px,transparent_1px),linear-gradient(90deg,#E5E7EB_1px,transparent_1px)] bg-[size:96px_96px] opacity-60" />
 
         <div className="relative z-10 mx-auto flex min-h-[78vh] max-w-6xl flex-col justify-center px-6 py-20">
-          <p className="mb-5 inline-flex w-fit items-center gap-2 rounded-sm border border-grid-line bg-white/75 px-3 py-1 font-mono text-xs uppercase tracking-[0.16em] text-chart-gray">
-            <Waypoints size={14} />
-            Vercel + Amazon DynamoDB
-          </p>
           <h1 className="max-w-4xl font-display text-5xl font-bold leading-[1.02] tracking-tight text-lake-deep md:text-7xl">
-            Field operations that keep moving when the network does not.
+            The field does not wait.
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-soil">
-            FieldFlow turns operational workflows into offline-first PWAs with DynamoDB-backed sync,
-            conflict review, tenant isolation, and transactional inventory controls.
+            FieldFlow keeps registrations, approvals, supplies, and accountability moving when the
+            signal drops. Teams work now, sync later, and never lose the trail of what happened.
           </p>
           <div className="mt-9 flex flex-wrap gap-3">
             <Link
@@ -125,8 +121,8 @@ export default function LandingPage() {
       <section className="border-t border-grid-line bg-ink-black text-white">
         <div className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-12 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="font-mono text-xs uppercase tracking-[0.16em] text-starlight">Judge-ready demo</p>
-            <h2 className="mt-2 font-display text-3xl font-bold tracking-tight">Test it without asking for credentials.</h2>
+            <p className="font-mono text-xs uppercase tracking-[0.16em] text-starlight">Walk into the product</p>
+            <h2 className="mt-2 font-display text-3xl font-bold tracking-tight">Try a full field operation without waiting for access.</h2>
           </div>
           <Link
             href="/demo"

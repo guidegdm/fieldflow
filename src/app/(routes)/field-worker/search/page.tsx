@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next"
 import { ChevronRight, Search as SearchIcon } from "lucide-react"
 import Link from "next/link"
 import type { RecordData } from "@/types/record"
+import { useAuthStore } from "@/stores/authStore"
 
 type FilterKey = "all" | "pending" | "verified" | "synced"
 
@@ -29,6 +30,7 @@ const statusDot: Record<string, string> = {
 
 export default function SearchPage() {
   const { t } = useTranslation()
+  const user = useAuthStore((s) => s.user)
   const [query, setQuery] = useState("")
   const [activeFilter, setActiveFilter] = useState<FilterKey>("all")
   const [records, setRecords] = useState<RecordData[]>([])
@@ -37,18 +39,24 @@ export default function SearchPage() {
     async function load() {
       try {
         const { db } = await import("@/lib/db/indexeddb")
-        const local = await db.getAllRecords()
+        const local = user?.orgId ? await db.getAllRecordsForOrg(user.orgId) : await db.getAllRecords()
         if (local.length > 0) setRecords(local)
       } catch { /* IndexedDB can be unavailable */ }
 
       try {
         const res = await fetch("/api/workflows/wf-1/records", { credentials: "include" })
         const server = res.ok ? await res.json() : []
-        if (Array.isArray(server)) setRecords(server)
+        if (Array.isArray(server)) {
+          setRecords(server)
+          if (user?.orgId) {
+            const { db } = await import("@/lib/db/indexeddb")
+            await db.replaceRecordsForOrg(user.orgId, server)
+          }
+        }
       } catch { /* keep local records */ }
     }
     load()
-  }, [])
+  }, [user?.orgId])
 
   const filtered = useMemo(() => {
     let results = records

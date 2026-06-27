@@ -4,43 +4,45 @@ import { useAuthStore } from "@/stores/authStore"
 import { OrgSwitcher } from "@/components/layout/OrgSwitcher"
 import { cn } from "@/lib/utils"
 import { usePathname, useRouter } from "next/navigation"
+import { useTranslation } from "react-i18next"
 import Link from "next/link"
 import {
   LayoutDashboard, Workflow, Users, Settings, Home, Search,
-  Activity, Inbox, AlertTriangle, Package, Plus, Menu, LogOut,
+  Activity, Inbox, AlertTriangle, Package, Plus, LogOut,
 } from "lucide-react"
 
 interface DrawerProps { role: "admin" | "supervisor" | "field_worker" | "engineering"; open: boolean; onToggle: () => void }
 
-const navByRole: Record<string, { label: string; href: string; icon: React.ReactNode }[]> = {
+const navByRole: Record<string, { labelKey: string; fallback: string; href: string; icon: React.ReactNode }[]> = {
   field_worker: [
-    { label: "Accueil", href: "/field-worker/home", icon: <Home size={20} /> },
-    { label: "Rechercher", href: "/field-worker/search", icon: <Search size={20} /> },
-    { label: "Nouveau", href: "/field-worker/register", icon: <Plus size={20} /> },
-    { label: "Conflits", href: "/field-worker/conflicts", icon: <AlertTriangle size={20} /> },
-    { label: "Statut", href: "/field-worker/status", icon: <Activity size={20} /> },
+    { labelKey: "nav.home", fallback: "Accueil", href: "/field-worker/home", icon: <Home size={20} /> },
+    { labelKey: "nav.search", fallback: "Rechercher", href: "/field-worker/search", icon: <Search size={20} /> },
+    { labelKey: "nav.newRecord", fallback: "Nouveau", href: "/field-worker/register", icon: <Plus size={20} /> },
+    { labelKey: "nav.conflicts", fallback: "Conflits", href: "/field-worker/conflicts", icon: <AlertTriangle size={20} /> },
+    { labelKey: "nav.status", fallback: "Statut", href: "/field-worker/status", icon: <Activity size={20} /> },
   ],
   supervisor: [
-    { label: "Tableau de bord", href: "/supervisor/dashboard", icon: <LayoutDashboard size={20} /> },
-    { label: "File d'attente", href: "/supervisor/review", icon: <Inbox size={20} /> },
-    { label: "Conflits", href: "/supervisor/conflicts", icon: <AlertTriangle size={20} /> },
-    { label: "Inventaire", href: "/supervisor/inventory", icon: <Package size={20} /> },
-    { label: "Paramètres", href: "/supervisor/settings", icon: <Settings size={20} /> },
+    { labelKey: "nav.dashboard", fallback: "Tableau de bord", href: "/supervisor/dashboard", icon: <LayoutDashboard size={20} /> },
+    { labelKey: "nav.reviewQueue", fallback: "File d'attente", href: "/supervisor/review", icon: <Inbox size={20} /> },
+    { labelKey: "nav.conflicts", fallback: "Conflits", href: "/supervisor/conflicts", icon: <AlertTriangle size={20} /> },
+    { labelKey: "nav.inventory", fallback: "Inventaire", href: "/supervisor/inventory", icon: <Package size={20} /> },
+    { labelKey: "nav.settings", fallback: "Paramètres", href: "/supervisor/settings", icon: <Settings size={20} /> },
   ],
   admin: [
-    { label: "Tableau de bord", href: "/admin/dashboard", icon: <LayoutDashboard size={20} /> },
-    { label: "Workflows", href: "/admin/workflows", icon: <Workflow size={20} /> },
-    { label: "Utilisateurs", href: "/admin/users", icon: <Users size={20} /> },
-    { label: "Paramètres", href: "/admin/settings", icon: <Settings size={20} /> },
+    { labelKey: "nav.dashboard", fallback: "Tableau de bord", href: "/admin/dashboard", icon: <LayoutDashboard size={20} /> },
+    { labelKey: "nav.workflows", fallback: "Workflows", href: "/admin/workflows", icon: <Workflow size={20} /> },
+    { labelKey: "nav.users", fallback: "Utilisateurs", href: "/admin/users", icon: <Users size={20} /> },
+    { labelKey: "nav.settings", fallback: "Paramètres", href: "/admin/settings", icon: <Settings size={20} /> },
   ],
   engineering: [
-    { label: "Engineering", href: "/engineering", icon: <Activity size={20} /> },
-    { label: "Admin", href: "/admin/dashboard", icon: <LayoutDashboard size={20} /> },
+    { labelKey: "nav.engineering", fallback: "Engineering", href: "/engineering", icon: <Activity size={20} /> },
+    { labelKey: "nav.admin", fallback: "Admin", href: "/admin/dashboard", icon: <LayoutDashboard size={20} /> },
   ],
 }
 
 export function Drawer({ role, open, onToggle }: DrawerProps) {
   const { user, logout } = useAuthStore()
+  const { t } = useTranslation()
   const pathname = usePathname()
   const router = useRouter()
   const items = navByRole[role] ?? navByRole.field_worker
@@ -54,54 +56,46 @@ export function Drawer({ role, open, onToggle }: DrawerProps) {
   return (
     <aside
       className={cn(
-        "fixed left-0 top-7 h-[calc(100vh-28px)] bg-kivu-paper border-r border-graph-line z-40 flex flex-col transition-all duration-200 ease-out overflow-hidden",
-        open ? "w-[200px]" : "w-[40px]",
+        "fixed left-0 top-7 z-40 hidden h-[calc(100vh-28px)] w-64 flex-col overflow-hidden border-r border-graph-line bg-kivu-paper lg:flex",
       )}
     >
-      <div className="flex items-center justify-center h-12 shrink-0">
-        <button onClick={onToggle} className="w-8 h-8 flex items-center justify-center rounded-md text-pencil hover:text-ink-black hover:bg-black/5" aria-label={open ? "Fermer" : "Ouvrir"}>
-          <Menu size={18} />
-        </button>
+      <div className="shrink-0 px-4 py-4">
+        <p className="font-display text-xl font-semibold text-lake-deep">FieldFlow</p>
+        <p className="mt-0.5 text-xs text-pencil">{t("app.tagline")}</p>
       </div>
 
-      {open && (
-        <div className="px-3 pb-2">
-          <OrgSwitcher />
-        </div>
-      )}
+      <div className="px-4 pb-3">
+        <OrgSwitcher />
+      </div>
 
-      <nav className="flex-1 px-2 space-y-1 overflow-y-auto">
+      <nav className="flex-1 space-y-1 overflow-y-auto px-3 pb-3">
         {items.map((item) => {
           const isActive = pathname.startsWith(item.href)
           return (
             <Link key={item.href} href={item.href} className={cn(
-              "flex items-center gap-3 px-2 py-2.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap",
-              isActive ? "bg-ink-blue/10 text-lake-deep" : "text-pencil hover:text-ink-black hover:bg-black/5",
+              "flex min-h-11 items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
+              isActive ? "bg-ink-blue text-white" : "text-pencil hover:bg-white hover:text-ink-black",
             )}>
-              <span className="w-8 flex items-center justify-center shrink-0">{item.icon}</span>
-              {open && <span>{item.label}</span>}
+              <span className="flex w-6 shrink-0 items-center justify-center">{item.icon}</span>
+              <span className="truncate">{t(item.labelKey, item.fallback)}</span>
             </Link>
           )
         })}
       </nav>
 
       {user && (
-        <div className={cn("border-t border-graph-line", open ? "px-3 py-3" : "px-1 py-2")}>
-          <div className={cn("flex items-center", open ? "gap-3" : "justify-center")}>
+        <div className="border-t border-graph-line px-4 py-4">
+          <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded bg-clay flex items-center justify-center text-white text-sm font-semibold shrink-0">
               {user.name?.charAt(0) ?? "U"}
             </div>
-            {open && (
-              <>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-ink-black truncate">{user.name}</p>
-                  <p className="text-[10px] uppercase tracking-wider text-pencil">{role.replace("_", " ")}</p>
-                </div>
-                <button onClick={handleLogout} className="p-1.5 text-pencil hover:text-rebar hover:bg-black/5 rounded-md" aria-label="Déconnexion">
-                  <LogOut size={16} />
-                </button>
-              </>
-            )}
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-ink-black">{user.name}</p>
+              <p className="truncate text-[10px] uppercase tracking-wider text-pencil">{t(`roles.${role}`, role.replace("_", " "))}</p>
+            </div>
+            <button onClick={handleLogout} className="rounded-md p-2 text-pencil hover:bg-white hover:text-rebar" aria-label={t("auth.logout")}>
+              <LogOut size={16} />
+            </button>
           </div>
         </div>
       )}

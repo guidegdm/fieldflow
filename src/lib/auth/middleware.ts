@@ -7,7 +7,9 @@ const COGNITO_REGION = COGNITO_POOL_ID.split("_")[0] || "us-east-1"
 const COGNITO_ISSUER = `https://cognito-idp.${COGNITO_REGION}.amazonaws.com/${COGNITO_POOL_ID}`
 const SESSION_SECRET = process.env.SESSION_SECRET || process.env.COGNITO_CLIENT_ID || COGNITO_CLIENT_ID
 const DEMO_INSTALL_COOKIE = "ff_demo_install"
+const PENDING_SETUP_COOKIE = "ff_pending_setup"
 const DEMO_INSTALL_MAX_AGE = 7 * 24 * 60 * 60
+const PENDING_SETUP_MAX_AGE = 30 * 60
 
 let cachedKeys: Array<{ kid: string; n: string; e: string; kty: string }> = []
 let keysLastFetched = 0
@@ -57,6 +59,13 @@ interface AuthUser {
   groups: string[]
   orgId: string
   orgs?: Array<{ id: string; name?: string }>
+}
+
+export interface PendingSetupUser {
+  sub: string
+  email: string
+  name: string
+  username: string
 }
 
 export async function verifyCognitoJWT(token: string, context?: Partial<AuthUser>): Promise<AuthUser | null> {
@@ -175,6 +184,21 @@ function verifySignedEnvelope(token: string): Record<string, unknown> | null {
   return decoded
 }
 
+export function createPendingSetupToken(user: PendingSetupUser, maxAgeSeconds = PENDING_SETUP_MAX_AGE): string {
+  return createSignedEnvelope({ ...user, type: "pending_setup" }, maxAgeSeconds)
+}
+
+export function verifyPendingSetupToken(token: string): PendingSetupUser | null {
+  const decoded = verifySignedEnvelope(token)
+  if (decoded?.type !== "pending_setup") return null
+  const sub = typeof decoded.sub === "string" ? decoded.sub : ""
+  const email = typeof decoded.email === "string" ? decoded.email : ""
+  const name = typeof decoded.name === "string" ? decoded.name : email
+  const username = typeof decoded.username === "string" ? decoded.username : email
+  if (!sub || !email || !username) return null
+  return { sub, email, name, username }
+}
+
 export function getOrCreateDemoInstall(request: NextRequest): { installId: string; token: string; isNew: boolean } {
   const existing = request.cookies.get(DEMO_INSTALL_COOKIE)?.value
   if (existing) {
@@ -207,7 +231,7 @@ export async function getAuthUser(request: NextRequest): Promise<AuthUser | null
   const cookieToken = request.cookies.get("ff_session")?.value
   if (cookieToken) {
     const signedSessionUser = verifySessionToken(cookieToken)
-    if (signedSessionUser && signedSessionUser.orgId.startsWith("demo-")) return signedSessionUser
+    if (signedSessionUser) return signedSessionUser
 
     const sessionUser = sessionTokens.get(cookieToken)
     if (sessionUser) return sessionUser
@@ -247,6 +271,10 @@ export function setDemoInstallCookie(token: string): string {
   return `${DEMO_INSTALL_COOKIE}=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${DEMO_INSTALL_MAX_AGE}`
 }
 
+export function setPendingSetupCookie(token: string): string {
+  return `${PENDING_SETUP_COOKIE}=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${PENDING_SETUP_MAX_AGE}`
+}
+
 export function clearSessionCookie(): string {
   return `ff_session=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`
 }
@@ -257,4 +285,8 @@ export function clearAccessCookie(): string {
 
 export function clearRefreshCookie(): string {
   return `ff_refresh=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`
+}
+
+export function clearPendingSetupCookie(): string {
+  return `${PENDING_SETUP_COOKIE}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`
 }

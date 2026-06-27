@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useTranslation } from "react-i18next"
-import { LogIn } from "lucide-react"
+import { ArrowRight, LogIn, ShieldCheck } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -50,8 +50,7 @@ export default function SignInPage() {
       })
 
       if (!res.ok) {
-        const data = await res.json()
-        setError(data.error || "Erreur de connexion")
+        setError(t("signin.errors.default"))
         return
       }
 
@@ -63,7 +62,7 @@ export default function SignInPage() {
       setAuthFromApi(data.user, data.org, data.orgs)
       router.push(data.user.role === "field_worker" ? "/field-worker/home" : "/supervisor/dashboard")
     } catch {
-      setError("Erreur réseau")
+      setError(t("signin.errors.network"))
     }
   }
 
@@ -80,8 +79,7 @@ export default function SignInPage() {
       })
 
       if (!res.ok) {
-        const data = await res.json()
-        setError(data.error || "Code invalide")
+        setError(t("signin.errors.invalidCode"))
         return
       }
 
@@ -89,17 +87,45 @@ export default function SignInPage() {
       setAuthFromApi(data.user, data.org, data.orgs)
       router.push(data.user.role === "field_worker" ? "/field-worker/home" : data.user.role === "supervisor" ? "/supervisor/dashboard" : "/admin/dashboard")
     } catch {
-      setError("Erreur réseau")
+      setError(t("signin.errors.network"))
     }
   }
 
   return (
-    <div className="min-h-screen bg-kivu-paper flex items-center justify-center px-4 py-10">
-      <div className="w-full max-w-sm">
-        <div className="bg-white border border-grid-line rounded-md p-8">
-          <h1 className="font-display text-2xl font-bold text-lake-deep tracking-tight">
-            {t("signin.title")}
-          </h1>
+    <div className="min-h-dvh bg-[#F8FAFC] px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto grid min-h-[calc(100dvh-4rem)] w-full max-w-6xl items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
+        <section className="hidden lg:block">
+          <div className="max-w-xl">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-pencil">{t("signin.heroEyebrow")}</p>
+            <h1 className="mt-5 font-display text-6xl font-bold leading-none tracking-tight text-lake-deep">
+              {t("signin.heroTitle")}
+            </h1>
+            <p className="mt-6 max-w-md text-lg leading-8 text-soil">
+              {t("signin.heroBody")}
+            </p>
+          </div>
+        </section>
+
+        <main className="mx-auto w-full max-w-md">
+          <div className="mb-8 text-center lg:hidden">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-pencil">{t("signin.heroEyebrow")}</p>
+            <h1 className="mt-3 font-display text-4xl font-bold tracking-tight text-lake-deep">
+              {t("signin.heroTitle")}
+            </h1>
+          </div>
+
+          <div className="rounded-2xl border border-white/80 bg-white/90 p-5 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur sm:p-8">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="font-display text-2xl font-bold tracking-tight text-lake-deep">
+                  {t("signin.title")}
+                </h2>
+                <p className="mt-1 text-sm text-pencil">{t("signin.subtitle")}</p>
+              </div>
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink-blue/10 text-ink-blue">
+                <ShieldCheck size={18} />
+              </div>
+            </div>
 
           {error && (
             <div className="mt-4 rounded-md bg-danger-500/10 border border-danger-500/30 px-4 py-2 text-sm text-danger-500">
@@ -119,7 +145,7 @@ export default function SignInPage() {
                 autoComplete="email"
                 {...register("email")}
                 aria-invalid={!!errors.email}
-                className="w-full h-10 px-3 rounded-md border border-graph-line text-sm focus:outline-none focus:ring-2 focus:ring-ink-blue focus:border-transparent"
+                className="h-11 w-full rounded-md border border-graph-line px-3 text-base focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ink-blue sm:text-sm"
               />
               {errors.email && <p className="mt-1 text-sm text-danger-500">{t("common.required")}</p>}
             </div>
@@ -133,7 +159,7 @@ export default function SignInPage() {
                 autoComplete="current-password"
                 {...register("password")}
                 aria-invalid={!!errors.password}
-                className="w-full h-10 px-3 rounded-md border border-graph-line text-sm focus:outline-none focus:ring-2 focus:ring-ink-blue focus:border-transparent"
+                className="h-11 w-full rounded-md border border-graph-line px-3 text-base focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ink-blue sm:text-sm"
               />
               {errors.password && <p className="mt-1 text-sm text-danger-500">{t("common.required")}</p>}
             </div>
@@ -141,17 +167,17 @@ export default function SignInPage() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full h-10 rounded-md bg-ink-blue text-white font-medium text-sm hover:bg-ink-blue/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-ink-blue text-sm font-semibold text-white transition-colors hover:bg-ink-blue/90 disabled:opacity-60"
             >
               <LogIn size={16} />
-              {isSubmitting ? "Connexion..." : t("signin.submit")}
+              {isSubmitting ? t("signin.submitting") : t("signin.submit")}
             </button>
           </form>
           ) : (
             <form className="mt-6 space-y-4" onSubmit={handleOtpSubmit(onOtpSubmit)}>
               <div>
                 <label htmlFor="code" className="block text-sm font-medium text-soil mb-1">
-                  {challenge.challengeName === "EMAIL_OTP" ? "Code email" : challenge.challengeName === "SMS_MFA" ? "Code SMS" : "Code authenticator"}
+                  {challenge.challengeName === "EMAIL_OTP" ? t("signin.otp.email") : challenge.challengeName === "SMS_MFA" ? t("signin.otp.sms") : t("signin.otp.authenticator")}
                 </label>
                 <input
                   id="code"
@@ -159,24 +185,24 @@ export default function SignInPage() {
                   autoComplete="one-time-code"
                   {...registerOtp("code")}
                   aria-invalid={!!otpErrors.code}
-                  className="w-full h-10 px-3 rounded-md border border-graph-line text-sm focus:outline-none focus:ring-2 focus:ring-ink-blue focus:border-transparent"
+                  className="h-11 w-full rounded-md border border-graph-line px-3 text-base focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ink-blue sm:text-sm"
                 />
                 {otpErrors.code && <p className="mt-1 text-sm text-danger-500">{t("common.required")}</p>}
               </div>
               <button
                 type="submit"
                 disabled={otpSubmitting}
-                className="w-full h-10 rounded-md bg-ink-blue text-white font-medium text-sm hover:bg-ink-blue/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-ink-blue text-sm font-semibold text-white transition-colors hover:bg-ink-blue/90 disabled:opacity-60"
               >
                 <LogIn size={16} />
-                {otpSubmitting ? "Vérification..." : "Vérifier"}
+                {otpSubmitting ? t("signin.otp.verifying") : t("signin.otp.verify")}
               </button>
               <button
                 type="button"
                 onClick={() => { setChallenge(null); setError("") }}
-                className="w-full h-10 rounded-md border border-graph-line text-sm font-medium text-ink-black hover:bg-graph-paper transition-colors"
+                className="h-11 w-full rounded-md border border-graph-line text-sm font-semibold text-ink-black transition-colors hover:bg-graph-paper"
               >
-                Retour
+                {t("signin.otp.back")}
               </button>
             </form>
           )}
@@ -189,19 +215,14 @@ export default function SignInPage() {
 
           <div className="mt-6 space-y-3">
             <button
-              onClick={() => {
-                const domain = "fieldflow-hackathon.auth.us-east-1.amazoncognito.com"
-                const clientId = "7r60o7fnej4vitoksrp6e93n9g"
-                const redirectUri = window.location.origin + "/auth/callback"
-                window.location.href = `https://${domain}/oauth2/authorize?identity_provider=Google&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=CODE&client_id=${clientId}&scope=email+openid+profile`
-              }}
-              className="w-full h-10 rounded-md border border-graph-line text-sm font-medium text-ink-black hover:bg-graph-paper transition-colors"
+              onClick={() => { window.location.href = "/api/auth/oauth/google?mode=signin" }}
+              className="h-11 w-full rounded-md border border-graph-line text-sm font-semibold text-ink-black transition-colors hover:bg-graph-paper"
             >
               {t("signin.google")}
             </button>
             <button
-              onClick={() => alert("Passkey coming soon")}
-              className="w-full h-10 rounded-md border border-graph-line text-sm font-medium text-ink-black hover:bg-graph-paper transition-colors"
+              onClick={() => alert(t("signin.passkeyComingSoon"))}
+              className="h-11 w-full rounded-md border border-graph-line text-sm font-semibold text-ink-black transition-colors hover:bg-graph-paper"
             >
               {t("signin.passkey")}
             </button>
@@ -209,11 +230,13 @@ export default function SignInPage() {
 
           <p className="mt-6 text-center text-xs text-pencil">
             {t("signin.noAccount")}{" "}
-            <Link href="/auth/signup" className="text-ink-blue hover:underline">
+            <Link href="/auth/signup" className="inline-flex items-center gap-1 font-semibold text-ink-blue hover:underline">
               {t("signin.createAccount")}
+              <ArrowRight size={12} />
             </Link>
           </p>
         </div>
+        </main>
       </div>
     </div>
   )

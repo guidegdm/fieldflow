@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import { useSyncStore } from "@/stores/syncStore"
 import { useStorageQuota } from "@/hooks/useStorageQuota"
 import { cn } from "@/lib/utils"
+import { useTranslation } from "react-i18next"
 import {
   simulateNetwork,
   getCurrentMode,
@@ -18,13 +19,14 @@ const modes: { value: NetworkMode; label: string }[] = [
 ]
 
 export function ConnectivityBar() {
+  const { t } = useTranslation()
   const { isOnline, isSyncing, pendingCount, lastSyncAt, setOnline } =
     useSyncStore()
   const { usage, quota, percentageUsed, isNearLimit } = useStorageQuota()
   const [showSim, setShowSim] = useState(false)
   const [simMode, setSimMode] = useState<NetworkMode>(getCurrentMode())
 
-  const failed = pendingCount > 0 && !isSyncing && lastSyncAt !== null
+  const failed = pendingCount > 0 && !isSyncing
   const showStorage = quota > 0 && percentageUsed > 70
 
   const isDev = process.env.NODE_ENV === "development"
@@ -48,26 +50,37 @@ export function ConnectivityBar() {
     [setOnline],
   )
 
+  useEffect(() => {
+    function handleRequestedMode(event: Event) {
+      const mode = (event as CustomEvent<NetworkMode>).detail
+      if (!modes.some((candidate) => candidate.value === mode)) return
+      handleMode(mode)
+    }
+
+    window.addEventListener("fieldflow:set-network-mode", handleRequestedMode)
+    return () => window.removeEventListener("fieldflow:set-network-mode", handleRequestedMode)
+  }, [handleMode])
+
   let status: { text: string; className: string }
 
   if (isSyncing) {
     status = {
-      text: "◉ Synchronisation...",
+      text: t("common.syncing"),
       className: "bg-ink-blue/5 text-ink-blue",
     }
   } else if (!isOnline) {
     status = {
-      text: "● Hors ligne",
+      text: t("common.offline"),
       className: "bg-graph-paper text-pencil",
     }
   } else if (failed) {
     status = {
-      text: "⚠ Sync en attente",
+      text: t("common.pendingSync"),
       className: "bg-amber-50 text-warning-600",
     }
   } else {
     status = {
-      text: "● En ligne",
+      text: t("common.online"),
       className: "bg-green-50 text-success-500",
     }
   }
@@ -78,10 +91,12 @@ export function ConnectivityBar() {
         className={cn(
           "h-7 flex items-center justify-center text-xs font-medium",
           status.className,
-          isSyncing && "animate-sync-pulse",
         )}
       >
-        <span className="flex-1 text-center">{status.text}</span>
+        <span className="flex flex-1 items-center justify-center gap-2 text-center">
+          <span className={cn("h-1.5 w-1.5 rounded-full", isSyncing ? "bg-ink-blue" : isOnline ? "bg-success-500" : "bg-pencil")} />
+          {status.text}
+        </span>
         {isDev && (
           <button
             type="button"

@@ -1,5 +1,5 @@
 import { db } from "@/lib/db/indexeddb"
-import { apiPost } from "@/lib/api/client"
+import { apiGet, apiPost } from "@/lib/api/client"
 import { generateId } from "@/lib/utils"
 import type { SyncBatchRequest, SyncBatchResponse, ConflictRecord } from "@/types/sync"
 import type { RecordData } from "@/types/record"
@@ -35,15 +35,29 @@ async function saveConflicts(response: SyncBatchResponse, deviceId: string, pend
       workflow_id: mutation?.workflow_id || "",
       record_id: c.record_id,
       field: c.field,
-      value_a: c.server_value,
-      device_a: "",
-      value_b: c.local_value,
-      device_b: deviceId,
+      value_a: c.local_value,
+      device_a: deviceId,
+      value_b: c.server_value,
+      device_b: "server",
       status: "OPEN",
       created_at: Date.now(),
     }
     await db.saveConflict(conflictRecord)
     await db.updateMutationStatus(c.client_id, "CONFLICT")
+  }
+}
+
+async function refreshOpenConflicts() {
+  try {
+    const [records, conflicts] = await Promise.all([
+      db.getAllRecords(),
+      apiGet<ConflictRecord[]>("/api/sync/conflict"),
+    ])
+    const localRecordIds = records.map((record) => record.id)
+    const localConflictRecords = conflicts.filter((conflict) => localRecordIds.includes(conflict.record_id))
+    await db.replaceConflictsForRecords(localRecordIds, localConflictRecords)
+  } catch {
+    // Keep the last local conflict snapshot when offline or unauthenticated.
   }
 }
 
@@ -54,6 +68,7 @@ export async function fullSync(): Promise<SyncBatchResponse> {
     const response = await pushBatch()
     await applyServerChanges(response.server_changes)
     await saveConflicts(response, deviceState.device_id)
+    await refreshOpenConflicts()
     await db.updateDeviceState({
       last_seq: response.last_seq,
       last_sync_at: response.server_timestamp,
@@ -78,6 +93,7 @@ export async function fullSync(): Promise<SyncBatchResponse> {
   await applyServerChanges(response.server_changes)
 
   await saveConflicts(response, deviceState.device_id, mutationMap)
+  await refreshOpenConflicts()
 
   await db.updateDeviceState({
     last_seq: response.last_seq,

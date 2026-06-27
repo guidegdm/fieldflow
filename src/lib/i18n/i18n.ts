@@ -4,24 +4,43 @@ import fr from "./fr.json"
 import en from "./en.json"
 
 const resources = { fr: { translation: fr }, en: { translation: en } }
+export type AppLanguage = "fr" | "en"
+export const LANGUAGE_STORAGE_KEY = "fieldflow-lang"
 
-function detectLanguage(): string {
+function normalizeLanguage(value: string | undefined | null): AppLanguage | null {
+  if (!value) return null
+  if (value.toLowerCase().startsWith("fr")) return "fr"
+  if (value.toLowerCase().startsWith("en")) return "en"
+  return null
+}
+
+export function detectLanguage(): AppLanguage {
   if (typeof window !== "undefined") {
-    const stored = localStorage.getItem("fieldflow-lang")
-    if (stored === "fr" || stored === "en") return stored
-    const browser = navigator.language || ""
-    if (browser.startsWith("fr")) return "fr"
-    return "en"
+    const stored = normalizeLanguage(localStorage.getItem(LANGUAGE_STORAGE_KEY))
+    if (stored) return stored
+    return normalizeLanguage(navigator.language) ?? "fr"
   }
   return "fr"
 }
 
-i18next.use(initReactI18next).init({
-  resources,
-  lng: detectLanguage(),
-  fallbackLng: "en",
-  interpolation: { escapeValue: false },
-  detection: { order: ["localStorage", "navigator"], caches: ["localStorage"] },
-})
+if (!i18next.isInitialized) {
+  i18next.use(initReactI18next).init({
+    resources,
+    lng: "fr",
+    fallbackLng: "fr",
+    supportedLngs: ["fr", "en"],
+    cleanCode: true,
+    interpolation: { escapeValue: false },
+    react: { useSuspense: false },
+  })
+}
+
+export async function setAppLanguage(language: AppLanguage) {
+  if (typeof window !== "undefined") {
+    localStorage.setItem(LANGUAGE_STORAGE_KEY, language)
+    document.documentElement.lang = language
+  }
+  await i18next.changeLanguage(language)
+}
 
 export default i18next

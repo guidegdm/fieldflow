@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { useTranslation } from "react-i18next"
 import { useSyncStore } from "@/stores/syncStore"
 import { SyncButton } from "@/components/sync/SyncButton"
@@ -8,6 +8,7 @@ import { ChevronRight, AlertTriangle, Clock, MapPin } from "lucide-react"
 import Link from "next/link"
 import type { RecordData } from "@/types/record"
 import type { ConflictRecord } from "@/types/sync"
+import { useAuthStore } from "@/stores/authStore"
 
 const statusDot: Record<string, string> = {
   draft: "bg-pencil",
@@ -23,27 +24,42 @@ const statusDot: Record<string, string> = {
 
 export default function FieldWorkerHome() {
   const { t } = useTranslation()
+  const user = useAuthStore((s) => s.user)
   const { pendingCount } = useSyncStore()
   const [records, setRecords] = useState<RecordData[]>([])
   const [loading, setLoading] = useState(true)
   const [conflictCount, setConflictCount] = useState(0)
-  const loaded = useRef(false)
 
   useEffect(() => {
-    if (loaded.current) return
-    loaded.current = true
+    let cancelled = false
+    setLoading(true)
     async function load() {
       try {
         const { db } = await import("@/lib/db/indexeddb")
-        const all = await db.getAllRecords()
+        let all = user?.orgId ? await db.getAllRecordsForOrg(user.orgId) : await db.getAllRecords()
+        if (all.length === 0) {
+          try {
+            const response = await fetch("/api/workflows/wf-1/records", { credentials: "include" })
+            const server = response.ok ? await response.json() : []
+            if (Array.isArray(server)) {
+              all = server
+              if (user?.orgId) await db.replaceRecordsForOrg(user.orgId, server)
+            }
+          } catch {
+            // Keep the local empty state when the device is offline.
+          }
+        }
+        if (cancelled) return
         setRecords(all)
         const conflicts: ConflictRecord[] = await db.getConflicts()
-        setConflictCount(conflicts.filter(c => c.status === "OPEN").length)
+        const recordIds = new Set(all.map((record) => record.id))
+        setConflictCount(conflicts.filter(c => c.status === "OPEN" && recordIds.has(c.record_id)).length)
       } catch { /* IndexedDB not ready */ }
-      setLoading(false)
+      if (!cancelled) setLoading(false)
     }
     load()
-  }, [])
+    return () => { cancelled = true }
+  }, [user?.orgId])
 
   const urgent = records.filter((r) => r.status === "in_conflict" || r.status === "rejected" || r.status === "blocked")
   const pending = records.filter((r) => r.syncStatus === "pending" || r.syncStatus === "local")
@@ -51,6 +67,7 @@ export default function FieldWorkerHome() {
     const startOfDay = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()).getTime()
     return r.createdAt >= startOfDay
   }).sort((a, b) => b.createdAt - a.createdAt)
+  const visibleRecords = today.length > 0 ? today : [...records].sort((a, b) => b.updatedAt - a.updatedAt)
 
   function RecordRow({ r }: { r: RecordData }) {
     return (
@@ -139,7 +156,7 @@ export default function FieldWorkerHome() {
           </div>
         ) : (
           <div className="space-y-1">
-            {today.map((r) => <RecordRow key={r.id} r={r} />)}
+            {visibleRecords.map((r) => <RecordRow key={r.id} r={r} />)}
           </div>
         )}
       </section>

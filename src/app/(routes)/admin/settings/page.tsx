@@ -39,8 +39,8 @@ export default function AdminSettingsPage() {
   }
 
   return (
-    <div className="max-w-3xl space-y-8">
-      <h1 className="font-display text-4xl text-lake-deep tracking-tight">{t("admin.settings")}</h1>
+    <div className="mx-auto max-w-3xl space-y-6 sm:space-y-8">
+      <h1 className="font-display text-3xl tracking-tight text-lake-deep sm:text-4xl">{t("admin.settings")}</h1>
 
       <Card>
         <CardHeader>

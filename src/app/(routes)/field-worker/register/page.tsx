@@ -15,6 +15,8 @@ import { generateId } from "@/lib/utils"
 import { db } from "@/lib/db/indexeddb"
 import type { MutationEntry } from "@/types/sync"
 import type { RecordData } from "@/types/record"
+import { useAuthStore } from "@/stores/authStore"
+import { useSyncStore } from "@/stores/syncStore"
 
 const SHELTER_OPTIONS = ["tente", "abri", "maison", "centre", "famille"] as const
 const NEED_OPTIONS = ["nourriture", "eau", "abri", "medical", "education", "protection"] as const
@@ -48,7 +50,9 @@ const INITIAL_FORM: RegistrationForm = {
 export default function RegisterPage() {
   const { t } = useTranslation()
   const router = useRouter()
+  const user = useAuthStore((state) => state.user)
   const [saved, setSaved] = useState(false)
+  const [saveError, setSaveError] = useState("")
   const { register, handleSubmit, setValue, watch, formState: { errors, isSubmitting } } = useForm<RegistrationForm>({
     resolver: zodResolver(registerSchema),
     defaultValues: INITIAL_FORM,
@@ -66,8 +70,14 @@ export default function RegisterPage() {
   }
 
   async function onSubmit(form: RegistrationForm) {
+    if (!user?.orgId) {
+      setSaveError(t("register.sessionRequired"))
+      return
+    }
+
     const id = generateId()
     const now = Date.now()
+    const deviceId = user.deviceId || "web"
 
     const record: RecordData = {
       id,
@@ -80,14 +90,15 @@ export default function RegisterPage() {
       fields: { ...form },
       createdAt: now,
       updatedAt: now,
-      createdBy: "user-1",
-      deviceId: "device-a",
+      createdBy: user.id,
+      deviceId,
       version: 1,
+      orgId: user.orgId,
     }
 
     const mutation: MutationEntry = {
       client_id: id,
-      device_id: "device-a",
+      device_id: deviceId,
       operation: "create",
       resource: "record",
       workflow_id: "wf-1",
@@ -102,11 +113,13 @@ export default function RegisterPage() {
     }
 
     try {
+      setSaveError("")
       await db.putRecord(record)
       await db.enqueueMutation(mutation)
+      useSyncStore.getState().setPendingCount((await db.getPendingMutations()).length)
       setSaved(true)
     } catch {
-      console.error("Failed to save record")
+      setSaveError(t("register.saveFailed"))
     }
   }
 
@@ -135,7 +148,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="pb-28">
+    <div className="mx-auto max-w-3xl pb-28 lg:pb-0">
       <button
         onClick={() => router.back()}
         className="flex items-center gap-2 text-sm text-pencil min-h-[48px]"
@@ -149,6 +162,12 @@ export default function RegisterPage() {
       </h1>
 
       <form id="field-register-form" onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+        {saveError && (
+          <div className="rounded-md border border-danger-500/30 bg-danger-500/10 px-3 py-2 text-sm text-danger-500">
+            {saveError}
+          </div>
+        )}
+
         <section>
           <h2 className="font-serif text-lg font-semibold text-ink-black border-b border-graph-line pb-2 mb-4">
             {t("register.identification")}
@@ -297,17 +316,20 @@ export default function RegisterPage() {
         </section>
       </form>
 
-      <div className="fixed bottom-16 left-0 right-0 z-50 border-t border-graph-line bg-white p-4">
-        <Button
-          type="submit"
-          form="field-register-form"
-          variant="primary"
-          size="lg"
-          className="w-full"
-          loading={isSubmitting}
-        >
-          {t("common.save")}
-        </Button>
+      <div className="fixed bottom-16 left-0 right-0 z-50 border-t border-graph-line bg-white p-4 lg:sticky lg:bottom-0 lg:mt-8 lg:rounded-md lg:border lg:px-4">
+        <div className="mx-auto flex max-w-3xl justify-end">
+          <Button
+            type="submit"
+            form="field-register-form"
+            variant="primary"
+            size="lg"
+            className="w-full sm:w-auto"
+            loading={isSubmitting}
+            disabled={!user?.orgId}
+          >
+            {t("common.save")}
+          </Button>
+        </div>
       </div>
     </div>
   )

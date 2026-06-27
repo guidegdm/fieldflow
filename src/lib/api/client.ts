@@ -1,12 +1,24 @@
+const REQUEST_TIMEOUT_MS = 15000
+
+async function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit, timeoutMs = REQUEST_TIMEOUT_MS) {
+  const controller = new AbortController()
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    return await fetch(input, { ...init, signal: controller.signal })
+  } finally {
+    window.clearTimeout(timeout)
+  }
+}
+
 export async function apiPost<T>(path: string, body: unknown): Promise<T> {
-  let res = await fetch(path, {
+  let res = await fetchWithTimeout(path, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
     body: JSON.stringify(body),
   })
   if (res.status === 401 && await refreshAuth()) {
-    res = await fetch(path, {
+    res = await fetchWithTimeout(path, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -22,7 +34,7 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
 
 async function refreshAuth(): Promise<boolean> {
   try {
-    const res = await fetch("/api/auth/refresh", { method: "POST", credentials: "include" })
+    const res = await fetchWithTimeout("/api/auth/refresh", { method: "POST", credentials: "include" })
     return res.ok
   } catch {
     return false
@@ -48,9 +60,9 @@ export async function apiGet<T>(path: string, params?: Record<string, string>): 
     }
   }
 
-  let res = await fetch(url, { credentials: "include" })
+  let res = await fetchWithTimeout(url, { credentials: "include" })
   if (res.status === 401 && await refreshAuth()) {
-    res = await fetch(url, { credentials: "include" })
+    res = await fetchWithTimeout(url, { credentials: "include" })
   }
   if (!res.ok) {
     const err = await res.text()

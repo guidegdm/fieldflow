@@ -48,10 +48,12 @@ const config: Config = {
       animation: {
         "sync-pulse": "syncPulse 2s ease-in-out infinite",
         "stamp-press": "stampPress 200ms ease-out forwards",
+        "skeleton": "skeleton 1.8s ease-in-out infinite",
       },
       keyframes: {
         syncPulse: { "0%,100%": { opacity: "0.6" }, "50%": { opacity: "1" } },
         stampPress: { "0%": { transform: "scale(1.2) rotate(-3deg)", opacity: "0" }, "100%": { transform: "scale(1) rotate(-2deg)", opacity: "1" } },
+        skeleton: { "0%": { backgroundPosition: "200% 0" }, "100%": { backgroundPosition: "-200% 0" } },
       },
     },
   },

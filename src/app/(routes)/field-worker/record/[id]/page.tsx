@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { ArrowLeft, CheckCircle, Clock, AlertTriangle, XCircle, ShieldCheck, GitMerge, PackageCheck, ShieldOff } from "lucide-react"
 import type { RecordData } from "@/types/record"
 import { formatDate } from "@/lib/utils"
+import { useAuthStore } from "@/stores/authStore"
 
 const statusConfig: Record<string, { label: string; color: string; border: string; bg: string; icon: typeof AlertTriangle }> = {
   draft: { label: "Brouillon", color: "text-pencil", border: "border-pencil", bg: "bg-pencil/5", icon: Clock },
@@ -66,6 +67,7 @@ export default function RecordDetailPage() {
   const { t } = useTranslation()
   const params = useParams()
   const router = useRouter()
+  const user = useAuthStore((s) => s.user)
   const [record, setRecord] = useState<RecordData | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -73,20 +75,36 @@ export default function RecordDetailPage() {
 
   useEffect(() => {
     async function load() {
+      let loadedLocal = false
       try {
         const { db } = await import("@/lib/db/indexeddb")
         const found = await db.getRecord(id)
-        if (found) { setRecord(found); setLoading(false); return }
+        if (found && (!user?.orgId || found.orgId === user.orgId)) {
+          setRecord(found)
+          loadedLocal = true
+          setLoading(false)
+        }
       } catch { /* IndexedDB not ready */ }
       try {
         const res = await fetch("/api/workflows/wf-1/records", { credentials: "include" })
         const records = res.ok ? await res.json() : []
-        if (Array.isArray(records)) setRecord(records.find((r: RecordData) => r.id === id) ?? null)
-      } catch { setRecord(null) }
+        if (Array.isArray(records)) {
+          const fresh = records.find((r: RecordData) => r.id === id) ?? null
+          if (fresh) {
+            setRecord(fresh)
+            const { db } = await import("@/lib/db/indexeddb")
+            await db.putRecord(fresh)
+          } else if (!loadedLocal) {
+            setRecord(null)
+          }
+        }
+      } catch {
+        setRecord((current) => current)
+      }
       setLoading(false)
     }
     load()
-  }, [id])
+  }, [id, user?.orgId])
 
   if (loading) {
     return (

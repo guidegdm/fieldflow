@@ -529,6 +529,18 @@ export const dynamoStore = {
     return (result.Items || []).map((item) => stripKeys(item))
   },
 
+  async getUserProfileByEmail(email: string) {
+    const result = await client.send(
+      new ScanCommand({
+        TableName: TABLE,
+        FilterExpression: "entityType = :type AND email = :email",
+        ExpressionAttributeValues: { ":type": "user", ":email": email },
+        Limit: 1,
+      })
+    )
+    return stripKeys((result.Items || [])[0])
+  },
+
   async putAuditEvent(recordId: string, event: Record<string, unknown>) {
     await client.send(
       new PutCommand({

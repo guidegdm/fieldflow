@@ -220,18 +220,18 @@ export default function WorkflowBuilder() {
   if (!workflow) return null
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] -m-8 bg-kivu-paper">
+    <div className="flex h-[calc(100vh-6.5rem)] min-h-[620px] flex-col overflow-hidden rounded-md border border-graph-line bg-kivu-paper">
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-6 py-3 border-b-2 border-volcanic-ash/30 bg-white">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col gap-3 border-b border-graph-line bg-white px-4 py-3 lg:flex-row lg:items-center lg:justify-between lg:px-5">
+        <div className="flex min-w-0 flex-wrap items-center gap-3">
           <button
             onClick={handleBack}
-            className="text-sm text-volcanic-ash hover:text-lake-deep transition-colors"
+            className="min-h-9 text-sm text-volcanic-ash transition-colors hover:text-lake-deep"
           >
             ← {t("workflow.builder", "Workflows")}
           </button>
-          <span className="text-volcanic-ash/30">|</span>
-          <span className="font-display text-xl text-lake-deep tracking-tight">
+          <span className="hidden text-volcanic-ash/30 sm:inline">|</span>
+          <span className="min-w-0 truncate font-display text-lg tracking-tight text-lake-deep sm:text-xl">
             {workflow.name}
           </span>
           <Badge variant={workflow.status === "published" ? "success" : "default"} size="sm">
@@ -239,9 +239,9 @@ export default function WorkflowBuilder() {
           </Badge>
           <span className="font-mono text-xs text-volcanic-ash">v{workflow.version}</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 lg:justify-end">
           {lastSaved && (
-            <span className="text-[10px] text-pencil/60">
+            <span className="w-full text-[10px] text-pencil/60 sm:w-auto">
               {t("admin.saved", "Sauvegardé")} {lastSaved.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
             </span>
           )}
@@ -271,11 +271,11 @@ export default function WorkflowBuilder() {
 
       {/* Publish Confirmation */}
       {publishConfirm && (
-        <div className="px-6 py-3 bg-warning-500/5 border-b border-warning-500/20 flex items-center justify-between">
+        <div className="flex flex-col gap-3 border-b border-warning-500/20 bg-warning-500/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-ink-black">
             {t("admin.publishConfirm", "Publier une nouvelle version ? Cette action créera une version immuable.")}
           </p>
-          <div className="flex gap-2">
+          <div className="flex shrink-0 gap-2">
             <Button variant="secondary" size="sm" onClick={() => setPublishConfirm(false)}>
               {t("common.cancel", "Annuler")}
             </Button>
@@ -430,12 +430,12 @@ export default function WorkflowBuilder() {
       </div>
 
       {/* Mode Tabs */}
-      <div className="border-t border-graph-line bg-white flex">
+      <div className="flex overflow-x-auto border-t border-graph-line bg-white">
         {MODE_TABS.map(({ key, label }) => (
           <button
             key={key}
             onClick={() => setActiveMode(key)}
-            className={`flex-1 py-3 text-sm font-medium transition-colors ${
+            className={`min-w-28 flex-1 px-3 py-3 text-sm font-medium transition-colors ${
               activeMode === key
                 ? "border-t-2 border-ink-blue text-ink-blue bg-ink-blue/5"
                 : "border-t-2 border-transparent text-pencil hover:text-ink-black"

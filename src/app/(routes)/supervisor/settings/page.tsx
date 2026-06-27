@@ -1,11 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
+import { setAppLanguage, type AppLanguage } from "@/lib/i18n/i18n"
 
 const LANGUAGES = [
   { value: "fr", label: "Français" },
@@ -27,9 +28,13 @@ export default function SupervisorSettingsPage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
+  useEffect(() => {
+    setLanguage(i18n.resolvedLanguage?.startsWith("en") ? "en" : "fr")
+  }, [i18n.resolvedLanguage])
+
   const handleSave = async () => {
     setSaving(true)
-    await i18n.changeLanguage(language)
+    await setAppLanguage(language as AppLanguage)
     await new Promise((r) => setTimeout(r, 600))
     setSaving(false)
     setSaved(true)
@@ -37,8 +42,8 @@ export default function SupervisorSettingsPage() {
   }
 
   return (
-    <div className="max-w-3xl space-y-8">
-      <h1 className="font-display text-4xl text-iodine-brown tracking-tight">{t("supervisor.settings", "Paramètres")}</h1>
+    <div className="mx-auto max-w-3xl space-y-6 sm:space-y-8">
+      <h1 className="font-display text-3xl tracking-tight text-iodine-brown sm:text-4xl">{t("supervisor.settings", "Paramètres")}</h1>
 
       <Card>
         <CardHeader>

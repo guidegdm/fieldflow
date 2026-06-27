@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useTranslation } from "react-i18next"
-import { UserPlus } from "lucide-react"
+import { ArrowRight, ShieldCheck, UserPlus } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -45,8 +45,7 @@ export default function SignUpPage() {
       })
 
       if (!res.ok) {
-        const data = await res.json()
-        setError(data.error || "Erreur d'inscription")
+        setError(t("signup.errors.default"))
         return
       }
 
@@ -54,17 +53,45 @@ export default function SignUpPage() {
       if (data.user && data.org) setAuthFromApi(data.user, data.org, data.orgs)
       router.push(data.redirect || "/auth/signin")
     } catch {
-      setError("Erreur réseau")
+      setError(t("signup.errors.network"))
     }
   }
 
   return (
-    <div className="min-h-screen bg-kivu-paper flex items-center justify-center px-4 py-10">
-      <div className="w-full max-w-sm">
-        <div className="bg-white border border-grid-line rounded-md p-8">
-          <h1 className="font-display text-2xl font-bold text-lake-deep tracking-tight">
-            {t("signup.title")}
-          </h1>
+    <div className="min-h-dvh bg-[#F8FAFC] px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto grid min-h-[calc(100dvh-4rem)] w-full max-w-6xl items-center gap-10 lg:grid-cols-[1fr_1fr]">
+        <section className="hidden lg:block">
+          <div className="max-w-xl">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-pencil">{t("signup.heroEyebrow")}</p>
+            <h1 className="mt-5 font-display text-6xl font-bold leading-none tracking-tight text-lake-deep">
+              {t("signup.heroTitle")}
+            </h1>
+            <p className="mt-6 max-w-md text-lg leading-8 text-soil">
+              {t("signup.heroBody")}
+            </p>
+          </div>
+        </section>
+
+        <main className="mx-auto w-full max-w-md">
+          <div className="mb-8 text-center lg:hidden">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-pencil">{t("signup.heroEyebrow")}</p>
+            <h1 className="mt-3 font-display text-4xl font-bold tracking-tight text-lake-deep">
+              {t("signup.heroTitle")}
+            </h1>
+          </div>
+
+          <div className="rounded-2xl border border-white/80 bg-white/90 p-5 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur sm:p-8">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="font-display text-2xl font-bold tracking-tight text-lake-deep">
+                  {t("signup.title")}
+                </h2>
+                <p className="mt-1 text-sm text-pencil">{t("signup.subtitle")}</p>
+              </div>
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink-blue/10 text-ink-blue">
+                <ShieldCheck size={18} />
+              </div>
+            </div>
 
           {error && (
             <div className="mt-4 rounded-md bg-danger-500/10 border border-danger-500/30 px-4 py-2 text-sm text-danger-500">
@@ -83,7 +110,7 @@ export default function SignUpPage() {
                 autoComplete="email"
                 {...register("email")}
                 aria-invalid={!!errors.email}
-                className="w-full h-10 px-3 rounded-md border border-graph-line text-sm focus:outline-none focus:ring-2 focus:ring-ink-blue focus:border-transparent"
+                className="h-11 w-full rounded-md border border-graph-line px-3 text-base focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ink-blue sm:text-sm"
               />
               {errors.email && <p className="mt-1 text-sm text-danger-500">{t("common.required")}</p>}
             </div>
@@ -97,7 +124,7 @@ export default function SignUpPage() {
                 autoComplete="name"
                 {...register("name")}
                 aria-invalid={!!errors.name}
-                className="w-full h-10 px-3 rounded-md border border-graph-line text-sm focus:outline-none focus:ring-2 focus:ring-ink-blue focus:border-transparent"
+                className="h-11 w-full rounded-md border border-graph-line px-3 text-base focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ink-blue sm:text-sm"
               />
               {errors.name && <p className="mt-1 text-sm text-danger-500">{t("common.required")}</p>}
             </div>
@@ -111,7 +138,7 @@ export default function SignUpPage() {
                 autoComplete="new-password"
                 {...register("password")}
                 aria-invalid={!!errors.password}
-                className="w-full h-10 px-3 rounded-md border border-graph-line text-sm focus:outline-none focus:ring-2 focus:ring-ink-blue focus:border-transparent"
+                className="h-11 w-full rounded-md border border-graph-line px-3 text-base focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ink-blue sm:text-sm"
               />
               {errors.password && <p className="mt-1 text-sm text-danger-500">{t("common.required")}</p>}
             </div>
@@ -127,7 +154,7 @@ export default function SignUpPage() {
                 type="text"
                 {...register("orgName")}
                 aria-invalid={!!errors.orgName}
-                className="w-full h-10 px-3 rounded-md border border-graph-line text-sm focus:outline-none focus:ring-2 focus:ring-ink-blue focus:border-transparent"
+                className="h-11 w-full rounded-md border border-graph-line px-3 text-base focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ink-blue sm:text-sm"
               />
               {errors.orgName && <p className="mt-1 text-sm text-danger-500">{t("common.required")}</p>}
             </div>
@@ -151,20 +178,36 @@ export default function SignUpPage() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full h-10 rounded-md bg-ink-blue text-white font-medium text-sm hover:bg-ink-blue/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-ink-blue text-sm font-semibold text-white transition-colors hover:bg-ink-blue/90 disabled:opacity-60"
             >
               <UserPlus size={16} />
-              {isSubmitting ? "Inscription..." : t("signup.submit")}
+              {isSubmitting ? t("signup.submitting") : t("signup.submit")}
             </button>
           </form>
 
+          <div className="my-6 flex items-center gap-3">
+            <div className="h-px flex-1 bg-graph-line" />
+            <span className="text-xs font-medium text-pencil">{t("common.or", "or")}</span>
+            <div className="h-px flex-1 bg-graph-line" />
+          </div>
+
+          <button
+            type="button"
+            onClick={() => { window.location.href = "/api/auth/oauth/google?mode=signup" }}
+            className="flex h-11 w-full items-center justify-center rounded-md border border-graph-line text-sm font-semibold text-ink-black transition-colors hover:bg-graph-paper"
+          >
+            {t("signup.google")}
+          </button>
+
           <p className="mt-6 text-center text-xs text-pencil">
             {t("signup.hasAccount")}{" "}
-            <Link href="/auth/signin" className="text-ink-blue hover:underline">
+            <Link href="/auth/signin" className="inline-flex items-center gap-1 font-semibold text-ink-blue hover:underline">
               {t("signup.signin")}
+              <ArrowRight size={12} />
             </Link>
           </p>
         </div>
+        </main>
       </div>
     </div>
   )

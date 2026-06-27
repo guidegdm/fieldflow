@@ -5,6 +5,7 @@ import { useSyncStore } from "@/stores/syncStore"
 import { useStorageQuota } from "@/hooks/useStorageQuota"
 import { SyncButton } from "@/components/sync/SyncButton"
 import { Wifi, WifiOff, Database, AlertTriangle, CheckCircle2, Clock } from "lucide-react"
+import { useAuthStore } from "@/stores/authStore"
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return "0 o"
@@ -20,6 +21,7 @@ function formatTime(ts: number | null): string {
 
 export default function FieldWorkerStatus() {
   const { isOnline, isSyncing, pendingCount, lastSyncAt, conflicts } = useSyncStore()
+  const user = useAuthStore((s) => s.user)
   const quota = useStorageQuota()
   const [recordCount, setRecordCount] = useState<number | null>(null)
 
@@ -28,7 +30,7 @@ export default function FieldWorkerStatus() {
     async function load() {
       try {
         const { db } = await import("@/lib/db/indexeddb")
-        const all = await db.getAllRecords()
+        const all = user?.orgId ? await db.getAllRecordsForOrg(user.orgId) : await db.getAllRecords()
         if (!cancelled) setRecordCount(all.length)
       } catch {
         if (!cancelled) setRecordCount(0)
@@ -38,7 +40,7 @@ export default function FieldWorkerStatus() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [user?.orgId])
 
   return (
     <div className="py-4 space-y-6">

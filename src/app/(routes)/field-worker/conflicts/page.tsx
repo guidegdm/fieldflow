@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useTranslation } from "react-i18next"
 import { AlertTriangle, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -9,22 +9,28 @@ import { apiPost } from "@/lib/api/client"
 import { ConflictMerge, type ConflictField } from "@/components/conflicts/ConflictMerge"
 import type { ConflictRecord } from "@/types/sync"
 import Link from "next/link"
+import { useAuthStore } from "@/stores/authStore"
 
 export default function FieldWorkerConflicts() {
   const { t } = useTranslation()
+  const user = useAuthStore((s) => s.user)
   const [conflictFields, setConflictFields] = useState<ConflictField[]>([])
   const [loading, setLoading] = useState(true)
   const [recordId, setRecordId] = useState<string | null>(null)
-  const loaded = useRef(false)
 
   useEffect(() => {
-    if (loaded.current) return
-    loaded.current = true
+    let cancelled = false
+    setLoading(true)
     async function load() {
       try {
         const { db } = await import("@/lib/db/indexeddb")
-        const conflicts: ConflictRecord[] = await db.getConflicts()
-        const open = conflicts.filter(c => c.status === "OPEN")
+        const [conflicts, records] = await Promise.all([
+          db.getConflicts(),
+          user?.orgId ? db.getAllRecordsForOrg(user.orgId) : db.getAllRecords(),
+        ])
+        if (cancelled) return
+        const recordIds = new Set(records.map((record) => record.id))
+        const open: ConflictRecord[] = conflicts.filter(c => c.status === "OPEN" && recordIds.has(c.record_id))
         if (open.length > 0) {
           setRecordId(open[0].record_id)
           setConflictFields(open.map(c => ({
@@ -34,12 +40,16 @@ export default function FieldWorkerConflicts() {
             remote: String(c.value_b ?? ""),
             autoResolved: false,
           })))
+        } else {
+          setRecordId(null)
+          setConflictFields([])
         }
       } catch { /* DB not ready */ }
-      setLoading(false)
+      if (!cancelled) setLoading(false)
     }
     load()
-  }, [])
+    return () => { cancelled = true }
+  }, [user?.orgId])
 
   const handleResolve = useCallback(async (resolutions: Record<string, { choice: string; value: string }>, rationale: string) => {
     try {

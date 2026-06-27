@@ -13,6 +13,20 @@ interface FieldFlowTypes {
 
 let instance: IDBPDatabase<FieldFlowTypes> | null = null
 
+function defaultDeviceState(): DeviceState {
+  return {
+    key: "current",
+    device_id: "",
+    last_seq: 0,
+    last_sync_at: null,
+    pending_count: 0,
+    version: 1,
+    user_id: "",
+    workflow_id: "",
+    workflow_version: 1,
+  }
+}
+
 async function getDB(): Promise<IDBPDatabase<FieldFlowTypes>> {
   if (instance) return instance
   instance = await openDB<FieldFlowTypes>("fieldflow", 1, {
@@ -93,6 +107,21 @@ export const db = {
     return d.getAll("records")
   },
 
+  async getAllRecordsForOrg(orgId: string): Promise<RecordData[]> {
+    const d = await getDB()
+    const all = await d.getAll("records")
+    return all.filter((record) => record.orgId === orgId)
+  },
+
+  async replaceRecordsForOrg(orgId: string, records: RecordData[]) {
+    const d = await getDB()
+    const tx = d.transaction("records", "readwrite")
+    const existing = await tx.store.getAll()
+    await Promise.all(existing.filter((record) => record.orgId === orgId).map((record) => tx.store.delete(record.id)))
+    await Promise.all(records.map((record) => tx.store.put(record)))
+    await tx.done
+  },
+
   async updateRecordStatus(id: string, status: RecordStatus, syncStatus?: SyncStatus) {
     const d = await getDB()
     const r = await d.get("records", id)
@@ -119,15 +148,30 @@ export const db = {
     return d.getAll("workflows")
   },
 
+  async getAllWorkflowsForOrg(orgId: string): Promise<WorkflowDefinition[]> {
+    const d = await getDB()
+    const all = await d.getAll("workflows")
+    return all.filter((workflow) => workflow.orgId === orgId)
+  },
+
+  async replaceWorkflowsForOrg(orgId: string, workflows: WorkflowDefinition[]) {
+    const d = await getDB()
+    const tx = d.transaction("workflows", "readwrite")
+    const existing = await tx.store.getAll()
+    await Promise.all(existing.filter((workflow) => workflow.orgId === orgId).map((workflow) => tx.store.delete(workflow.id)))
+    await Promise.all(workflows.map((workflow) => tx.store.put(workflow)))
+    await tx.done
+  },
+
   async getDeviceState(): Promise<DeviceState> {
     const d = await getDB()
     const state = await d.get("device_state", "current")
-    return state || { key: "current", device_id: "", last_seq: 0, last_sync_at: null, pending_count: 0, version: 1, user_id: "", workflow_id: "", workflow_version: 1 }
+    return state || defaultDeviceState()
   },
 
   async updateDeviceState(partial: Partial<DeviceState>) {
     const d = await getDB()
-    const current = await d.get("device_state", "current") || { key: "current" } as DeviceState
+    const current = await d.get("device_state", "current") || defaultDeviceState()
     const updated = { ...current, ...partial, key: "current" }
     await d.put("device_state", updated)
   },
@@ -140,6 +184,16 @@ export const db = {
   async getConflicts(): Promise<ConflictRecord[]> {
     const d = await getDB()
     return d.getAll("conflicts")
+  },
+
+  async replaceConflictsForRecords(recordIds: string[], conflicts: ConflictRecord[]) {
+    const d = await getDB()
+    const ids = new Set(recordIds)
+    const tx = d.transaction("conflicts", "readwrite")
+    const existing = await tx.store.getAll()
+    await Promise.all(existing.filter((conflict) => ids.has(conflict.record_id)).map((conflict) => tx.store.delete(conflict.id)))
+    await Promise.all(conflicts.map((conflict) => tx.store.put(conflict)))
+    await tx.done
   },
 
   async resolveConflict(id: string, resolution: ConflictRecord["resolution"], manualValue?: unknown, rationale?: string) {

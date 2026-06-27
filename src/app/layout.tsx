@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import "@/styles/globals.css"
 import { ClientLayout } from "@/components/layout/ClientLayout"
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://fieldflow.vercel.app"
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://fieldflow-tau.vercel.app"
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

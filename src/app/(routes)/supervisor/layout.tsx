@@ -1,20 +1,12 @@
 "use client"
 
-import { AppShell } from "@/components/layout/AppShell"
-import { useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { useAuthStore } from "@/stores/authStore"
+import { AppShell, RouteHydrationFallback } from "@/components/layout/AppShell"
+import { useRequireSession } from "@/hooks/useRequireSession"
 
 export default function SupervisorLayout({ children }: { children: React.ReactNode }) {
-  const user = useAuthStore((s) => s.user)
-  const hasHydrated = useAuthStore((s) => s.hasHydrated)
-  const router = useRouter()
+  const { ready } = useRequireSession(["supervisor"])
 
-  useEffect(() => {
-    if (hasHydrated && (!user || user.role !== "supervisor")) router.push("/")
-  }, [hasHydrated, user, router])
-
-  if (!hasHydrated || !user || user.role !== "supervisor") return null
+  if (!ready) return <RouteHydrationFallback />
 
   return <AppShell role="supervisor">{children}</AppShell>
 }

@@ -22,7 +22,15 @@ function getCognitoClient() {
 
 export async function POST(request: NextRequest) {
   try {
-    const rate = checkRateLimit(request, "auth-login", 5, 60_000)
+    const parsed = loginSchema.safeParse(await request.json())
+    if (!parsed.success) return NextResponse.json({ error: "Requête invalide" }, { status: 400 })
+
+    const { email, password, demoOrgKey } = parsed.data
+    const demoUser = DEMO_USERS.find((u) => u.email === email)
+
+    const rate = demoUser
+      ? checkRateLimit(request, "auth-demo-login", 30, 60_000)
+      : checkRateLimit(request, "auth-login", 5, 60_000)
     if (!rate.allowed) {
       return NextResponse.json(
         { error: "Trop de tentatives. Réessayez plus tard." },
@@ -30,12 +38,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const parsed = loginSchema.safeParse(await request.json())
-    if (!parsed.success) return NextResponse.json({ error: "Requête invalide" }, { status: 400 })
-
-    const { email, password, demoOrgKey } = parsed.data
-
-    const demoUser = DEMO_USERS.find((u) => u.email === email)
     if (demoUser) {
       if (demoOrgKey && !ORG_MEMBERSHIPS.some((membership) => membership.userId === demoUser.id && membership.orgKey === demoOrgKey)) {
         return NextResponse.json({ error: "Organisation demo interdite" }, { status: 403 })

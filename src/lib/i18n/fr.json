@@ -4,6 +4,26 @@
     "subtitle": "Plateforme humanitaire opérationnelle",
     "tagline": "Conçu pour les environnements à connectivité limitée"
   },
+  "language": {
+    "select": "Langue",
+    "english": "Anglais",
+    "french": "Français"
+  },
+  "nav": {
+    "home": "Accueil",
+    "search": "Rechercher",
+    "newRecord": "Nouveau",
+    "conflicts": "Conflits",
+    "status": "Statut",
+    "dashboard": "Tableau de bord",
+    "reviewQueue": "Examen",
+    "inventory": "Inventaire",
+    "settings": "Paramètres",
+    "workflows": "Workflows",
+    "users": "Utilisateurs",
+    "engineering": "Engineering",
+    "admin": "Admin"
+  },
   "common": {
     "save": "Enregistrer",
     "cancel": "Annuler",
@@ -24,7 +44,8 @@
     "pendingSync": "En attente de sync",
     "noData": "Aucune donnée",
     "required": "Obligatoire",
-    "close": "Fermer"
+    "close": "Fermer",
+    "or": "ou"
   },
   "auth": {
     "login": "Connexion",
@@ -34,10 +55,16 @@
     "demo_accounts": "Comptes de démonstration",
     "demo_disclaimer": "Démo hackathon — Aucune donnée réelle"
   },
+  "demo": {
+    "creating": "Préparation de la démo hors ligne...",
+    "loginFailed": "La démo n'a pas pu démarrer. Réessayez."
+  },
   "roles": {
     "field_worker": "Agent terrain",
     "supervisor": "Superviseur",
-    "org_admin": "Administrateur"
+    "org_admin": "Administrateur",
+    "admin": "Administrateur",
+    "engineering": "Engineering"
   },
   "records": {
     "newRegistration": "Nouvelle inscription",
@@ -87,6 +114,7 @@
   "sync": {
     "pendingCount": "{{count}} modification(s) en attente",
     "syncNow": "Synchroniser maintenant",
+    "syncing": "Synchronisation en cours",
     "syncFailed": "Échec de synchronisation"
   },
   "inventory": {
@@ -156,6 +184,13 @@
     "status": "Statut",
     "actions": "Actions",
     "settings": "Paramètres",
+    "saved": "Enregistré",
+    "stateLabel": "Libellé",
+    "aiPrompt": "Décrivez le workflow dont vous avez besoin...",
+    "generate": "Générer",
+    "unsavedConfirm": "Des modifications non enregistrées seront perdues. Quitter quand même ?",
+    "publishConfirm": "Publier une nouvelle version ? Cette action créera une version immuable.",
+    "publishedOn": "Publié le",
     "orgSettings": "Paramètres de l'organisation",
     "orgName": "Nom de l'organisation",
     "orgSector": "Secteur d'activité",
@@ -169,6 +204,13 @@
     "lastModified": "Dernière modification"
   },
   "supervisor": {
+    "settings": "Paramètres",
+    "preferences": "Préférences",
+    "language": "Langue",
+    "syncInterval": "Intervalle de synchronisation",
+    "offlineMode": "Mode hors ligne prioritaire",
+    "about": "À propos",
+    "buildInfo": "Build 2026-06-27 — Hackathon H0 2026",
     "approve": "Approuver",
     "reject": "Rejeter",
     "requestChanges": "Demander des modifications",
@@ -243,6 +285,8 @@
     "vulnerabilityLabel": "Niveau de vulnérabilité",
     "savedLocally": "Enregistré localement",
     "successMessage": "Les données ont été sauvegardées sur cet appareil",
+    "sessionRequired": "La session est encore en chargement. Réessayez dans un instant.",
+    "saveFailed": "Impossible d'enregistrer cette fiche sur l'appareil.",
     "shelter_tente": "Tente",
     "shelter_abri": "Abri de fortune",
     "shelter_maison": "Maison",
@@ -293,31 +337,82 @@
     "footer": "Construit pour les opérations humanitaires au Kivu"
   },
   "signin": {
+    "heroEyebrow": "FieldFlow",
+    "heroTitle": "Le terrain continue.",
+    "heroBody": "Connectez-vous à votre espace de travail et poursuivez l'opération depuis n'importe quel appareil, même quand le réseau devient instable.",
     "title": "Connexion",
+    "subtitle": "Accédez à votre espace terrain sécurisé.",
     "email": "Adresse email",
     "password": "Mot de passe",
     "submit": "Se connecter",
+    "submitting": "Connexion...",
     "forgotPassword": "Mot de passe oublié ?",
     "google": "Continuer avec Google",
     "passkey": "Connexion sécurisée",
+    "passkeyComingSoon": "La connexion par passkey arrive bientôt.",
     "noAccount": "Pas encore de compte ?",
-    "createAccount": "Créer un compte"
+    "createAccount": "Créer un compte",
+    "otp": {
+      "email": "Code email",
+      "sms": "Code SMS",
+      "authenticator": "Code authenticator",
+      "verifying": "Vérification...",
+      "verify": "Vérifier",
+      "back": "Retour"
+    },
+    "errors": {
+      "default": "Impossible de se connecter",
+      "network": "Erreur réseau",
+      "invalidCode": "Code invalide"
+    }
   },
   "signup": {
+    "heroEyebrow": "FieldFlow",
+    "heroTitle": "Commencez là où le travail se fait.",
+    "heroBody": "Créez un espace pour des équipes qui ne peuvent pas s'arrêter simplement parce que le réseau disparaît.",
     "title": "Créer un compte",
+    "subtitle": "Lancez un espace sécurisé en une minute.",
     "email": "Adresse email",
     "name": "Nom complet",
     "password": "Mot de passe",
     "orgName": "Nom de l'organisation",
     "orgSector": "Secteur d'activité",
     "submit": "Créer mon organisation",
+    "submitting": "Création...",
+    "google": "Continuer avec Google",
     "hasAccount": "Déjà un compte ?",
     "signin": "Se connecter",
+    "errors": {
+      "default": "Impossible de créer le compte",
+      "network": "Erreur réseau"
+    },
     "sectors": {
       "humanitaire": "Humanitaire",
       "sante": "Santé",
       "agriculture": "Agriculture",
       "education": "Éducation"
     }
+  },
+  "setup": {
+    "heroEyebrow": "FieldFlow",
+    "heroTitle": "Une dernière étape.",
+    "heroBody": "Google a confirmé l'email. Nommez maintenant l'espace que votre équipe utilisera sur le terrain.",
+    "title": "Terminer la configuration",
+    "subtitle": "Cette étape lie votre identité Google vérifiée à une organisation FieldFlow.",
+    "signedInAs": "Connecté avec {{email}}",
+    "orgName": "Nom de l'organisation",
+    "orgSector": "Secteur d'activité",
+    "submit": "Entrer dans FieldFlow",
+    "submitting": "Création de l'espace...",
+    "errors": {
+      "default": "Impossible de terminer la configuration",
+      "network": "Erreur réseau",
+      "missing": "La session de configuration a expiré. Continuez avec Google à nouveau."
+    }
+  },
+  "publicHeader": {
+    "demo": "Démo",
+    "signin": "Connexion",
+    "start": "Commencer"
   }
 }

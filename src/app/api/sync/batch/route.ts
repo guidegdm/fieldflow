@@ -115,8 +115,8 @@ export async function POST(request: NextRequest) {
         const record: RecordData = {
           id: op.record_id || crypto.randomUUID(),
           workflowId: op.workflow_id,
-          workflowVersion: 1,
-          entityKey: "household",
+          workflowVersion: workflow.version,
+          entityKey: workflow.entity.key,
           status: "pending_sync",
           syncStatus: "pending",
           state: "draft",

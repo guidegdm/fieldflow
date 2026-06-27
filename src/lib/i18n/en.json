@@ -4,6 +4,26 @@
     "subtitle": "Operational humanitarian platform",
     "tagline": "Built for limited-connectivity environments"
   },
+  "language": {
+    "select": "Language",
+    "english": "English",
+    "french": "French"
+  },
+  "nav": {
+    "home": "Home",
+    "search": "Search",
+    "newRecord": "New",
+    "conflicts": "Conflicts",
+    "status": "Status",
+    "dashboard": "Dashboard",
+    "reviewQueue": "Review",
+    "inventory": "Inventory",
+    "settings": "Settings",
+    "workflows": "Workflows",
+    "users": "Users",
+    "engineering": "Engineering",
+    "admin": "Admin"
+  },
   "common": {
     "save": "Save",
     "cancel": "Cancel",
@@ -24,7 +44,8 @@
     "pendingSync": "Pending sync",
     "noData": "No data",
     "required": "Required",
-    "close": "Close"
+    "close": "Close",
+    "or": "or"
   },
   "auth": {
     "login": "Login",
@@ -34,10 +55,16 @@
     "demo_accounts": "Demo accounts",
     "demo_disclaimer": "Hackathon demo — No real data"
   },
+  "demo": {
+    "creating": "Preparing offline demo...",
+    "loginFailed": "Demo login failed. Please try again."
+  },
   "roles": {
     "field_worker": "Field Agent",
     "supervisor": "Supervisor",
-    "org_admin": "Administrator"
+    "org_admin": "Administrator",
+    "admin": "Administrator",
+    "engineering": "Engineering"
   },
   "records": {
     "newRegistration": "New Registration",
@@ -87,6 +114,7 @@
   "sync": {
     "pendingCount": "{{count}} pending change(s)",
     "syncNow": "Sync Now",
+    "syncing": "Syncing",
     "syncFailed": "Sync Failed"
   },
   "inventory": {
@@ -156,6 +184,13 @@
     "status": "Status",
     "actions": "Actions",
     "settings": "Settings",
+    "saved": "Saved",
+    "stateLabel": "Label",
+    "aiPrompt": "Describe the workflow you need...",
+    "generate": "Generate",
+    "unsavedConfirm": "Unsaved changes will be lost. Leave anyway?",
+    "publishConfirm": "Publish a new version? This creates an immutable workflow version.",
+    "publishedOn": "Published on",
     "orgSettings": "Organization settings",
     "orgName": "Organization name",
     "orgSector": "Sector",
@@ -169,6 +204,13 @@
     "lastModified": "Last modified"
   },
   "supervisor": {
+    "settings": "Settings",
+    "preferences": "Preferences",
+    "language": "Language",
+    "syncInterval": "Sync interval",
+    "offlineMode": "Offline-first mode",
+    "about": "About",
+    "buildInfo": "Build 2026-06-27 — H0 Hackathon 2026",
     "approve": "Approve",
     "reject": "Reject",
     "requestChanges": "Request Changes",
@@ -243,6 +285,8 @@
     "vulnerabilityLabel": "Vulnerability Level",
     "savedLocally": "Saved Locally",
     "successMessage": "Data has been saved on this device",
+    "sessionRequired": "Session is still loading. Please try again in a moment.",
+    "saveFailed": "Could not save this record on the device.",
     "shelter_tente": "Tent",
     "shelter_abri": "Shelter",
     "shelter_maison": "House",
@@ -293,31 +337,82 @@
     "footer": "Built for humanitarian operations in Kivu"
   },
   "signin": {
+    "heroEyebrow": "FieldFlow",
+    "heroTitle": "Keep the field moving.",
+    "heroBody": "Sign in to your workspace and continue the operation from any device, even when the network is unreliable.",
     "title": "Sign in",
+    "subtitle": "Access your secure field workspace.",
     "email": "Email address",
     "password": "Password",
     "submit": "Sign in",
+    "submitting": "Signing in...",
     "forgotPassword": "Forgot password?",
     "google": "Continue with Google",
     "passkey": "Secure login",
+    "passkeyComingSoon": "Passkey login is coming soon.",
     "noAccount": "No account yet?",
-    "createAccount": "Create an account"
+    "createAccount": "Create an account",
+    "otp": {
+      "email": "Email code",
+      "sms": "SMS code",
+      "authenticator": "Authenticator code",
+      "verifying": "Verifying...",
+      "verify": "Verify",
+      "back": "Back"
+    },
+    "errors": {
+      "default": "Unable to sign in",
+      "network": "Network error",
+      "invalidCode": "Invalid code"
+    }
   },
   "signup": {
+    "heroEyebrow": "FieldFlow",
+    "heroTitle": "Start where the work is.",
+    "heroBody": "Create a workspace for teams that cannot pause just because the network disappears.",
     "title": "Create an account",
+    "subtitle": "Launch a secure workspace in a minute.",
     "email": "Email address",
     "name": "Full name",
     "password": "Password",
     "orgName": "Organization name",
     "orgSector": "Sector",
     "submit": "Create my organization",
+    "submitting": "Creating organization...",
+    "google": "Continue with Google",
     "hasAccount": "Already have an account?",
     "signin": "Sign in",
+    "errors": {
+      "default": "Unable to create the account",
+      "network": "Network error"
+    },
     "sectors": {
       "humanitaire": "Humanitarian",
       "sante": "Health",
       "agriculture": "Agriculture",
       "education": "Education"
     }
+  },
+  "setup": {
+    "heroEyebrow": "FieldFlow",
+    "heroTitle": "One last step.",
+    "heroBody": "Google confirmed the email. Now name the workspace your team will use in the field.",
+    "title": "Finish workspace setup",
+    "subtitle": "This links your verified Google identity to a FieldFlow organization.",
+    "signedInAs": "Signed in as {{email}}",
+    "orgName": "Organization name",
+    "orgSector": "Sector",
+    "submit": "Enter FieldFlow",
+    "submitting": "Creating workspace...",
+    "errors": {
+      "default": "Unable to finish setup",
+      "network": "Network error",
+      "missing": "Setup session expired. Please continue with Google again."
+    }
+  },
+  "publicHeader": {
+    "demo": "Demo",
+    "signin": "Sign in",
+    "start": "Start"
   }
 }

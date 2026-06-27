@@ -16,12 +16,13 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useTranslation } from "react-i18next"
 
 interface TabBarProps {
   role: "admin" | "supervisor" | "field_worker" | "engineering"
 }
 
-type TabItem = { label: string; href: string; icon: typeof Home }
+type TabItem = { labelKey: string; fallback: string; href: string; icon: typeof Home }
 
 type TabConfig = {
   tabs: TabItem[]
@@ -33,48 +34,49 @@ type TabConfig = {
 const configByRole: Record<string, TabConfig> = {
   field_worker: {
     tabs: [
-      { label: "Accueil", href: "/field-worker/home", icon: Home },
-      { label: "Rechercher", href: "/field-worker/search", icon: Search },
-      { label: "Statut", href: "/field-worker/status", icon: Activity },
+      { labelKey: "nav.home", fallback: "Accueil", href: "/field-worker/home", icon: Home },
+      { labelKey: "nav.search", fallback: "Rechercher", href: "/field-worker/search", icon: Search },
+      { labelKey: "nav.status", fallback: "Statut", href: "/field-worker/status", icon: Activity },
     ],
     plusHref: "/field-worker/register",
-    plusLabel: "Nouvel enregistrement",
+    plusLabel: "nav.newRecord",
     plusIndex: 2,
   },
   supervisor: {
     tabs: [
-      { label: "File d'attente", href: "/supervisor/review", icon: Inbox },
-      { label: "Conflits", href: "/supervisor/conflicts", icon: AlertTriangle },
-      { label: "Inventaire", href: "/supervisor/inventory", icon: Package },
-      { label: "Paramètres", href: "/supervisor/settings", icon: Settings },
+      { labelKey: "nav.reviewQueue", fallback: "File d'attente", href: "/supervisor/review", icon: Inbox },
+      { labelKey: "nav.conflicts", fallback: "Conflits", href: "/supervisor/conflicts", icon: AlertTriangle },
+      { labelKey: "nav.inventory", fallback: "Inventaire", href: "/supervisor/inventory", icon: Package },
+      { labelKey: "nav.settings", fallback: "Paramètres", href: "/supervisor/settings", icon: Settings },
     ],
     plusHref: "/supervisor/review",
-    plusLabel: "Nouveau",
+    plusLabel: "nav.reviewQueue",
     plusIndex: 3,
   },
   admin: {
     tabs: [
-      { label: "Tableau de bord", href: "/admin/dashboard", icon: LayoutDashboard },
-      { label: "Workflows", href: "/admin/workflows", icon: Workflow },
-      { label: "Utilisateurs", href: "/admin/users", icon: Users },
-      { label: "Paramètres", href: "/admin/settings", icon: Settings },
+      { labelKey: "nav.dashboard", fallback: "Tableau de bord", href: "/admin/dashboard", icon: LayoutDashboard },
+      { labelKey: "nav.workflows", fallback: "Workflows", href: "/admin/workflows", icon: Workflow },
+      { labelKey: "nav.users", fallback: "Utilisateurs", href: "/admin/users", icon: Users },
+      { labelKey: "nav.settings", fallback: "Paramètres", href: "/admin/settings", icon: Settings },
     ],
     plusHref: "/admin/workflows/new",
-    plusLabel: "Nouveau workflow",
+    plusLabel: "admin.newWorkflow",
     plusIndex: 3,
   },
   engineering: {
     tabs: [
-      { label: "Engineering", href: "/engineering", icon: Activity },
-      { label: "Admin", href: "/admin/dashboard", icon: LayoutDashboard },
+      { labelKey: "nav.engineering", fallback: "Engineering", href: "/engineering", icon: Activity },
+      { labelKey: "nav.admin", fallback: "Admin", href: "/admin/dashboard", icon: LayoutDashboard },
     ],
     plusHref: "/engineering",
-    plusLabel: "Engineering",
+    plusLabel: "nav.engineering",
     plusIndex: 1,
   },
 }
 
 export function TabBar({ role }: TabBarProps) {
+  const { t } = useTranslation()
   const pathname = usePathname()
   const config = configByRole[role] ?? configByRole.field_worker
   const { tabs, plusHref, plusLabel, plusIndex } = config
@@ -94,7 +96,7 @@ export function TabBar({ role }: TabBarProps) {
         <div className="flex items-center justify-center w-20 shrink-0">
           <Link
             href={plusHref}
-            aria-label={plusLabel}
+            aria-label={t(plusLabel)}
             className="w-14 h-14 -mt-5 rounded-full bg-ink-blue text-white flex items-center justify-center border-4 border-white shadow-md hover:bg-ink-blue/90 transition-colors active:scale-95"
           >
             <Plus size={24} strokeWidth={2.5} />
@@ -117,6 +119,7 @@ function TabLink({
   tab: TabItem
   active: boolean
 }) {
+  const { t } = useTranslation()
   const Icon = tab.icon
   return (
     <Link
@@ -129,7 +132,7 @@ function TabLink({
     >
       <Icon size={20} className={cn(active ? "text-ink-blue" : "text-pencil")} />
       <span className={cn("text-[10px] font-medium", active ? "text-ink-blue" : "text-pencil")}>
-        {tab.label}
+        {t(tab.labelKey, tab.fallback)}
       </span>
     </Link>
   )

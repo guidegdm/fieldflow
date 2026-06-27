@@ -117,7 +117,7 @@ export default function EngineeringPage() {
   }
 
   return (
-    <div className="min-h-screen bg-concrete-dark p-6">
+    <div className="min-h-screen bg-concrete-dark px-4 py-6 sm:p-6">
       <div className="mx-auto max-w-7xl">
         <h1 className="mb-8 font-display text-3xl text-starlight">Engineering</h1>
 
@@ -144,14 +144,14 @@ export default function EngineeringPage() {
           </TabsList>
 
           <TabsContent value="sync" className="mt-6">
-            <div className="mb-8 flex gap-4">
+            <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
               {pillConfig.map((p) => {
                 const cfg = statusConfig[p.status]
                 return (
                   <div
                     key={p.status}
                     className={cn(
-                      "flex flex-col items-center border-2 px-6 py-3",
+                      "flex min-w-0 flex-col items-center border-2 px-3 py-3 text-center sm:px-6",
                       p.status === "pending" && "border-warning-500 text-warning-500",
                       p.status === "sending" && "border-info-500 text-info-500",
                       p.status === "acked" && "border-success-500 text-success-500",
@@ -159,7 +159,7 @@ export default function EngineeringPage() {
                     )}
                   >
                     <span className="font-mono text-2xl font-bold">{p.count}</span>
-                    <span className="mt-1 font-mono text-xs uppercase tracking-wide">
+                    <span className="mt-1 max-w-full break-words font-mono text-[10px] uppercase tracking-wide sm:text-xs">
                       {t(cfg.label)}
                     </span>
                   </div>
@@ -187,7 +187,7 @@ export default function EngineeringPage() {
           </TabsContent>
 
           <TabsContent value="ledger" className="mt-6">
-            <div className="border-2 border-concrete">
+            <div className="overflow-x-auto border-2 border-concrete">
               <Table>
                 <TableHeader>
                   <TableRow className="border-b-2 border-concrete hover:bg-transparent">
@@ -240,7 +240,7 @@ export default function EngineeringPage() {
           </TabsContent>
 
           <TabsContent value="appareils" className="mt-6">
-            <div className="border-2 border-concrete">
+            <div className="overflow-x-auto border-2 border-concrete">
               <Table>
                 <TableHeader>
                   <TableRow className="border-b-2 border-concrete hover:bg-transparent">

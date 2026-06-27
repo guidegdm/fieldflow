@@ -132,6 +132,10 @@ class Store {
     return Array.from(this.userProfiles.values()).filter((p) => p.orgId === orgId)
   }
   getUserProfile(userId: string) { return this.userProfiles.get(userId) }
+  async getUserProfileByEmailAsync(email: string) {
+    if (DYNAMODB_ENABLED) return (await getDynamo())?.getUserProfileByEmail(email)
+    return Array.from(this.userProfiles.values()).find((p) => p.email === email)
+  }
 
   putDevice(d: DeviceState) { this.devices.set(d.device_id, d) }
   getDevice(deviceId: string) { return this.devices.get(deviceId) }

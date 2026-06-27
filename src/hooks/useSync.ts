@@ -13,12 +13,13 @@ export function useSync() {
     try {
       const pending = await db.getPendingMutations()
       setPendingCount(pending.length)
-      const result = await retryWithBackoff(() => fullSync())
+      const result = await retryWithBackoff(() => fullSync(), 2, 600, 2500)
       setConflicts(await db.getConflicts())
       setLastSync(Date.now())
       setPendingCount(Math.max(0, pending.length - result.acked.length))
     } catch {
       setLastSync(Date.now())
+      setPendingCount((await db.getPendingMutations()).length)
     } finally {
       setSyncing(false)
     }

@@ -55,10 +55,21 @@ export default function SignInPage() {
           </div>
 
           <div className="mt-6 space-y-3">
-            <button className="w-full h-10 rounded-md border border-gray-300 text-sm font-medium text-ink-black hover:bg-gray-50 transition-colors">
+            <button
+              onClick={() => {
+                const domain = "fieldflow-hackathon.auth.us-east-1.amazoncognito.com"
+                const clientId = "7r60o7fnej4vitoksrp6e93n9g"
+                const redirectUri = window.location.origin + "/auth/callback"
+                window.location.href = `https://${domain}/oauth2/authorize?identity_provider=Google&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=CODE&client_id=${clientId}&scope=email+openid+profile`
+              }}
+              className="w-full h-10 rounded-md border border-gray-300 text-sm font-medium text-ink-black hover:bg-gray-50 transition-colors"
+            >
               {t("signin.google")}
             </button>
-            <button className="w-full h-10 rounded-md border border-gray-300 text-sm font-medium text-ink-black hover:bg-gray-50 transition-colors">
+            <button
+              onClick={() => alert("Passkey coming soon")}
+              className="w-full h-10 rounded-md border border-gray-300 text-sm font-medium text-ink-black hover:bg-gray-50 transition-colors"
+            >
               {t("signin.passkey")}
             </button>
           </div>

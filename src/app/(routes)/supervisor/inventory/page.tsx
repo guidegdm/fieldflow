@@ -75,7 +75,7 @@ export default function SupervisorInventory() {
     <div className="space-y-6">
       <div>
         <h1 className="font-display text-3xl text-iodine-brown tracking-tight">{t("dashboard.inventory")}</h1>
-        <p className="text-sm text-chart-gray mt-1">{t("inventory.available")} · {items.reduce((s, i) => s + i.available, 0)} {t("common.search").toLowerCase()}</p>
+        <p className="text-sm text-chart-gray mt-1">{items.reduce((s, i) => s + i.available, 0)} {t("inventory.unitsAvailable")}</p>
       </div>
 
       {feedback && (

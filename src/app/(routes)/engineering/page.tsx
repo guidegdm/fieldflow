@@ -118,10 +118,10 @@ export default function EngineeringPage() {
   }, [])
 
   const statusConfig: Record<OpStatus, { label: string; ring: string; bg: string }> = {
-    pending: { label: "syncOps.pending", ring: "ring-[#F59E0B]", bg: "bg-[#F59E0B]" },
-    sending: { label: "syncOps.sending", ring: "ring-blue-500", bg: "bg-blue-500" },
-    acked: { label: "syncOps.acked", ring: "ring-success-500", bg: "bg-success-500" },
-    conflict: { label: "syncOps.conflict", ring: "ring-rebar", bg: "bg-rebar" },
+    pending: { label: "engineering.syncOps.pending", ring: "ring-[#F59E0B]", bg: "bg-[#F59E0B]" },
+    sending: { label: "engineering.syncOps.sending", ring: "ring-blue-500", bg: "bg-blue-500" },
+    acked: { label: "engineering.syncOps.acked", ring: "ring-success-500", bg: "bg-success-500" },
+    conflict: { label: "engineering.syncOps.conflict", ring: "ring-rebar", bg: "bg-rebar" },
   }
 
   const pillConfig = [

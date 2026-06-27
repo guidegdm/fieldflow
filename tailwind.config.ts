@@ -7,6 +7,7 @@ const config: Config = {
       colors: {
         // Carnet de Terrain (Field Worker)
         graph: { paper: "#F8F9FA", aged: "#F3F4E8", line: "#E5E7EB" },
+        grid: { line: "#E5E7EB" },
         ink: { blue: "#1E40AF", black: "#1F2937", red: "#991B1B" },
         pencil: { DEFAULT: "#6B7280", light: "#9CA3AF" },
         tape: { yellow: "#FDE047" },

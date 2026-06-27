@@ -24,7 +24,6 @@
     "pendingSync": "En attente de sync",
     "noData": "Aucune donnée",
     "required": "Obligatoire",
-    "optional": "Optionnel",
     "close": "Fermer"
   },
   "auth": {
@@ -60,7 +59,6 @@
     "states": "États",
     "transitions": "Transitions",
     "fields": "Champs",
-    "fieldsCount": "{{count}} champ(s)",
     "roles": "Rôles",
     "publish": "Publier",
     "published": "Publié",
@@ -98,7 +96,8 @@
     "outOfStock": "Stock épuisé",
     "reserveFailed": "Réservation impossible: inventaire insuffisant",
     "reserveSuccess": "Réservation réussie",
-    "lowStock": "Stock insuffisant — moins de 2 unités"
+    "lowStock": "Stock insuffisant — moins de 2 unités",
+    "unitsAvailable": "unités disponibles"
   },
   "conflicts": {
     "resolution": "Résolution de conflit",
@@ -112,8 +111,11 @@
   "admin": {
     "kpiWorkflows": "Workflows actifs",
     "kpiAgents": "Agents terrain",
+    "kpiOnline": "Agents en ligne",
     "kpiRecords": "Enregistrements",
+    "kpiConflicts": "Conflits ouverts",
     "kpiPending": "En attente de sync",
+    "workflows": "Workflows",
     "activityFeed": "Flux d'activité",
     "syncHealth": "Santé synchronisation",
     "device": "Appareil",
@@ -124,13 +126,7 @@
     "properties": "Propriétés",
     "publication": "Publication",
     "entity": "Entité",
-    "noSelection": "Sélectionnez un élément",
-    "ai": "IA",
-    "key": "Clé",
-    "stateInitial": "Initial",
-    "stateTerminal": "Terminal",
-    "stateStandard": "Standard",
-    "publishedOn": "Publié le"
+    "noSelection": "Sélectionnez un élément"
   },
   "supervisor": {
     "approve": "Approuver",
@@ -217,29 +213,6 @@
     "need_medical": "Soins médicaux",
     "need_education": "Éducation",
     "need_protection": "Protection"
-  },
-  "sidebar": {
-    "dashboard": "Tableau de bord",
-    "workflows": "Workflows",
-    "forms": "Formulaires",
-    "users": "Utilisateurs",
-    "deploy": "Déploiement",
-    "audit": "Audit",
-    "settings": "Paramètres",
-    "queue": "File d'attente",
-    "conflicts": "Conflits",
-    "inventory": "Inventaire",
-    "reports": "Rapports"
-  },
-  "tabbar": {
-    "home": "Accueil",
-    "search": "Rechercher",
-    "scan": "Scanner",
-    "status": "Statut",
-    "add": "Ajouter"
-  },
-  "connectivity": {
-    "network": "Réseau"
   },
   "search": {
     "placeholder": "Rechercher un ménage...",

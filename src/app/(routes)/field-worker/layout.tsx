@@ -9,12 +9,13 @@ import { TabBar } from "@/components/layout/TabBar"
 export default function FieldWorkerLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const user = useAuthStore((s) => s.user)
+  const hasHydrated = useAuthStore((s) => s.hasHydrated)
 
   useEffect(() => {
-    if (!user || user.role !== "field_worker") router.push("/")
-  }, [user, router])
+    if (hasHydrated && (!user || user.role !== "field_worker")) router.push("/")
+  }, [hasHydrated, user, router])
 
-  if (!user || user.role !== "field_worker") return null
+  if (!hasHydrated || !user || user.role !== "field_worker") return null
 
   return (
     <div className="min-h-screen bg-graph-paper">

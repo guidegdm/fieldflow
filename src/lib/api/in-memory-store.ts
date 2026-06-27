@@ -2,39 +2,10 @@ import { createHash } from "node:crypto"
 import type { RecordData } from "@/types/record"
 import type { MutationEntry, DeviceState, ConflictRecord, AuditEvent, InventoryLedgerEntry } from "@/types/sync"
 import type { WorkflowDefinition } from "@/types/workflow"
-import { dynamoStore } from "./dynamo-store"
-
-export interface StoreAPI {
-  getRecord(id: string): RecordData | undefined
-  putRecord(r: RecordData): void
-  getAllRecords(): RecordData[]
-  getRecordsByWorkflow(wfId: string): RecordData[]
-  putWorkflow(w: WorkflowDefinition): void
-  getWorkflow(id: string): WorkflowDefinition | undefined
-  getAllWorkflows(): WorkflowDefinition[]
-  hasMutation(clientId: string): boolean
-  storeMutation(m: MutationEntry): void
-  getCurrentSeq(): number
-  getServerSince(seq: number): MutationEntry[]
-  putDevice(d: DeviceState): void
-  getDevice(deviceId: string): DeviceState | undefined
-  putConflict(c: ConflictRecord): void
-  getConflict(id: string): ConflictRecord | undefined
-  getConflictsByRecord(rid: string): ConflictRecord[]
-  getOpenConflicts(): ConflictRecord[]
-  pushAuditEvent(e: AuditEvent): void
-  getAuditEvents(): AuditEvent[]
-  getInventoryItems(): { id: string; name: string; total: number; reserved: number }[]
-  getInventoryLedger(): InventoryLedgerEntry[]
-  reserveInventory(itemId: string, idempotencyKey: string, qty?: number, userId?: string): Promise<{ success: boolean; error?: string; remaining?: number; contentHash?: string; competingRequestId?: string; currentStock?: number; retryRecommended?: boolean }>
-  seed(): void
-}
 
 const g = globalThis as Record<string, unknown>
 
-const DYNAMODB_ENABLED = !!(process.env.DYNAMODB_TABLE && process.env.AWS_REGION)
-
-class Store implements StoreAPI {
+class Store {
   private records = new Map<string, RecordData>()
   private workflows = new Map<string, WorkflowDefinition>()
   private mutations = new Map<string, MutationEntry>()
@@ -68,14 +39,12 @@ class Store implements StoreAPI {
   getDevice(deviceId: string) { return this.devices.get(deviceId) }
 
   putConflict(c: ConflictRecord) { this.conflicts.set(c.id, c) }
-  getConflict(id: string) { return this.conflicts.get(id) }
   getConflictsByRecord(rid: string) { return Array.from(this.conflicts.values()).filter((c) => c.record_id === rid) }
   getOpenConflicts() { return Array.from(this.conflicts.values()).filter((c) => c.status === "OPEN") }
 
   pushAuditEvent(e: AuditEvent) { this.auditEvents.push(e) }
   getAuditEvents() { return this.auditEvents }
 
-  getInventoryItems() { return Array.from(this.inventory.values()) }
   getInventoryLedger() { return this.inventoryLedger }
 
   async reserveInventory(
@@ -223,62 +192,6 @@ class Store implements StoreAPI {
   }
 }
 
-class DynamoStoreWrapper implements StoreAPI {
-  private mem = new Store()
-
-  getRecord(id: string): RecordData | undefined { return this.mem.getRecord(id) }
-
-  putRecord(r: RecordData) {
-    this.mem.putRecord(r)
-    dynamoStore.putRecord(r).catch(() => {})
-  }
-
-  getAllRecords(): RecordData[] { return this.mem.getAllRecords() }
-
-  getRecordsByWorkflow(wfId: string): RecordData[] { return this.mem.getRecordsByWorkflow(wfId) }
-
-  putWorkflow(w: WorkflowDefinition) {
-    this.mem.putWorkflow(w)
-    dynamoStore.putWorkflow(w).catch(() => {})
-  }
-
-  getWorkflow(id: string): WorkflowDefinition | undefined { return this.mem.getWorkflow(id) }
-
-  getAllWorkflows(): WorkflowDefinition[] { return this.mem.getAllWorkflows() }
-
-  hasMutation(clientId: string): boolean { return this.mem.hasMutation(clientId) }
-  storeMutation(m: MutationEntry) { this.mem.storeMutation(m) }
-  getCurrentSeq(): number { return this.mem.getCurrentSeq() }
-  getServerSince(seq: number): MutationEntry[] { return this.mem.getServerSince(seq) }
-
-  putDevice(d: DeviceState) { this.mem.putDevice(d) }
-  getDevice(deviceId: string): DeviceState | undefined { return this.mem.getDevice(deviceId) }
-
-  putConflict(c: ConflictRecord) { this.mem.putConflict(c) }
-  getConflict(id: string): ConflictRecord | undefined { return this.mem.getConflict(id) }
-  getConflictsByRecord(rid: string): ConflictRecord[] { return this.mem.getConflictsByRecord(rid) }
-  getOpenConflicts(): ConflictRecord[] { return this.mem.getOpenConflicts() }
-
-  pushAuditEvent(e: AuditEvent) { this.mem.pushAuditEvent(e) }
-  getAuditEvents(): AuditEvent[] { return this.mem.getAuditEvents() }
-
-  getInventoryItems() { return this.mem.getInventoryItems() }
-  getInventoryLedger() { return this.mem.getInventoryLedger() }
-  reserveInventory(itemId: string, idempotencyKey: string, qty?: number, userId?: string) {
-    return this.mem.reserveInventory(itemId, idempotencyKey, qty, userId)
-  }
-
-  seed() {
-    this.mem.seed()
-    for (const r of this.mem.getAllRecords()) {
-      dynamoStore.putRecord(r).catch(() => {})
-    }
-    for (const w of this.mem.getAllWorkflows()) {
-      dynamoStore.putWorkflow(w).catch(() => {})
-    }
-  }
-}
-
 const storeKey = Symbol.for("fieldflow-store")
 let _store: Store = (g as Record<symbol, Store>)[storeKey]
 if (!_store) {
@@ -287,15 +200,4 @@ if (!_store) {
   ;(g as Record<symbol, Store>)[storeKey] = _store
 }
 
-let _dynamoStoreInstance: DynamoStoreWrapper | null = null
-
-export function getStore(): StoreAPI {
-  if (DYNAMODB_ENABLED) {
-    if (!_dynamoStoreInstance) {
-      _dynamoStoreInstance = new DynamoStoreWrapper()
-      _dynamoStoreInstance.seed()
-    }
-    return _dynamoStoreInstance
-  }
-  return _store
-}
+export function getStore(): Store { return _store }

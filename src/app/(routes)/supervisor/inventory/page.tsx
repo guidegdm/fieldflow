@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useTranslation } from "react-i18next"
-import { Package, AlertTriangle, CheckCircle2, XCircle } from "lucide-react"
+import { Package, AlertTriangle, CheckCircle2, Shield, Info } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -81,6 +81,18 @@ export default function SupervisorInventory() {
         <h1 className="font-display text-3xl text-iodine-brown tracking-tight">{t("dashboard.inventory")}</h1>
         <p className="text-sm text-chart-gray mt-1">{items.reduce((s, i) => s + i.available, 0)} {t("inventory.unitsAvailable")}</p>
       </div>
+
+      <Alert variant="info" className="border-scrub-blue/20 bg-scrub-blue/5">
+        <Info className="text-scrub-blue" />
+        <AlertTitle className="text-scrub-blue">Pourquoi un inventaire ?</AlertTitle>
+        <AlertDescription className="text-iodine-brown">
+          Dans un camp de 1 200 familles avec seulement 50 kits d&apos;aide, chaque allocation doit &ecirc;tre
+          atomique. Deux travailleurs ne peuvent pas r&eacute;server le dernier kit simultan&eacute;ment.
+          FieldFlow utilise des <strong>transactions fortement coh&eacute;rentes</strong> (DSQL SERIALIZABLE)
+          pour garantir qu&apos;un article n&apos;est jamais allou&eacute; deux fois &mdash; m&ecirc;me
+          si deux superviseurs approuvent en m&ecirc;me temps depuis des appareils diff&eacute;rents.
+        </AlertDescription>
+      </Alert>
 
       {feedback && (
         <Alert variant={feedback.type}>

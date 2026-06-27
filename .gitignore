@@ -1,21 +1,8 @@
-# v0 runtime files
-__v0_runtime_loader.js
-__v0_devtools.tsx
-__v0_jsx-dev-runtime.ts
-
-# Common ignores
-node_modules
+node_modules/
 .next/
-.env*.local
-.DS_Store
-
-# Environment & deployment
 .env
+.env.*
 .vercel/
-
-# Build artifacts
-tsconfig.tsbuildinfo
-
-# Internal audit docs (keep locally, don't push)
-docs2/
-!docs2/08-v0-agent-guide.md
+*.tsbuildinfo
+package-lock.json
+pnpm-lock.yaml

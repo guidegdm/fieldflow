@@ -35,32 +35,6 @@ interface Device {
 }
 
 // TODO: fetch from sync API
-const operations: SyncOp[] = [
-  { id: "op-001", status: "acked" },
-  { id: "op-002", status: "acked" },
-  { id: "op-003", status: "sending" },
-  { id: "op-004", status: "pending" },
-  { id: "op-005", status: "acked" },
-  { id: "op-006", status: "conflict" },
-  { id: "op-007", status: "acked" },
-  { id: "op-008", status: "sending" },
-  { id: "op-009", status: "acked" },
-  { id: "op-010", status: "pending" },
-  { id: "op-011", status: "acked" },
-  { id: "op-012", status: "sending" },
-  { id: "op-013", status: "conflict" },
-  { id: "op-014", status: "acked" },
-  { id: "op-015", status: "pending" },
-  { id: "op-016", status: "conflict" },
-  { id: "op-017", status: "acked" },
-  { id: "op-018", status: "sending" },
-  { id: "op-019", status: "acked" },
-  { id: "op-020", status: "pending" },
-  { id: "op-021", status: "acked" },
-  { id: "op-022", status: "acked" },
-  { id: "op-023", status: "sending" },
-  { id: "op-024", status: "acked" },
-]
 
 // TODO: fetch from DSQL ledger API
 const dsqlLedger: DsqlRow[] = [
@@ -105,6 +79,7 @@ const dsqlLedger: DsqlRow[] = [
 export default function EngineeringPage() {
   const { t } = useTranslation()
   const [devices, setDevices] = useState<Device[]>([])
+  const [operations, setOperations] = useState<SyncOp[]>([])
 
   useEffect(() => {
     setDevices(DEMO_USERS.map((u, i) => ({
@@ -115,6 +90,31 @@ export default function EngineeringPage() {
       version: "2.1.0",
       status: (i < 2 ? "online" : i === 2 ? "attention" : "offline") as Device["status"],
     })))
+  }, [])
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const { db } = await import("@/lib/db/indexeddb")
+        const [records, mutations] = await Promise.all([
+          db.getAllRecords(),
+          db.getPendingMutations(),
+        ])
+        const ops: SyncOp[] = []
+        let opIndex = 0
+        for (const r of records) {
+          const status: OpStatus = r.syncStatus === "synced" ? "acked"
+            : r.syncStatus === "conflict" || r.syncStatus === "failed" ? "conflict"
+            : "pending"
+          ops.push({ id: `op-${String(++opIndex).padStart(3, "0")}`, status })
+        }
+        for (const m of mutations) {
+          ops.push({ id: `op-${String(++opIndex).padStart(3, "0")}`, status: "sending" })
+        }
+        setOperations(ops)
+      } catch { /* DB not ready */ }
+    }
+    load()
   }, [])
 
   const statusConfig: Record<OpStatus, { label: string; ring: string; bg: string }> = {

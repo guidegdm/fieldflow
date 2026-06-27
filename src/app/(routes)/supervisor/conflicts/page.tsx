@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
+import { apiGet } from "@/lib/api/client"
+import type { ConflictRecord } from "@/types/sync"
 
 type ConflictField = {
   key: string
@@ -30,26 +32,32 @@ export default function SupervisorConflicts() {
     if (loaded.current) return
     loaded.current = true
     async function load() {
+      let records: ConflictRecord[] = []
       try {
-        const { db } = await import("@/lib/db/indexeddb")
-        const all = await db.getConflicts()
-        const open = all.filter(c => c.status === "OPEN")
-        if (open.length > 0) {
-          const grouped: Record<string, typeof open> = {}
-          for (const c of open) {
-            if (!grouped[c.record_id]) grouped[c.record_id] = []
-            grouped[c.record_id].push(c)
-          }
-          const group = Object.values(grouped)[0]
-          setConflictFields(group.map(c => ({
-            key: c.field,
-            label: c.field,
-            valueA: String(c.value_a ?? ""),
-            valueB: String(c.value_b ?? ""),
-            conflicting: true,
-          })))
+        records = await apiGet<ConflictRecord[]>("/api/sync/conflict")
+      } catch { /* API not available */ }
+      if (records.length === 0) {
+        try {
+          const { db } = await import("@/lib/db/indexeddb")
+          records = await db.getConflicts()
+        } catch { /* DB not ready */ }
+      }
+      const open = records.filter(c => c.status === "OPEN")
+      if (open.length > 0) {
+        const grouped: Record<string, typeof open> = {}
+        for (const c of open) {
+          if (!grouped[c.record_id]) grouped[c.record_id] = []
+          grouped[c.record_id].push(c)
         }
-      } catch { /* DB not ready */ }
+        const group = Object.values(grouped)[0]
+        setConflictFields(group.map(c => ({
+          key: c.field,
+          label: c.field,
+          valueA: String(c.value_a ?? ""),
+          valueB: String(c.value_b ?? ""),
+          conflicting: true,
+        })))
+      }
       setLoading(false)
     }
     load()
@@ -83,7 +91,26 @@ export default function SupervisorConflicts() {
     )
   }
 
-  if (!loading && conflictFields.length === 0) {
+  if (loading) {
+    return (
+      <div className="space-y-6 animate-pulse">
+        <div className="h-9 w-48 bg-gray-200 rounded" />
+        <div className="h-4 w-32 bg-gray-200 rounded mt-3" />
+        <div className="grid grid-cols-2 gap-4">
+          <div className="h-48 bg-gray-200 rounded-lg" />
+          <div className="h-48 bg-gray-200 rounded-lg" />
+        </div>
+        <div className="flex gap-3">
+          <div className="h-10 w-28 bg-gray-200 rounded-lg" />
+          <div className="h-10 w-28 bg-gray-200 rounded-lg" />
+          <div className="h-10 w-36 bg-gray-200 rounded-lg" />
+        </div>
+        <div className="h-24 bg-gray-200 rounded-lg" />
+      </div>
+    )
+  }
+
+  if (conflictFields.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-24 space-y-4">
         <div className="w-14 h-14 rounded-full bg-warning-500/10 flex items-center justify-center">

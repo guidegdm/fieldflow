@@ -20,6 +20,7 @@ export default function SupervisorInventory() {
   const { t } = useTranslation()
   const [items, setItems] = useState<InventoryItem[]>([])
   const [loading, setLoading] = useState<string | null>(null)
+  const [pageLoading, setPageLoading] = useState(true)
   const [feedback, setFeedback] = useState<{ type: "success" | "danger"; message: string } | null>(null)
 
   useEffect(() => {
@@ -27,6 +28,7 @@ export default function SupervisorInventory() {
       try {
         const data = await apiGet<InventoryItem[]>("/api/critical/inventory")
         setItems(data)
+        setPageLoading(false)
         return
       } catch { /* API not available */ }
       try {
@@ -37,6 +39,7 @@ export default function SupervisorInventory() {
             { itemId: "inv-nfi-kit", label: "NFI Kit A", total: 3, available: 3 },
             { itemId: "inv-food-parcel", label: "Food Parcel 7-day", total: 8, available: 8 },
           ])
+          setPageLoading(false)
           return
         }
       } catch { /* DB not ready */ }
@@ -44,6 +47,7 @@ export default function SupervisorInventory() {
         { itemId: "inv-nfi-kit", label: "NFI Kit A", total: 3, available: 3 },
         { itemId: "inv-food-parcel", label: "Food Parcel 7-day", total: 8, available: 8 },
       ])
+      setPageLoading(false)
     }
     load()
   }, [])
@@ -86,6 +90,13 @@ export default function SupervisorInventory() {
         </Alert>
       )}
 
+      {pageLoading ? (
+        <div className="grid grid-cols-2 gap-4 animate-pulse">
+          {[1, 2].map(i => (
+            <div key={i} className="h-52 bg-gray-200 rounded-lg" />
+          ))}
+        </div>
+      ) : (
       <div className="grid grid-cols-2 gap-4">
         {items.map((item) => {
           const pct = item.total > 0 ? Math.round((item.available / item.total) * 100) : 0
@@ -145,6 +156,7 @@ export default function SupervisorInventory() {
           )
         })}
       </div>
+      )}
     </div>
   )
 }

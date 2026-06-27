@@ -1,20 +1,15 @@
 "use client"
 
 import { useAuthStore } from "@/stores/authStore"
-import { useTranslation } from "react-i18next"
 import { cn } from "@/lib/utils"
+import { usePathname } from "next/navigation"
+import Link from "next/link"
 import {
   LayoutDashboard,
   Workflow,
-  FileText,
-  Users,
-  Rocket,
-  ScrollText,
-  Settings,
   Inbox,
   AlertTriangle,
   Package,
-  BarChart3,
   LogOut,
 } from "lucide-react"
 
@@ -24,30 +19,22 @@ interface SidebarProps {
 
 type NavItem = { label: string; href: string; icon: React.ReactNode }
 
+const adminLinks: NavItem[] = [
+  { label: "Tableau de bord", href: "/admin/dashboard", icon: <LayoutDashboard size={18} /> },
+  { label: "Workflows", href: "/admin/workflows", icon: <Workflow size={18} /> },
+]
+
+const supervisorLinks: NavItem[] = [
+  { label: "Tableau de bord", href: "/supervisor/dashboard", icon: <LayoutDashboard size={18} /> },
+  { label: "File d'attente", href: "/supervisor/review", icon: <Inbox size={18} /> },
+  { label: "Conflits", href: "/supervisor/conflicts", icon: <AlertTriangle size={18} /> },
+  { label: "Inventaire", href: "/supervisor/inventory", icon: <Package size={18} /> },
+]
+
 export function Sidebar({ role }: SidebarProps) {
-  const { t } = useTranslation()
   const { user, logout } = useAuthStore()
-
-  const adminLinks: NavItem[] = [
-    { label: t("sidebar.dashboard"), href: "/admin/dashboard", icon: <LayoutDashboard size={18} /> },
-    { label: t("sidebar.workflows"), href: "/admin/workflows", icon: <Workflow size={18} /> },
-    { label: t("sidebar.forms"), href: "/admin/forms", icon: <FileText size={18} /> },
-    { label: t("sidebar.users"), href: "/admin/users", icon: <Users size={18} /> },
-    { label: t("sidebar.deploy"), href: "/admin/deploy", icon: <Rocket size={18} /> },
-    { label: t("sidebar.audit"), href: "/admin/audit", icon: <ScrollText size={18} /> },
-    { label: t("sidebar.settings"), href: "/admin/settings", icon: <Settings size={18} /> },
-  ]
-
-  const supervisorLinks: NavItem[] = [
-    { label: t("sidebar.dashboard"), href: "/supervisor/dashboard", icon: <LayoutDashboard size={18} /> },
-    { label: t("sidebar.queue"), href: "/supervisor/queue", icon: <Inbox size={18} /> },
-    { label: t("sidebar.conflicts"), href: "/supervisor/conflicts", icon: <AlertTriangle size={18} /> },
-    { label: t("sidebar.inventory"), href: "/supervisor/inventory", icon: <Package size={18} /> },
-    { label: t("sidebar.reports"), href: "/supervisor/reports", icon: <BarChart3 size={18} /> },
-  ]
-
   const links = role === "admin" ? adminLinks : supervisorLinks
-  const activeHref = typeof window !== "undefined" ? window.location.pathname : ""
+  const activeHref = usePathname()
 
   if (!user) return null
 
@@ -61,9 +48,10 @@ export function Sidebar({ role }: SidebarProps) {
         {links.map((link) => {
           const isActive = activeHref.startsWith(link.href)
           return (
-            <a
+            <Link
               key={link.href}
               href={link.href}
+              aria-current={isActive ? "page" : undefined}
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
                 isActive
@@ -73,7 +61,7 @@ export function Sidebar({ role }: SidebarProps) {
             >
               {link.icon}
               <span>{link.label}</span>
-            </a>
+            </Link>
           )
         })}
       </nav>
@@ -92,7 +80,7 @@ export function Sidebar({ role }: SidebarProps) {
           <button
             onClick={logout}
             className="p-1.5 text-pencil hover:text-rebar hover:bg-gray-100 rounded-md transition-colors"
-            aria-label={t("auth.logout")}
+            aria-label="Déconnexion"
           >
             <LogOut size={16} />
           </button>

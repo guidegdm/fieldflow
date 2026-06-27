@@ -1,75 +1,69 @@
 "use client"
 
-import { useTranslation } from "react-i18next"
 import { cn } from "@/lib/utils"
-import { Home, Search, Plus, QrCode, Activity } from "lucide-react"
+import { Home, Search, Plus, Activity } from "lucide-react"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+
+const tabs = [
+  { label: "Accueil", href: "/field-worker/home", icon: Home },
+  { label: "Rechercher", href: "/field-worker/search", icon: Search },
+  { label: "Statut", href: "/field-worker/status", icon: Activity },
+]
 
 export function TabBar() {
-  const { t } = useTranslation()
-  const activeHref = typeof window !== "undefined" ? window.location.pathname : ""
-
-  const tabs = [
-    { label: t("tabbar.home"), href: "/field-worker/home", icon: Home },
-    { label: t("tabbar.search"), href: "/field-worker/search", icon: Search },
-    { label: t("tabbar.scan"), href: "/field-worker/scan", icon: QrCode },
-    { label: t("tabbar.status"), href: "/field-worker/status", icon: Activity },
-  ]
+  const pathname = usePathname()
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 h-14 bg-white border-t border-grid-line z-40">
-      <div className="flex items-center justify-around h-full max-w-lg mx-auto px-2 relative">
-        {tabs.map((tab, i) => {
-          const Icon = tab.icon
-          const isActive = activeHref === tab.href
-          if (i === 1) {
-            return (
-              <a key={tab.href} href={tab.href} className="flex flex-col items-center justify-center gap-0.5 flex-1">
-                <Icon size={20} className={cn(isActive ? "text-ink-blue" : "text-pencil")} />
-                <span
-                  className={cn(
-                    "text-[10px] font-medium",
-                    isActive ? "text-ink-blue" : "text-pencil",
-                  )}
-                >
-                  {tab.label}
-                </span>
-              </a>
-            )
-          }
-          if (i === 3) {
-            return (
-              <a key={tab.href} href={tab.href} className="flex flex-col items-center justify-center gap-0.5 flex-1">
-                <Icon size={20} className={cn(isActive ? "text-ink-blue" : "text-pencil")} />
-                <span
-                  className={cn(
-                    "text-[10px] font-medium",
-                    isActive ? "text-ink-blue" : "text-pencil",
-                  )}
-                >
-                  {tab.label}
-                </span>
-              </a>
-            )
-          }
-          return (
-            <a key={tab.href} href={tab.href} className="flex flex-col items-center justify-center gap-0.5 flex-1">
-              <Icon size={20} className={cn(isActive ? "text-ink-blue" : "text-pencil")} />
-              <span
-                className={cn(
-                  "text-[10px] font-medium",
-                  isActive ? "text-ink-blue" : "text-pencil",
-                )}
-              >
-                {tab.label}
-              </span>
-            </a>
-          )
-        })}
+    <nav className="fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-grid-line z-40">
+      <div className="flex items-stretch justify-between h-full max-w-lg mx-auto px-3 relative">
+        {/* Left two tabs */}
+        <div className="flex items-stretch flex-1">
+          {tabs.slice(0, 2).map((tab) => (
+            <TabLink key={tab.href} tab={tab} active={pathname === tab.href} />
+          ))}
+        </div>
 
-        <button className="absolute bottom-3 left-1/2 -translate-x-1/2 w-12 h-12 rounded-full bg-ink-blue text-white flex items-center justify-center shadow-md hover:bg-ink-blue/90 transition-colors" aria-label={t("tabbar.add")}>
-          <Plus size={22} />
-        </button>
+        {/* Center primary action: new record */}
+        <div className="flex items-center justify-center w-20 shrink-0">
+          <Link
+            href="/field-worker/register"
+            aria-label="Nouvel enregistrement"
+            className="w-14 h-14 -mt-5 rounded-full bg-ink-blue text-white flex items-center justify-center border-4 border-white shadow-md hover:bg-ink-blue/90 transition-colors"
+          >
+            <Plus size={24} strokeWidth={2.5} />
+          </Link>
+        </div>
+
+        {/* Right tab(s) */}
+        <div className="flex items-stretch flex-1 justify-end">
+          {tabs.slice(2).map((tab) => (
+            <TabLink key={tab.href} tab={tab} active={pathname === tab.href} />
+          ))}
+        </div>
       </div>
     </nav>
+  )
+}
+
+function TabLink({
+  tab,
+  active,
+}: {
+  tab: { label: string; href: string; icon: typeof Home }
+  active: boolean
+}) {
+  const Icon = tab.icon
+  return (
+    <Link
+      href={tab.href}
+      aria-current={active ? "page" : undefined}
+      className="flex flex-col items-center justify-center gap-0.5 flex-1 min-w-[64px]"
+    >
+      <Icon size={20} className={cn(active ? "text-ink-blue" : "text-pencil")} />
+      <span className={cn("text-[10px] font-medium", active ? "text-ink-blue" : "text-pencil")}>
+        {tab.label}
+      </span>
+    </Link>
   )
 }

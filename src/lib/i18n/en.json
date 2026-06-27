@@ -24,7 +24,6 @@
     "pendingSync": "Pending sync",
     "noData": "No data",
     "required": "Required",
-    "optional": "Optional",
     "close": "Close"
   },
   "auth": {
@@ -60,7 +59,6 @@
     "states": "States",
     "transitions": "Transitions",
     "fields": "Fields",
-    "fieldsCount": "{{count}} field(s)",
     "roles": "Roles",
     "publish": "Publish",
     "published": "Published",
@@ -98,7 +96,8 @@
     "outOfStock": "Out of Stock",
     "reserveFailed": "Reservation failed: insufficient inventory",
     "reserveSuccess": "Reservation successful",
-    "lowStock": "Low stock — fewer than 2 units available"
+    "lowStock": "Low stock — fewer than 2 units available",
+    "unitsAvailable": "units available"
   },
   "conflicts": {
     "resolution": "Conflict Resolution",
@@ -112,8 +111,11 @@
   "admin": {
     "kpiWorkflows": "Active Workflows",
     "kpiAgents": "Field Agents",
+    "kpiOnline": "Agents Online",
     "kpiRecords": "Total Records",
+    "kpiConflicts": "Open Conflicts",
     "kpiPending": "Pending Sync",
+    "workflows": "Workflows",
     "activityFeed": "Activity Feed",
     "syncHealth": "Sync Health",
     "device": "Device",
@@ -124,13 +126,7 @@
     "properties": "Properties",
     "publication": "Publication",
     "entity": "Entity",
-    "noSelection": "Select an item",
-    "ai": "AI",
-    "key": "Key",
-    "stateInitial": "Initial",
-    "stateTerminal": "Terminal",
-    "stateStandard": "Standard",
-    "publishedOn": "Published on"
+    "noSelection": "Select an item"
   },
   "supervisor": {
     "approve": "Approve",
@@ -217,29 +213,6 @@
     "need_medical": "Medical Care",
     "need_education": "Education",
     "need_protection": "Protection"
-  },
-  "sidebar": {
-    "dashboard": "Dashboard",
-    "workflows": "Workflows",
-    "forms": "Forms",
-    "users": "Users",
-    "deploy": "Deploy",
-    "audit": "Audit",
-    "settings": "Settings",
-    "queue": "Queue",
-    "conflicts": "Conflicts",
-    "inventory": "Inventory",
-    "reports": "Reports"
-  },
-  "tabbar": {
-    "home": "Home",
-    "search": "Search",
-    "scan": "Scan",
-    "status": "Status",
-    "add": "Add"
-  },
-  "connectivity": {
-    "network": "Network"
   },
   "search": {
     "placeholder": "Search households...",

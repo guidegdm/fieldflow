@@ -7,15 +7,16 @@ import { useAuthStore } from "@/stores/authStore"
 import { Sidebar } from "@/components/layout/Sidebar"
 
 export default function SupervisorLayout({ children }: { children: React.ReactNode }) {
-  const { user } = useAuthStore()
+  const user = useAuthStore((s) => s.user)
+  const hasHydrated = useAuthStore((s) => s.hasHydrated)
   const router = useRouter()
   const { t } = useTranslation()
 
   useEffect(() => {
-    if (!user || user.role !== "supervisor") router.push("/")
-  }, [user, router])
+    if (hasHydrated && (!user || user.role !== "supervisor")) router.push("/")
+  }, [hasHydrated, user, router])
 
-  if (!user || user.role !== "supervisor") {
+  if (!hasHydrated || !user || user.role !== "supervisor") {
     return (
       <div className="flex h-screen items-center justify-center bg-surgical-white">
         <p className="text-sm text-chart-gray">{t("common.loading")}</p>

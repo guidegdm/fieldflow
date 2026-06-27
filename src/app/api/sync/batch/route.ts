@@ -4,7 +4,6 @@ import type { SyncBatchRequest, SyncBatchResponse, ConflictEntry } from "@/types
 import type { ConflictRecord } from "@/types/sync"
 import type { RecordData } from "@/types/record"
 import type { WorkflowField } from "@/types/workflow"
-import { getAuthUser } from "@/lib/auth/middleware"
 
 function buildFieldStrategy(
   strategy: string, field: string, fieldType: string,
@@ -33,8 +32,6 @@ function buildFieldStrategy(
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await getAuthUser(request)
-  if (!auth) return NextResponse.json({ error: "Non autorisé" }, { status: 401 })
   const body: SyncBatchRequest = await request.json()
   const store = getStore()
 

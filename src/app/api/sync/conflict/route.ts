@@ -1,17 +1,14 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getStore } from "@/lib/api/in-memory-store"
-import { getAuthUser } from "@/lib/auth/middleware"
 
 export async function POST(request: NextRequest) {
-  const auth = await getAuthUser(request)
-  if (!auth) return NextResponse.json({ error: "Non autorisé" }, { status: 401 })
   const { conflict_id, resolution, manual_value, rationale } = await request.json()
   if (!conflict_id || !resolution) {
     return NextResponse.json({ error: "conflict_id and resolution required" }, { status: 400 })
   }
 
   const store = getStore()
-  const conflict = store.getConflict(conflict_id)
+  const conflict = store.conflicts.get(conflict_id)
   if (!conflict) return NextResponse.json({ error: "Conflict not found" }, { status: 404 })
 
   conflict.status = "RESOLVED"

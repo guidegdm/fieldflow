@@ -272,7 +272,8 @@ export async function POST(request: NextRequest) {
         }
 
         acked.push(op.client_id)
-        if (opConflicts.length > 0) conflicts.push(...opConflicts)
+        const escalatedConflicts = opConflicts.filter((conflict) => !conflict.auto_resolved)
+        if (escalatedConflicts.length > 0) conflicts.push(...escalatedConflicts)
       } else if (op.operation === "delete") {
         const existing = await store.getRecordForOrg(op.record_id!, user.orgId)
         if (!existing) {
@@ -304,12 +305,20 @@ export async function POST(request: NextRequest) {
 
   const lastSeq = await store.getCurrentSeqForOrg(user.orgId)
   const deviceState = await store.getDeviceForOrg(body.device_id, user.orgId)
-  if (deviceState) {
-    deviceState.last_seq = lastSeq
-    deviceState.last_sync_at = Date.now()
-    deviceState.pending_count = 0
-    await store.putDeviceForOrg(deviceState)
-  }
+  const now = Date.now()
+  await store.putDeviceForOrg({
+    key: "current",
+    device_id: body.device_id,
+    user_id: user.sub,
+    orgId: user.orgId,
+    workflow_id: deviceState?.workflow_id || body.operations[0]?.workflow_id || "wf-1",
+    workflow_version: deviceState?.workflow_version || 1,
+    version: deviceState?.version || 1,
+    last_seq: lastSeq,
+    last_sync_at: now,
+    pending_count: 0,
+    expiresAt: deviceState?.expiresAt,
+  })
 
   return NextResponse.json({
     acked,
@@ -317,6 +326,6 @@ export async function POST(request: NextRequest) {
     conflicts,
     server_changes: serverChanges,
     last_seq: lastSeq,
-    server_timestamp: Date.now(),
+    server_timestamp: now,
   } satisfies SyncBatchResponse)
 }

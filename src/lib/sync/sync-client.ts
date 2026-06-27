@@ -10,7 +10,7 @@ export async function pushBatch(): Promise<SyncBatchResponse> {
   const request: SyncBatchRequest = {
     device_id: deviceState.device_id,
     device_seq: deviceState.last_seq,
-    operations: pending,
+    operations: pending.slice(0, 100),
   }
 
   return apiPost<SyncBatchResponse>("/api/sync/batch", request)
@@ -29,6 +29,7 @@ async function applyServerChanges(changes: SyncBatchResponse["server_changes"]) 
 
 async function saveConflicts(response: SyncBatchResponse, deviceId: string, pendingMutations = new Map<string, { workflow_id: string }>()) {
   for (const c of response.conflicts) {
+    if (c.auto_resolved) continue
     const mutation = pendingMutations.get(c.client_id)
     const conflictRecord: ConflictRecord = {
       id: generateId(),

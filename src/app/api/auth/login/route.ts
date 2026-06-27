@@ -116,6 +116,7 @@ export async function POST(request: NextRequest) {
     response.headers.append("Set-Cookie", setSessionCookie(contextToken, 3600))
     return response
   } catch (error: unknown) {
+    console.error("[login] error:", error instanceof Error ? error.message : String(error), error instanceof Error ? error.stack : "")
     if (error instanceof Error && error.name === "NotAuthorizedException") {
       return NextResponse.json({ error: "Email ou mot de passe incorrect" }, { status: 401 })
     }

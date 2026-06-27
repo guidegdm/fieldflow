@@ -139,6 +139,56 @@ function StatePropertiesPanel() {
 
 function AIPanel({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation()
+  const [prompt, setPrompt] = useState("")
+  const [response, setResponse] = useState("")
+  const [loading, setLoading] = useState(false)
+
+  const handleGenerate = async () => {
+    if (!prompt.trim() || loading) return
+    setLoading(true)
+    setResponse("")
+
+    try {
+      const res = await fetch("/api/ai/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: prompt }),
+      })
+
+      if (!res.ok) {
+        setResponse("Erreur de connexion à l'assistant.")
+        return
+      }
+
+      const reader = res.body?.getReader()
+      if (!reader) return
+
+      const decoder = new TextDecoder()
+      let buffer = ""
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split("\n")
+        buffer = lines.pop() || ""
+
+        for (const line of lines) {
+          if (line.startsWith("data: ") && line !== "data: [DONE]") {
+            try {
+              const parsed = JSON.parse(line.slice(6))
+              setResponse((prev) => prev + (parsed.text || ""))
+            } catch { /* skip malformed */ }
+          }
+        }
+      }
+    } catch {
+      setResponse("Erreur réseau.")
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="p-4">
@@ -154,13 +204,21 @@ function AIPanel({ onClose }: { onClose: () => void }) {
       <div className="flex gap-2">
         <input
           type="text"
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
           placeholder={t("admin.aiPrompt", "Décrivez le formulaire dont vous avez besoin...")}
           className="flex-1 h-10 rounded-md border border-[#CBD5E1] px-3 py-2 text-sm text-ink-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-blue"
         />
-        <Button variant="primary" size="sm">
+        <Button variant="primary" size="sm" onClick={handleGenerate} loading={loading}>
           {t("admin.generate", "Générer")}
         </Button>
       </div>
+      {response && (
+        <div className="mt-3 p-3 rounded-md bg-gray-50 border border-graph-line text-sm text-ink-black whitespace-pre-wrap">
+          {response}
+        </div>
+      )}
     </div>
   )
 }

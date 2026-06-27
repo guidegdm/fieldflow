@@ -8,3 +8,14 @@ node_modules
 .next/
 .env*.local
 .DS_Store
+
+# Environment & deployment
+.env
+.vercel/
+
+# Build artifacts
+tsconfig.tsbuildinfo
+
+# Internal audit docs (keep locally, don't push)
+docs2/
+!docs2/08-v0-agent-guide.md

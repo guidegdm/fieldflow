@@ -3,6 +3,18 @@ import type { RecordData } from "@/types/record"
 import type { MutationEntry, DeviceState, ConflictRecord, AuditEvent, InventoryLedgerEntry } from "@/types/sync"
 import type { WorkflowDefinition } from "@/types/workflow"
 
+const DYNAMODB_ENABLED = !!(process.env.DYNAMODB_TABLE && process.env.AWS_REGION)
+
+let _dynamoStore: typeof import("./dynamo-store").dynamoStore | null = null
+async function getDynamo() {
+  if (_dynamoStore) return _dynamoStore
+  try {
+    const mod = await import("./dynamo-store")
+    _dynamoStore = mod.dynamoStore
+    return _dynamoStore
+  } catch { return null }
+}
+
 const g = globalThis as Record<string, unknown>
 
 class Store {
@@ -22,11 +34,11 @@ class Store {
   private seq = 0
 
   getRecord(id: string) { return this.records.get(id) }
-  putRecord(r: RecordData) { this.records.set(r.id, r) }
+  putRecord(r: RecordData) { this.records.set(r.id, r); if (DYNAMODB_ENABLED) getDynamo().then(d => d?.putRecord(r).catch(()=>{})) }
   getAllRecords() { return Array.from(this.records.values()) }
   getRecordsByWorkflow(wfId: string) { return this.getAllRecords().filter((r) => r.workflowId === wfId) }
 
-  putWorkflow(w: WorkflowDefinition) { this.workflows.set(w.id, w) }
+  putWorkflow(w: WorkflowDefinition) { this.workflows.set(w.id, w); if (DYNAMODB_ENABLED) getDynamo().then(d => d?.putWorkflow(w).catch(()=>{})) }
   getWorkflow(id: string) { return this.workflows.get(id) }
   getAllWorkflows() { return Array.from(this.workflows.values()) }
 

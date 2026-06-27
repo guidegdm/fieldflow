@@ -1,8 +1,11 @@
 {
   "name": "FieldFlow",
   "short_name": "FieldFlow",
+  "description": "Offline-first field operations platform with DynamoDB-backed sync.",
   "display": "standalone",
-  "theme_color": "#FDF5E6",
+  "start_url": "/",
+  "scope": "/",
+  "theme_color": "#F8F9FA",
   "background_color": "#F8F9FA",
   "icons": [
     { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },

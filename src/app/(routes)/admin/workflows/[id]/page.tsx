@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { ArrowRight, Plus, Trash2 } from "lucide-react"
+import { AIPanel } from "@/components/ai/AIPanel"
 import type { WorkflowDefinition, WorkflowTransition } from "@/types/workflow"
 
 const DEMO_WORKFLOW: WorkflowDefinition = {
@@ -275,6 +276,7 @@ export default function WorkflowBuilder() {
               <TabsTrigger value="fields" className="text-[11px] uppercase tracking-[0.1em]">{t("workflow.fields")}</TabsTrigger>
               <TabsTrigger value="roles" className="text-[11px] uppercase tracking-[0.1em]">{t("workflow.roles")}</TabsTrigger>
               <TabsTrigger value="publication" className="text-[11px] uppercase tracking-[0.1em]">{t("admin.publication")}</TabsTrigger>
+              <TabsTrigger value="ai" className="text-[11px] uppercase tracking-[0.1em]">IA</TabsTrigger>
             </TabsList>
 
             <TabsContent value="properties" className="px-4 py-4 space-y-4">
@@ -339,6 +341,10 @@ export default function WorkflowBuilder() {
                   </div>
                 </div>
               ))}
+            </TabsContent>
+
+            <TabsContent value="ai" className="h-full">
+              <AIPanel />
             </TabsContent>
 
             <TabsContent value="publication" className="px-4 py-4 space-y-4">

@@ -11,7 +11,7 @@ const CLIENT_ID = process.env.COGNITO_CLIENT_ID || "7r60o7fnej4vitoksrp6e93n9g"
 const REGION = process.env.AWS_REGION || "us-east-1"
 
 const loginSchema = z.object({
-  email: z.string().email(),
+  email: z.string().min(1),
   password: z.string().min(1).optional(),
   demoOrgKey: z.enum(["AHK", "SRB", "LE"]).optional(),
 })

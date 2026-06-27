@@ -10,7 +10,7 @@ const CLIENT_ID = process.env.COGNITO_CLIENT_ID || "7r60o7fnej4vitoksrp6e93n9g"
 const POOL_ID = process.env.COGNITO_POOL_ID || "us-east-1_kpjmcFVqD"
 
 const signupSchema = z.object({
-  email: z.string().email(),
+  email: z.string().min(1),
   password: z.string().min(8).max(128),
   name: z.string().min(1).max(120),
   orgName: z.string().min(1).max(160),

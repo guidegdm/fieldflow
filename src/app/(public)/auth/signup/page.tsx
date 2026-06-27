@@ -14,7 +14,7 @@ import { Select } from "@/components/ui/select"
 const SECTORS = ["humanitaire", "sante", "agriculture", "education"] as const
 
 const signUpSchema = z.object({
-  email: z.string().email(),
+  email: z.string().min(1),
   name: z.string().min(1),
   password: z.string().min(8),
   orgName: z.string().min(1),

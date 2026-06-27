@@ -8,7 +8,7 @@ const CLIENT_ID = process.env.COGNITO_CLIENT_ID || "7r60o7fnej4vitoksrp6e93n9g"
 const REGION = process.env.AWS_REGION || "us-east-1"
 
 const otpSchema = z.object({
-  email: z.string().email(),
+  email: z.string().min(1),
   code: z.string().min(4).max(12),
   session: z.string().min(1),
   challengeName: z.enum(["EMAIL_OTP", "SMS_MFA", "SOFTWARE_TOKEN_MFA"]),

@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import NextTopLoader from "nextjs-toploader"
 import "@/styles/globals.css"
 import { ClientLayout } from "@/components/layout/ClientLayout"
 
@@ -82,6 +83,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="theme-color" content="#F8F9FA" />
       </head>
       <body className="font-sans bg-graph-paper text-ink-black antialiased">
+        <NextTopLoader color="#2646B8" height={3} showSpinner={false} shadow={false} />
         <ClientLayout>{children}</ClientLayout>
       </body>
     </html>

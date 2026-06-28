@@ -57,6 +57,7 @@
   },
   "demo": {
     "creating": "Préparation de la démo hors ligne...",
+    "creatingBody": "Création d'un bac à sable privé et enregistrement de l'espace démo dans ce navigateur.",
     "loginFailed": "La démo n'a pas pu démarrer. Réessayez.",
     "scenarios": {
       "AHK": {
@@ -116,6 +117,10 @@
     "transitionSubmit": "Soumettre",
     "fieldPalette": "Champs",
     "aiAssistant": "Assistant IA",
+    "aiPrompt": "Décrivez le workflow dont vous avez besoin...",
+    "aiPromptHelp": "Décrivez l'opération, les rôles, les champs et les validations attendues. FieldFlow préparera des changements structurés à relire avant application.",
+    "aiPromptHint": "Astuce : indiquez qui collecte, qui approuve, et ce qui ne doit jamais arriver deux fois.",
+    "aiGenerate": "Générer",
     "aiGenerateFields": "IA : générer des champs...",
     "aiConnectionError": "Impossible de joindre l'assistant.",
     "aiNetworkError": "Erreur réseau.",
@@ -188,7 +193,9 @@
     "reserveFailed": "Réservation impossible: inventaire insuffisant",
     "reserveSuccess": "Réservation réussie",
     "lowStock": "Stock insuffisant — moins de 2 unités",
-    "unitsAvailable": "unités disponibles"
+    "unitsAvailable": "unités disponibles",
+    "whyTitle": "Pourquoi l'inventaire compte",
+    "whyBody": "Quand les stocks sont limités, le dernier kit ne doit être promis qu'une seule fois. FieldFlow protège les réservations avec des reçus d'idempotence et des écritures conditionnelles DynamoDB, afin que deux superviseurs ne puissent pas attribuer le même article en même temps."
   },
   "conflicts": {
     "resolution": "Résolution de conflit",
@@ -346,8 +353,17 @@
   },
   "register": {
     "identification": "Identification",
+    "formIntro": "Capturez une fiche ménage avec les détails nécessaires à la validation, même lorsque l'appareil est hors ligne.",
+    "localFirst": "Sauvegarde locale",
+    "fieldReady": "Prêt terrain",
+    "identificationHint": "Commencez par les informations qui rendront ce ménage facile à vérifier plus tard.",
     "livingConditions": "Conditions de vie",
+    "livingConditionsHint": "Indiquez où la famille est installée et comment l'équipe terrain peut la retrouver.",
     "needs": "Besoins prioritaires",
+    "needsHint": "Marquez les besoins urgents pour aider les superviseurs à prioriser la validation et l'allocation.",
+    "location": "Adresse / lieu",
+    "locationPlaceholder": "Camp, village, structure ou point de repère",
+    "saveHint": "Cette fiche est d'abord sauvegardée localement puis rejoint la file de synchronisation dès que le réseau revient.",
     "latitude": "Latitude",
     "longitude": "Longitude",
     "vulnerabilityLabel": "Niveau de vulnérabilité",

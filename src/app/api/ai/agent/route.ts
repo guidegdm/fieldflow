@@ -4,7 +4,7 @@ import { getAuthUser } from "@/lib/auth/middleware"
 
 const messageSchema = z.object({
   role: z.enum(["system", "user", "assistant", "tool"]),
-  content: z.string().max(32000),
+  content: z.string().max(32000).nullable().optional(),
   tool_calls: z
     .array(
       z.object({

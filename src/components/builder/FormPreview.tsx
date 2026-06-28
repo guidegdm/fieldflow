@@ -14,7 +14,7 @@ export function FormPreview() {
   const fields = [...workflow.entity.fields].sort((a, b) => a.order - b.order)
 
   return (
-    <div className="relative mx-auto w-[375px] h-[812px] rounded-[3rem] border-4 border-ink-black bg-white shadow-xl overflow-hidden">
+    <div className="relative mx-auto h-[812px] w-[375px] max-w-[calc(100vw-2rem)] shrink-0 overflow-hidden rounded-[2.5rem] border-4 border-ink-black bg-white shadow-xl">
       <div className="h-7 bg-graph-paper flex items-center justify-between px-6 text-[10px] text-pencil">
         <span>09:41</span>
         <span>📶 🔋</span>

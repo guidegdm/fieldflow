@@ -68,13 +68,9 @@ export default function SupervisorInventory() {
 
       <Alert variant="info" className="border-scrub-blue/20 bg-scrub-blue/5">
         <Info className="text-scrub-blue" />
-        <AlertTitle className="text-scrub-blue">Pourquoi un inventaire ?</AlertTitle>
+        <AlertTitle className="text-scrub-blue">{t("inventory.whyTitle")}</AlertTitle>
         <AlertDescription className="text-iodine-brown">
-          Dans un camp de 1 200 familles avec seulement 50 kits d&apos;aide, chaque allocation doit &ecirc;tre
-          atomique. Deux travailleurs ne peuvent pas r&eacute;server le dernier kit simultan&eacute;ment.
-          FieldFlow utilise DynamoDB avec des cl&eacute;s d&apos;idempotence et des mises &agrave; jour
-          conditionnelles pour garantir qu&apos;un article n&apos;est jamais allou&eacute; deux fois &mdash;
-          m&ecirc;me si deux superviseurs approuvent en m&ecirc;me temps depuis des appareils diff&eacute;rents.
+          {t("inventory.whyBody")}
         </AlertDescription>
       </Alert>
 

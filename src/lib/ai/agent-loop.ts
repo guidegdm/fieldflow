@@ -112,6 +112,10 @@ function buildProposalFromToolData(
   }
 }
 
+function isEmptyProposal(proposal: WorkflowProposal): boolean {
+  return proposal.fields.length + proposal.states.length + proposal.transitions.length === 0
+}
+
 export async function agentLoop(
   prompt: string,
   workflow: WorkflowDefinition,
@@ -167,6 +171,11 @@ export async function agentLoop(
 
     try {
       const response = await callLLM(messages, abort.signal)
+      messages.push({
+        role: "assistant",
+        content: response.message.content ?? "",
+        tool_calls: response.message.tool_calls,
+      })
 
       for (const toolCall of response.message.tool_calls ?? []) {
         const args = toolCall.function.arguments
@@ -179,7 +188,17 @@ export async function agentLoop(
           })
 
           if (result.success && result.data) {
-            proposal = buildProposalFromToolData(result.data as Record<string, unknown>)
+            const nextProposal = buildProposalFromToolData(result.data as Record<string, unknown>)
+            if (isEmptyProposal(nextProposal)) {
+              messages.push({
+                role: "tool",
+                content: "EMPTY_PROPOSAL: propose_changes must include at least one field, state, or transition. Call propose_changes again with concrete structured changes, not only a message.",
+                tool_call_id: toolCall.id,
+              })
+              proposal = null
+              continue
+            }
+            proposal = nextProposal
             callbacks.setPhase("generating")
             callbacks.setStatus("ai.status.generating")
           }
@@ -285,7 +304,7 @@ export async function agentLoop(
           callbacks.setRetryCount(retryCount)
 
           const feedback = buildValidationFeedback(errors)
-          messages.push({ role: "tool", content: feedback })
+          messages.push({ role: "user", content: feedback })
           proposal = null
         } else {
           autoPositionStates(snapshot.states, proposal.states)
@@ -296,12 +315,6 @@ export async function agentLoop(
           break
         }
       }
-
-      messages.push({
-        role: "assistant",
-        content: response.message.content ?? "",
-        tool_calls: response.message.tool_calls,
-      })
 
       if (
         response.finish_reason === "stop" &&

@@ -57,6 +57,7 @@
   },
   "demo": {
     "creating": "Preparing offline demo...",
+    "creatingBody": "Setting up a private sandbox and saving the demo workspace to this browser.",
     "loginFailed": "Demo login failed. Please try again.",
     "scenarios": {
       "AHK": {
@@ -116,6 +117,10 @@
     "transitionSubmit": "Submit",
     "fieldPalette": "Fields",
     "aiAssistant": "AI assistant",
+    "aiPrompt": "Describe the workflow you need...",
+    "aiPromptHelp": "Describe the operation, roles, fields, and approvals you want. FieldFlow will draft structured changes you can review before applying.",
+    "aiPromptHint": "Tip: mention who collects the data, who approves it, and what must never happen twice.",
+    "aiGenerate": "Generate",
     "aiGenerateFields": "AI: generate fields...",
     "aiConnectionError": "Could not connect to the assistant.",
     "aiNetworkError": "Network error.",
@@ -188,7 +193,9 @@
     "reserveFailed": "Reservation failed: insufficient inventory",
     "reserveSuccess": "Reservation successful",
     "lowStock": "Low stock — fewer than 2 units available",
-    "unitsAvailable": "units available"
+    "unitsAvailable": "units available",
+    "whyTitle": "Why inventory matters",
+    "whyBody": "When supplies are limited, the last kit must only be promised once. FieldFlow protects reservations with idempotency receipts and conditional DynamoDB writes, so two supervisors cannot allocate the same item at the same time."
   },
   "conflicts": {
     "resolution": "Conflict Resolution",
@@ -346,8 +353,17 @@
   },
   "register": {
     "identification": "Identification",
+    "formIntro": "Capture a household record with the details supervisors need for review, even when the device is offline.",
+    "localFirst": "Saved on device",
+    "fieldReady": "Field-ready",
+    "identificationHint": "Start with the details that make this household easy to verify later.",
     "livingConditions": "Living Conditions",
+    "livingConditionsHint": "Record where the family is staying and how the field team can find them.",
     "needs": "Priority Needs",
+    "needsHint": "Mark the most urgent needs so supervisors can prioritize review and allocation.",
+    "location": "Address / Place",
+    "locationPlaceholder": "Camp, village, facility, or landmark",
+    "saveHint": "This record is saved locally first and joins the sync queue when the network is available.",
     "latitude": "Latitude",
     "longitude": "Longitude",
     "vulnerabilityLabel": "Vulnerability Level",

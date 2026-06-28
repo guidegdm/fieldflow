@@ -7,7 +7,8 @@ import { useAuthStore } from "@/stores/authStore"
 import { useWorkflowStore } from "@/stores/workflowStore"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ArrowRight, Plus, Trash2, Save, Send, Sparkles } from "lucide-react"
+import { Textarea } from "@/components/ui/textarea"
+import { ArrowRight, Plus, Trash2, Save, Send, Sparkles, X } from "lucide-react"
 import { FieldPalette } from "@/components/builder/FieldPalette"
 import { FormCanvas } from "@/components/builder/FormCanvas"
 import { FieldEditor } from "@/components/builder/FieldEditor"
@@ -175,6 +176,8 @@ export default function WorkflowBuilder() {
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
   const [publishConfirm, setPublishConfirm] = useState(false)
   const [loadingWorkflow, setLoadingWorkflow] = useState(true)
+  const [aiPromptOpen, setAiPromptOpen] = useState(false)
+  const [aiPromptText, setAiPromptText] = useState("")
   const english = isEnglish(i18n.resolvedLanguage || i18n.language)
 
   useEffect(() => {
@@ -251,6 +254,14 @@ export default function WorkflowBuilder() {
     router.push("/admin/workflows")
   }
 
+  const submitAiPrompt = () => {
+    const prompt = aiPromptText.trim()
+    if (!prompt || agentPhase !== "idle" || !workflow) return
+    startGeneration(prompt, workflow)
+    setAiPromptText("")
+    setAiPromptOpen(false)
+  }
+
   if (!user || user.role !== "org_admin") return null
   if (loadingWorkflow || !workflow) {
     return (
@@ -263,7 +274,7 @@ export default function WorkflowBuilder() {
   const workflowName = english ? workflow.nameEn || workflow.name : workflow.name
 
   return (
-    <div className="flex h-[calc(100vh-6.5rem)] min-h-[620px] flex-col overflow-hidden rounded-md border border-graph-line bg-kivu-paper">
+    <div className="flex h-[calc(100vh-6.5rem)] min-h-[620px] flex-col overflow-hidden rounded-lg border border-graph-line bg-slate-50 shadow-sm">
       {/* Toolbar */}
       <div className="flex flex-col gap-3 border-b border-graph-line bg-white px-4 py-3 lg:flex-row lg:items-center lg:justify-between lg:px-5">
         <div className="flex min-w-0 flex-wrap items-center gap-3">
@@ -303,14 +314,7 @@ export default function WorkflowBuilder() {
             <Send size={14} /> {t("workflow.publish", "Publier")}
           </Button>
           <button
-            onClick={() => {
-              if (workflow && agentPhase === "idle") {
-                startGeneration(
-                  window.prompt(t("admin.aiPrompt", "Décrivez le workflow que vous souhaitez créer...")) || "",
-                  workflow
-                )
-              }
-            }}
+            onClick={() => setAiPromptOpen(true)}
             className={`p-2 rounded-md transition-colors ${agentPhase !== "idle" ? "bg-clay/10 text-clay" : "text-pencil hover:text-clay"}`}
             title={t("workflow.aiAssistant")}
           >
@@ -340,10 +344,66 @@ export default function WorkflowBuilder() {
       <AgentStatusBar />
 
       {/* Content */}
-      <div className="flex-1 flex overflow-hidden relative">
+      <div className="relative flex flex-1 overflow-hidden bg-slate-50">
+        {aiPromptOpen && (
+          <div className="absolute inset-0 z-40 flex items-center justify-center bg-white/55 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-2xl rounded-2xl border border-graph-line bg-white p-5 shadow-2xl sm:p-6">
+              <div className="mb-4 flex items-start justify-between gap-4">
+                <div>
+                  <p className="font-display text-2xl font-semibold tracking-tight text-ink-black">
+                    {t("workflow.aiAssistant")}
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-pencil">
+                    {t("workflow.aiPromptHelp")}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setAiPromptOpen(false)}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-pencil transition-colors hover:bg-graph-paper hover:text-ink-black"
+                  aria-label={t("common.close")}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <Textarea
+                value={aiPromptText}
+                onChange={(event) => setAiPromptText(event.target.value)}
+                placeholder={t("workflow.aiPrompt")}
+                className="min-h-40 resize-none bg-white text-base leading-6"
+                autoFocus
+                onKeyDown={(event) => {
+                  if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+                    event.preventDefault()
+                    submitAiPrompt()
+                  }
+                }}
+              />
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs leading-5 text-pencil">
+                  {t("workflow.aiPromptHint")}
+                </p>
+                <div className="flex gap-2 sm:justify-end">
+                  <Button variant="secondary" size="md" onClick={() => setAiPromptOpen(false)}>
+                    {t("common.cancel")}
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="md"
+                    onClick={submitAiPrompt}
+                    disabled={!aiPromptText.trim() || agentPhase !== "idle"}
+                  >
+                    <Sparkles size={16} />
+                    {t("workflow.aiGenerate")}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         <QuestionCard />
         {activeMode === "fields" && (
-          <div className="flex flex-1 overflow-hidden">
+          <div className="flex flex-1 overflow-hidden bg-slate-50">
             <aside className="w-56 border-r border-graph-line bg-white overflow-y-auto shrink-0">
               <FieldPalette />
             </aside>
@@ -355,7 +415,7 @@ export default function WorkflowBuilder() {
         )}
 
         {activeMode === "flow" && (
-          <div className="flex flex-1 overflow-hidden">
+          <div className="flex flex-1 overflow-hidden bg-slate-50">
             <aside className="w-56 border-r border-graph-line bg-white overflow-y-auto p-4 shrink-0">
               <div className="space-y-4">
                 <div>
@@ -470,8 +530,10 @@ export default function WorkflowBuilder() {
         )}
 
         {activeMode === "preview" && (
-          <div className="flex-1 overflow-auto flex items-center justify-center p-8 bg-kivu-paper">
-            <FormPreview />
+          <div className="flex-1 overflow-auto bg-slate-50 p-4 sm:p-6 lg:p-8">
+            <div className="flex min-h-full items-start justify-center py-3">
+              <FormPreview />
+            </div>
           </div>
         )}
       </div>

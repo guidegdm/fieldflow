@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeft, CheckCircle } from "lucide-react"
+import { ArrowLeft, CheckCircle, ClipboardList, MapPin, ShieldCheck } from "lucide-react"
 import { generateId } from "@/lib/utils"
 import { db } from "@/lib/db/indexeddb"
 import type { MutationEntry } from "@/types/sync"
@@ -148,32 +148,52 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl pb-28 lg:pb-0">
-      <button
-        onClick={() => router.back()}
-        className="flex items-center gap-2 text-sm text-pencil min-h-[48px]"
-      >
-        <ArrowLeft size={18} />
-        {t("common.back")}
-      </button>
+    <div className="mx-auto max-w-5xl pb-28 lg:pb-8">
+      <div className="mb-5 flex flex-col gap-4 rounded-lg border border-graph-line bg-white px-4 py-4 shadow-sm sm:px-5 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0">
+          <button
+            onClick={() => router.back()}
+            className="mb-3 inline-flex min-h-9 items-center gap-2 rounded-md px-1 text-sm text-pencil transition-colors hover:text-ink-black"
+          >
+            <ArrowLeft size={17} />
+            {t("common.back")}
+          </button>
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-ink-blue/10 text-ink-blue">
+              <ClipboardList size={20} />
+            </span>
+            <div className="min-w-0">
+              <h1 className="font-display text-2xl font-semibold tracking-tight text-ink-black sm:text-3xl">
+                {t("records.newRegistration")}
+              </h1>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-pencil">
+                {t("register.formIntro")}
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2 text-xs text-pencil sm:flex sm:items-center">
+          <span className="inline-flex items-center gap-1.5 rounded-md border border-graph-line bg-kivu-paper px-3 py-2">
+            <ShieldCheck size={14} />
+            {t("register.localFirst")}
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-md border border-graph-line bg-kivu-paper px-3 py-2">
+            <MapPin size={14} />
+            {t("register.fieldReady")}
+          </span>
+        </div>
+      </div>
 
-      <h1 className="font-serif text-2xl font-bold text-ink-black mt-2 mb-6">
-        {t("records.newRegistration")}
-      </h1>
-
-      <form id="field-register-form" onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+      <form id="field-register-form" onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {saveError && (
           <div className="rounded-md border border-danger-500/30 bg-danger-500/10 px-3 py-2 text-sm text-danger-500">
             {saveError}
           </div>
         )}
 
-        <section>
-          <h2 className="font-serif text-lg font-semibold text-ink-black border-b border-graph-line pb-2 mb-4">
-            {t("register.identification")}
-          </h2>
-
-          <div className="space-y-5">
+        <section className="rounded-lg border border-graph-line bg-white p-4 shadow-sm sm:p-5">
+          <SectionHeading title={t("register.identification")} subtitle={t("register.identificationHint")} />
+          <div className="grid gap-4 md:grid-cols-2">
             <FieldWrapper
               label={t("records.householdName")}
               required
@@ -182,7 +202,7 @@ export default function RegisterPage() {
               <Input
                 {...register("household_name")}
                 error={errors.household_name ? t("common.required") : undefined}
-                className="h-11"
+                className="h-11 bg-white"
               />
             </FieldWrapper>
 
@@ -194,7 +214,7 @@ export default function RegisterPage() {
               <Input
                 {...register("head_of_household")}
                 error={errors.head_of_household ? t("common.required") : undefined}
-                className="h-11"
+                className="h-11 bg-white"
               />
             </FieldWrapper>
 
@@ -208,18 +228,15 @@ export default function RegisterPage() {
                 min="1"
                 {...register("household_size")}
                 error={errors.household_size ? t("common.required") : undefined}
-                className="h-11"
+                className="h-11 bg-white"
               />
             </FieldWrapper>
           </div>
         </section>
 
-        <section>
-          <h2 className="font-serif text-lg font-semibold text-ink-black border-b border-graph-line pb-2 mb-4">
-            {t("register.livingConditions")}
-          </h2>
-
-          <div className="space-y-5">
+        <section className="rounded-lg border border-graph-line bg-white p-4 shadow-sm sm:p-5">
+          <SectionHeading title={t("register.livingConditions")} subtitle={t("register.livingConditionsHint")} />
+          <div className="grid gap-4 md:grid-cols-2">
             <FieldWrapper
               label={t("records.shelterType")}
               required
@@ -228,6 +245,7 @@ export default function RegisterPage() {
               <Select
                 {...register("shelter_type")}
                 error={errors.shelter_type ? t("common.required") : undefined}
+                className="h-11 bg-white"
               >
                 <option value="">—</option>
                 {SHELTER_OPTIONS.map((opt) => (
@@ -244,25 +262,22 @@ export default function RegisterPage() {
               <Input
                 {...register("village")}
                 error={errors.village ? t("common.required") : undefined}
-                className="h-11"
+                className="h-11 bg-white"
               />
             </FieldWrapper>
 
-            <FieldWrapper label={t("records.location", "Adresse / Lieu")}>
+            <FieldWrapper label={t("records.location", t("register.location"))}>
               <Input
                 {...register("location")}
-                placeholder={t("register.locationPlaceholder", "Ex: Camp Mugunga, Goma")}
-                className="h-11"
+                placeholder={t("register.locationPlaceholder")}
+                className="h-11 bg-white"
               />
             </FieldWrapper>
           </div>
         </section>
 
-        <section>
-          <h2 className="font-serif text-lg font-semibold text-ink-black border-b border-graph-line pb-2 mb-4">
-            {t("register.needs")}
-          </h2>
-
+        <section className="rounded-lg border border-graph-line bg-white p-4 shadow-sm sm:p-5">
+          <SectionHeading title={t("register.needs")} subtitle={t("register.needsHint")} />
           <div className="space-y-5">
             <div className="min-h-[48px]">
               <label className="block text-sm font-medium text-pencil mb-1">
@@ -276,7 +291,7 @@ export default function RegisterPage() {
                   {...register("vulnerability_score", { valueAsNumber: true })}
                   className="flex-1 accent-ink-blue h-11"
                 />
-                <span className="text-sm font-mono text-ink-black min-w-[1.5rem] text-center">
+                <span className="rounded-md border border-graph-line bg-kivu-paper px-2 py-1 text-sm font-mono text-ink-black min-w-[3rem] text-center">
                   {vulnerabilityScore}/5
                 </span>
               </div>
@@ -286,11 +301,11 @@ export default function RegisterPage() {
               <label className="block text-sm font-medium text-pencil mb-1">
                 {t("records.needs")}
               </label>
-              <div className="space-y-1">
+              <div className="grid gap-2 sm:grid-cols-2">
                 {NEED_OPTIONS.map((need) => (
                   <label
                     key={need}
-                    className="flex items-center gap-3 min-h-[48px] cursor-pointer rounded-md px-3 hover:bg-graph-paper"
+                    className="flex min-h-[46px] cursor-pointer items-center gap-3 rounded-md border border-graph-line bg-white px-3 transition-colors hover:border-ink-blue/30 hover:bg-graph-paper"
                   >
                     <input
                       type="checkbox"
@@ -309,21 +324,24 @@ export default function RegisterPage() {
             <FieldWrapper label={t("records.notes")}>
               <Textarea
                 {...register("notes")}
-                className="min-h-[80px]"
+                className="min-h-[96px] bg-white"
               />
             </FieldWrapper>
           </div>
         </section>
       </form>
 
-      <div className="mt-8 border-t border-graph-line bg-white py-4 lg:rounded-md lg:border lg:px-4">
-        <div className="mx-auto flex max-w-3xl justify-end">
+      <div className="sticky bottom-24 z-10 mt-4 rounded-lg border border-graph-line bg-white/95 px-4 py-3 shadow-sm backdrop-blur lg:bottom-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs leading-5 text-pencil">
+            {t("register.saveHint")}
+          </p>
           <Button
             type="submit"
             form="field-register-form"
             variant="primary"
             size="lg"
-            className="w-full sm:w-auto"
+            className="w-full shrink-0 sm:w-auto"
             loading={isSubmitting}
             disabled={!user?.orgId}
           >
@@ -331,6 +349,19 @@ export default function RegisterPage() {
           </Button>
         </div>
       </div>
+    </div>
+  )
+}
+
+function SectionHeading({ title, subtitle }: { title: string; subtitle: string }) {
+  return (
+    <div className="mb-4 border-b border-graph-line pb-3">
+      <h2 className="font-display text-lg font-semibold tracking-tight text-ink-black">
+        {title}
+      </h2>
+      <p className="mt-1 text-xs leading-5 text-pencil">
+        {subtitle}
+      </p>
     </div>
   )
 }
@@ -343,6 +374,8 @@ interface FieldWrapperProps {
 }
 
 function FieldWrapper({ label, required, error, children }: FieldWrapperProps) {
+  const { t } = useTranslation()
+
   return (
     <div className="min-h-[48px]">
       <label className="block text-sm font-medium text-pencil mb-1">
@@ -351,7 +384,7 @@ function FieldWrapper({ label, required, error, children }: FieldWrapperProps) {
           <>
             <span className="text-danger-500 ml-0.5">*</span>
             <span className="text-pencil-light text-xs ml-1 font-normal">
-              (obligatoire)
+              ({t("common.required").toLowerCase()})
             </span>
           </>
         )}

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useTranslation } from "react-i18next"
-import { Building2, ChevronDown, ChevronRight, Shield, User, Users, WifiOff } from "lucide-react"
+import { Building2, ChevronDown, ChevronRight, Loader2, Shield, User, Users, WifiOff } from "lucide-react"
 
 import { useAuthStore } from "@/stores/authStore"
 import { hydrateDemoWorkspaceOffline, loadOfflineDemoSandbox, persistDemoSandbox, type DemoOfflineWorkspace } from "@/lib/demo/offline-demo-cache"
@@ -90,6 +90,24 @@ export default function DemoPage() {
 
   return (
     <div className="min-h-screen bg-kivu-paper flex flex-col items-center justify-center px-4 py-10">
+      {loadingKey && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 px-4 backdrop-blur-md">
+          <div className="w-full max-w-sm rounded-2xl border border-graph-line bg-white px-6 py-7 text-center shadow-xl">
+            <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-graph-paper text-ink-blue">
+              <Loader2 size={26} className="animate-spin" aria-hidden="true" />
+            </div>
+            <p className="font-display text-xl font-semibold tracking-tight text-ink-black">
+              {t("demo.creating")}
+            </p>
+            <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-pencil">
+              {t("demo.creatingBody")}
+            </p>
+            <div className="mt-6 h-1.5 overflow-hidden rounded-full bg-graph-paper">
+              <div className="h-full w-1/2 animate-[pulse_1.3s_ease-in-out_infinite] rounded-full bg-ink-blue" />
+            </div>
+          </div>
+        </div>
+      )}
       <div className="w-full max-w-2xl">
         <header className="border-b-2 border-ink-black pb-4 mb-6">
           <h1 className="font-display text-4xl text-lake-deep font-bold tracking-tight leading-none">

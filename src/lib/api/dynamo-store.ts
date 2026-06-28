@@ -35,18 +35,74 @@ const client = DynamoDBDocumentClient.from(rawClient)
 
 const TABLE = process.env.DYNAMODB_TABLE || "FieldFlowRecords"
 let sortKeyEnabledPromise: Promise<boolean> | null = null
+let sortKeyOverride: boolean | null = null
 
 async function sortKeyEnabled() {
   if (process.env.DYNAMODB_SORT_KEY_ENABLED === "true") return true
   if (process.env.DYNAMODB_SORT_KEY_ENABLED === "false") return false
+  if (sortKeyOverride !== null) return sortKeyOverride
   sortKeyEnabledPromise ||= rawClient.send(new DescribeTableCommand({ TableName: TABLE }))
     .then((result) => result.Table?.KeySchema?.some((key) => key.AttributeName === "sk" && key.KeyType === "RANGE") ?? false)
-    .catch(() => false)
+    .catch(() => true)
   return sortKeyEnabledPromise
 }
 
+function keyFor(pk: string, sk: string, hasSortKey: boolean) {
+  return hasSortKey ? { pk, sk } : { pk }
+}
+
 async function tableKey(pk: string, sk: string) {
-  return (await sortKeyEnabled()) ? { pk, sk } : { pk }
+  return keyFor(pk, sk, await sortKeyEnabled())
+}
+
+function isKeySchemaError(error: unknown) {
+  return error instanceof Error && error.name === "ValidationException" && error.message.includes("key element")
+}
+
+async function sendGet(pk: string, sk: string, projectionExpression?: string) {
+  const firstMode = await sortKeyEnabled()
+  try {
+    return await client.send(
+      new GetCommand({
+        TableName: TABLE,
+        Key: keyFor(pk, sk, firstMode),
+        ProjectionExpression: projectionExpression,
+      })
+    )
+  } catch (error) {
+    if (!isKeySchemaError(error) || process.env.DYNAMODB_SORT_KEY_ENABLED) throw error
+    sortKeyOverride = !firstMode
+    sortKeyEnabledPromise = Promise.resolve(sortKeyOverride)
+    return client.send(
+      new GetCommand({
+        TableName: TABLE,
+        Key: keyFor(pk, sk, sortKeyOverride),
+        ProjectionExpression: projectionExpression,
+      })
+    )
+  }
+}
+
+async function sendDelete(pk: string, sk: string) {
+  const firstMode = await sortKeyEnabled()
+  try {
+    return await client.send(
+      new DeleteCommand({
+        TableName: TABLE,
+        Key: keyFor(pk, sk, firstMode),
+      })
+    )
+  } catch (error) {
+    if (!isKeySchemaError(error) || process.env.DYNAMODB_SORT_KEY_ENABLED) throw error
+    sortKeyOverride = !firstMode
+    sortKeyEnabledPromise = Promise.resolve(sortKeyOverride)
+    return client.send(
+      new DeleteCommand({
+        TableName: TABLE,
+        Key: keyFor(pk, sk, sortKeyOverride),
+      })
+    )
+  }
 }
 
 function stripKeys<T>(item: (T & Record<string, unknown>) | undefined): T | undefined {
@@ -108,22 +164,12 @@ export const dynamoStore = {
   },
 
   async getRecord(id: string, orgId: string): Promise<RecordData | undefined> {
-    const result = await client.send(
-      new GetCommand({
-        TableName: TABLE,
-        Key: await tableKey(orgRecordPk(orgId, id), "PROFILE"),
-      })
-    )
+    const result = await sendGet(orgRecordPk(orgId, id), "PROFILE")
     return stripKeys<RecordData>(result.Item as (RecordData & Record<string, unknown>) | undefined)
   },
 
   async deleteRecord(id: string, orgId: string) {
-    await client.send(
-      new DeleteCommand({
-        TableName: TABLE,
-        Key: await tableKey(orgRecordPk(orgId, id), "PROFILE"),
-      })
-    )
+    await sendDelete(orgRecordPk(orgId, id), "PROFILE")
   },
 
   async getRecordsByWorkflow(workflowId: string, orgId: string): Promise<RecordData[]> {
@@ -160,12 +206,7 @@ export const dynamoStore = {
   },
 
   async getWorkflow(id: string, orgId: string): Promise<WorkflowDefinition | undefined> {
-    const result = await client.send(
-      new GetCommand({
-        TableName: TABLE,
-        Key: await tableKey(orgWorkflowPk(orgId, id), "DEFINITION"),
-      })
-    )
+    const result = await sendGet(orgWorkflowPk(orgId, id), "DEFINITION")
     return stripKeys<WorkflowDefinition>(result.Item as (WorkflowDefinition & Record<string, unknown>) | undefined)
   },
 
@@ -191,12 +232,7 @@ export const dynamoStore = {
   },
 
   async getDevice(deviceId: string, orgId: string): Promise<DeviceState | undefined> {
-    const result = await client.send(
-      new GetCommand({
-        TableName: TABLE,
-        Key: await tableKey(orgDevicePk(orgId, deviceId), "STATE"),
-      })
-    )
+    const result = await sendGet(orgDevicePk(orgId, deviceId), "STATE")
     return stripKeys<DeviceState>(result.Item as (DeviceState & Record<string, unknown>) | undefined)
   },
 
@@ -221,12 +257,7 @@ export const dynamoStore = {
   },
 
   async getConflict(id: string, orgId: string): Promise<ConflictRecord | undefined> {
-    const result = await client.send(
-      new GetCommand({
-        TableName: TABLE,
-        Key: await tableKey(orgConflictPk(orgId, id), "PROFILE"),
-      })
-    )
+    const result = await sendGet(orgConflictPk(orgId, id), "PROFILE")
     return stripKeys<ConflictRecord>(result.Item as (ConflictRecord & Record<string, unknown>) | undefined)
   },
 
@@ -252,12 +283,7 @@ export const dynamoStore = {
   },
 
   async getInventoryItem(id: string, orgId: string): Promise<InventoryItem | undefined> {
-    const result = await client.send(
-      new GetCommand({
-        TableName: TABLE,
-        Key: await tableKey(orgInventoryPk(orgId, id), "PROFILE"),
-      })
-    )
+    const result = await sendGet(orgInventoryPk(orgId, id), "PROFILE")
     return stripKeys<InventoryItem>(result.Item as (InventoryItem & Record<string, unknown>) | undefined)
   },
 
@@ -280,12 +306,7 @@ export const dynamoStore = {
     orgId: string,
   ): Promise<{ success: boolean; error?: string; remaining?: number; contentHash?: string; competingRequestId?: string; currentStock?: number; retryRecommended?: boolean }> {
     const contentHash = createHash("sha256").update(`${orgId}|${itemId}|${qty}|${userId}|${idempotencyKey}`).digest("hex")
-    const existingReceipt = await client.send(
-      new GetCommand({
-        TableName: TABLE,
-        Key: await tableKey(orgInventoryReceiptPk(orgId, idempotencyKey), "PROFILE"),
-      })
-    )
+    const existingReceipt = await sendGet(orgInventoryReceiptPk(orgId, idempotencyKey), "PROFILE")
     if (existingReceipt.Item) {
       return {
         success: Boolean(existingReceipt.Item.success),
@@ -432,12 +453,7 @@ export const dynamoStore = {
       )
       return { success: true, contentHash, remaining }
     } catch (error) {
-      const receiptAfterFailure = await client.send(
-        new GetCommand({
-          TableName: TABLE,
-          Key: await tableKey(orgInventoryReceiptPk(orgId, idempotencyKey), "PROFILE"),
-        })
-      )
+      const receiptAfterFailure = await sendGet(orgInventoryReceiptPk(orgId, idempotencyKey), "PROFILE")
       if (receiptAfterFailure.Item) {
         return {
           success: Boolean(receiptAfterFailure.Item.success),
@@ -482,13 +498,7 @@ export const dynamoStore = {
   },
 
   async hasMutation(clientId: string, orgId: string): Promise<boolean> {
-    const result = await client.send(
-      new GetCommand({
-        TableName: TABLE,
-        Key: await tableKey(orgMutationPk(orgId, clientId), "PROFILE"),
-        ProjectionExpression: "pk",
-      })
-    )
+    const result = await sendGet(orgMutationPk(orgId, clientId), "PROFILE", "pk")
     return !!result.Item
   },
 

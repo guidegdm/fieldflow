@@ -116,7 +116,7 @@ export default function DemoPage() {
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-semibold text-ink-black truncate">{scenario.org.name}</span>
-                    <span className="block text-xs text-pencil truncate">{scenario.description}</span>
+                    <span className="block text-xs text-pencil truncate">{t(`demo.scenarios.${scenario.orgKey}.description`, scenario.description)}</span>
                   </span>
                   {expanded ? <ChevronDown size={16} className="text-pencil" /> : <ChevronRight size={16} className="text-pencil" />}
                 </button>

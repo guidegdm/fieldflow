@@ -45,16 +45,16 @@ export default function SupervisorDashboard() {
   })
 
   return (
-    <div className="p-6">
+    <div className="space-y-6 sm:p-6">
       <div className="mb-8 flex items-center justify-between">
         <h1 className="font-display text-2xl font-bold text-ink-black">{t("supervisor.title", "Tableau de bord")}</h1>
       </div>
 
-      <div className="mb-8 grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-3 sm:mb-8 sm:grid-cols-4 sm:gap-4">
         {stats.map((s) => (
-          <Card key={s.label} className="p-5">
-            <div className="flex items-center justify-between">
-              <p className="text-xs uppercase tracking-wider text-pencil">{s.label}</p>
+          <Card key={s.label} className="p-3 sm:p-5">
+            <div className="flex items-start justify-between gap-2">
+              <p className="min-w-0 text-[11px] uppercase tracking-wide text-pencil sm:text-xs sm:tracking-wider">{s.label}</p>
               <div className={`flex h-9 w-9 items-center justify-center rounded-md ${s.bg}`}>
                 <s.icon className={`h-5 w-5 ${s.color}`} />
               </div>
@@ -66,9 +66,9 @@ export default function SupervisorDashboard() {
 
       <Card>
         <CardContent className="p-0">
-          <div className="flex items-center justify-between border-b border-graph-line px-6 py-3">
+          <div className="flex flex-col gap-3 border-b border-graph-line px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
             <h2 className="font-medium text-ink-black">{t("supervisor.reviewQueue", "File d'attente")}</h2>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               {["all", "priority", "today"].map((f) => (
                 <button key={f} onClick={() => setFilter(f)} className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${filter === f ? "bg-lake-deep text-white" : "bg-graph-paper text-pencil hover:bg-graph-line"}`}>
                   {f === "all" ? t("common.all", "Tous") : f === "priority" ? t("common.priority", "Prioritaire") : t("common.today", "Aujourd'hui")}

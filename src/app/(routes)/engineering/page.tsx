@@ -117,12 +117,12 @@ export default function EngineeringPage() {
   }
 
   return (
-    <div className="min-h-screen bg-concrete-dark px-4 py-6 sm:p-6">
-      <div className="mx-auto max-w-7xl">
+    <div className="min-h-screen overflow-hidden bg-concrete-dark px-4 py-6 sm:p-6">
+      <div className="mx-auto max-w-7xl min-w-0">
         <h1 className="mb-8 font-display text-3xl text-starlight">Engineering</h1>
 
         <Tabs defaultValue="sync">
-          <TabsList className="border-b-2 border-concrete">
+          <TabsList className="max-w-full overflow-x-auto border-b-2 border-concrete">
             <TabsTrigger
               value="sync"
               className="aria-selected:border-starlight aria-selected:text-starlight text-concrete hover:text-starlight"

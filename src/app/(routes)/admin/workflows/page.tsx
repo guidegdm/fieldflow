@@ -53,18 +53,18 @@ export default function AdminWorkflowsIndex() {
 
   return (
     <div className="max-w-5xl space-y-8">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
           <WorkflowIcon size={22} className="text-lake-deep" />
           <h1 className="font-display text-4xl text-lake-deep tracking-tight">{t("admin.workflows")}</h1>
         </div>
-        <Button variant="primary" onClick={() => router.push("/admin/workflows/new")}>
+        <Button variant="primary" onClick={() => router.push("/admin/workflows/new")} className="w-full sm:w-auto">
           <Plus size={16} />
           {t("admin.newWorkflow")}
         </Button>
       </div>
 
-      <div className="border-2 border-volcanic-ash">
+      <div className="max-w-full overflow-x-auto border-2 border-volcanic-ash">
         <Table>
           <TableHeader>
             <TableRow className="border-b-2 border-volcanic-ash">

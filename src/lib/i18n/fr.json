@@ -57,7 +57,18 @@
   },
   "demo": {
     "creating": "Préparation de la démo hors ligne...",
-    "loginFailed": "La démo n'a pas pu démarrer. Réessayez."
+    "loginFailed": "La démo n'a pas pu démarrer. Réessayez.",
+    "scenarios": {
+      "AHK": {
+        "description": "Parcourez l'inscription, la validation, la réservation et la distribution."
+      },
+      "SRB": {
+        "description": "Examinez des cas de santé rurale dans une deuxième organisation."
+      },
+      "LE": {
+        "description": "Testez l'inventaire et la sync dans un espace logistique."
+      }
+    }
   },
   "roles": {
     "field_worker": "Agent terrain",
@@ -76,6 +87,7 @@
     "gpsCoordinates": "Coordonnées GPS",
     "vulnerabilityScore": "Score de vulnérabilité",
     "needs": "Besoins prioritaires",
+    "notes": "Notes",
     "status": "Statut",
     "savedLocally": "Enregistré localement",
     "syncComplete": "Synchronisation terminée",
@@ -288,12 +300,15 @@
     "sessionRequired": "La session est encore en chargement. Réessayez dans un instant.",
     "saveFailed": "Impossible d'enregistrer cette fiche sur l'appareil.",
     "shelter_tente": "Tente",
+    "shelter_tent": "Tente",
     "shelter_abri": "Abri de fortune",
     "shelter_maison": "Maison",
     "shelter_centre": "Centre collectif",
     "shelter_famille": "Famille d'accueil",
     "need_nourriture": "Nourriture",
+    "need_food": "Nourriture",
     "need_eau": "Eau potable",
+    "need_water": "Eau potable",
     "need_abri": "Abri",
     "need_medical": "Soins médicaux",
     "need_education": "Éducation",

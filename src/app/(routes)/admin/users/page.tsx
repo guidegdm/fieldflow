@@ -76,9 +76,9 @@ export default function AdminUsersPage() {
 
   return (
     <div className="max-w-5xl space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="font-display text-4xl text-lake-deep tracking-tight">{t("admin.users")}</h1>
-        <Button variant="primary" onClick={() => setInviteOpen(true)}>
+        <Button variant="primary" onClick={() => setInviteOpen(true)} className="w-full sm:w-auto">
           <UserPlus size={16} />
           {t("admin.inviteUser")}
         </Button>
@@ -129,7 +129,7 @@ export default function AdminUsersPage() {
         </div>
       )}
 
-      <div className="border-2 border-volcanic-ash">
+      <div className="max-w-full overflow-x-auto border-2 border-volcanic-ash">
         <Table>
           <TableHeader>
             <TableRow className="border-b-2 border-volcanic-ash">

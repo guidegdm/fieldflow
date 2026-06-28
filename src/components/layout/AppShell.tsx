@@ -87,7 +87,7 @@ export function AppShell({ children, role }: AppShellProps) {
         <div className="fixed right-3 top-9 z-30 sm:right-4 lg:right-6">
           <LanguageToggle />
         </div>
-        <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+        <div className="mx-auto w-full max-w-7xl px-4 pb-5 pt-16 sm:px-6 sm:pb-6 sm:pt-16 lg:px-8 lg:py-8">
           <AppShellErrorBoundary>{children}</AppShellErrorBoundary>
         </div>
       </main>

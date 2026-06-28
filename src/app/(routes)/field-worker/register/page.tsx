@@ -316,7 +316,7 @@ export default function RegisterPage() {
         </section>
       </form>
 
-      <div className="fixed bottom-16 left-0 right-0 z-50 border-t border-graph-line bg-white p-4 lg:sticky lg:bottom-0 lg:mt-8 lg:rounded-md lg:border lg:px-4">
+      <div className="mt-8 border-t border-graph-line bg-white py-4 lg:rounded-md lg:border lg:px-4">
         <div className="mx-auto flex max-w-3xl justify-end">
           <Button
             type="submit"

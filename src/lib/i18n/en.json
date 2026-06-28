@@ -57,7 +57,18 @@
   },
   "demo": {
     "creating": "Preparing offline demo...",
-    "loginFailed": "Demo login failed. Please try again."
+    "loginFailed": "Demo login failed. Please try again.",
+    "scenarios": {
+      "AHK": {
+        "description": "Run registration, review, inventory reservation, and distribution."
+      },
+      "SRB": {
+        "description": "Review rural health cases from a second organization."
+      },
+      "LE": {
+        "description": "Stress inventory and sync from a logistics workspace."
+      }
+    }
   },
   "roles": {
     "field_worker": "Field Agent",
@@ -76,6 +87,7 @@
     "gpsCoordinates": "GPS Coordinates",
     "vulnerabilityScore": "Vulnerability Score",
     "needs": "Priority Needs",
+    "notes": "Notes",
     "status": "Status",
     "savedLocally": "Saved Locally",
     "syncComplete": "Sync Complete",
@@ -288,12 +300,15 @@
     "sessionRequired": "Session is still loading. Please try again in a moment.",
     "saveFailed": "Could not save this record on the device.",
     "shelter_tente": "Tent",
+    "shelter_tent": "Tent",
     "shelter_abri": "Shelter",
     "shelter_maison": "House",
     "shelter_centre": "Collective Center",
     "shelter_famille": "Host Family",
     "need_nourriture": "Food",
+    "need_food": "Food",
     "need_eau": "Drinking Water",
+    "need_water": "Drinking Water",
     "need_abri": "Shelter",
     "need_medical": "Medical Care",
     "need_education": "Education",

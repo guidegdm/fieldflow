@@ -4,7 +4,7 @@ import type { MutationEntry, DeviceState, ConflictRecord, AuditEvent, InventoryL
 import type { WorkflowDefinition } from "@/types/workflow"
 import type { InventoryItem } from "./dynamo-store"
 
-const DYNAMODB_ENABLED = false // TODO: re-enable after DynamoDB table schema matches codex key patterns (ORG#/RECORD# prefixes)
+const DYNAMODB_ENABLED = process.env.DYNAMODB_ENABLED !== "false"
 
 let _dynamoStore: typeof import("./dynamo-store").dynamoStore | null = null
 async function getDynamo() {
@@ -179,6 +179,10 @@ class Store {
   }
 
   pushAuditEvent(e: AuditEvent) { this.auditEvents.push(e) }
+  async pushAuditEventForOrg(e: AuditEvent, orgId: string) {
+    if (DYNAMODB_ENABLED) await (await getDynamo())?.putAuditEvent(orgId, e.record_id || e.item_id || e.id, e as unknown as Record<string, unknown>)
+    this.auditEvents.push(e)
+  }
   getAuditEvents() { return this.auditEvents }
 
   getInventoryLedger() { return this.inventoryLedger }

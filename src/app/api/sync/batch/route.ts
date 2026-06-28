@@ -225,7 +225,7 @@ export async function POST(request: NextRequest) {
               resolved_value: autoResolved ? resolvedValue : undefined,
             })
 
-            store.pushAuditEvent({
+            await store.pushAuditEventForOrg({
               id: crypto.randomUUID(),
               type: autoResolved ? "conflict_auto_resolved" : "conflict_escalated",
               record_id: op.record_id!,
@@ -237,7 +237,7 @@ export async function POST(request: NextRequest) {
               resolved_value: autoResolved ? resolvedValue : undefined,
               detail: field_strategy,
               timestamp: Date.now(),
-            })
+            }, user.orgId)
           }
         } else {
           Object.assign(mergedFields, incomingFields)

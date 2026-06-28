@@ -35,8 +35,6 @@ const client = DynamoDBDocumentClient.from(
 )
 
 const TABLE = process.env.DYNAMODB_TABLE || "FieldFlowRecords"
-const AUDIT_TABLE = process.env.DYNAMODB_AUDIT_TABLE || "FieldFlowAudit"
-
 function stripKeys<T>(item: (T & Record<string, unknown>) | undefined): T | undefined {
   if (!item) return undefined
   const { pk: _pk, sk: _sk, entityType: _entityType, ...rest } = item
@@ -73,6 +71,10 @@ function orgInventoryLedgerPk(orgId: string, id: string) {
 
 function orgMutationPk(orgId: string, id: string) {
   return `ORG#${orgId}#MUTATION#${id}`
+}
+
+function orgAuditPk(orgId: string, recordId: string) {
+  return `ORG#${orgId}#AUDIT#${recordId}`
 }
 
 export const dynamoStore = {
@@ -541,15 +543,21 @@ export const dynamoStore = {
     return stripKeys((result.Items || [])[0])
   },
 
-  async putAuditEvent(recordId: string, event: Record<string, unknown>) {
+  async putAuditEvent(orgId: string, recordId: string, event: Record<string, unknown>) {
+    const timestamp = Number(event.timestamp || Date.now())
+    const eventId = String(event.id || `audit-${timestamp}`)
     await client.send(
       new PutCommand({
-        TableName: AUDIT_TABLE,
+        TableName: TABLE,
         Item: {
-          auditId: `AUDIT#${Date.now()}#${Math.random().toString(36).slice(2)}`,
+          pk: orgAuditPk(orgId, recordId),
+          sk: `EVENT#${timestamp}#${eventId}`,
+          entityType: "audit",
+          orgId,
           recordId,
+          eventId,
           ...event,
-          timestamp: Date.now(),
+          timestamp,
         },
       })
     )

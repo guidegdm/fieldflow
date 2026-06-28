@@ -44,19 +44,19 @@ function stripKeys<T>(item: (T & Record<string, unknown>) | undefined): T | unde
 }
 
 function orgRecordPk(orgId: string, id: string) {
-  return `RECORD#${id}`
+  return `ORG#${orgId}#RECORD#${id}`
 }
 
 function orgWorkflowPk(orgId: string, id: string) {
-  return `WORKFLOW#${id}`
+  return `ORG#${orgId}#WORKFLOW#${id}`
 }
 
 function orgDevicePk(orgId: string, id: string) {
-  return `DEVICE#${id}`
+  return `ORG#${orgId}#DEVICE#${id}`
 }
 
 function orgConflictPk(orgId: string, id: string) {
-  return `CONFLICT#${id}`
+  return `ORG#${orgId}#CONFLICT#${id}`
 }
 
 function orgInventoryPk(orgId: string, id: string) {

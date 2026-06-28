@@ -13,10 +13,18 @@ interface UserRow {
   role: UserRole
 }
 
+interface WorkflowRow {
+  id: string
+  name: string
+  version: number
+  status: string
+  count: number
+}
+
 export default function AdminDashboard() {
   const { t } = useTranslation()
   const [data, setData] = useState({ workflows: 1, records: 0, users: 4, conflicts: 0 })
-  const [workflows, setWorkflows] = useState<{ name: string; version: number; status: string; count: number }[]>([])
+  const [workflows, setWorkflows] = useState<WorkflowRow[]>([])
   const [users, setUsers] = useState<UserRow[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -30,7 +38,8 @@ export default function AdminDashboard() {
         ])
         setData({ workflows: statsRes.workflows ?? 0, records: statsRes.records ?? 0, users: usersRes.length, conflicts: statsRes.conflicts ?? 0 })
         setUsers(usersRes)
-        setWorkflows(workflowsRes.map((wf: { name: string; version: number; status: string; recordCount?: number }) => ({
+        setWorkflows((Array.isArray(workflowsRes) ? workflowsRes : []).map((wf: { id: string; name: string; version: number; status: string; recordCount?: number }) => ({
+          id: wf.id,
           name: wf.name,
           version: wf.version,
           status: wf.status,
@@ -52,10 +61,10 @@ export default function AdminDashboard() {
 
       <div className="mt-8 grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "Workflows", value: loading ? "—" : data.workflows, sub: "actifs" },
-          { label: "Enregistrements", value: loading ? "—" : data.records, sub: "total" },
-          { label: "Utilisateurs", value: loading ? "—" : data.users, sub: "actifs" },
-          { label: "Conflits", value: loading ? "—" : data.conflicts, sub: "à résoudre" },
+          { label: t("admin.kpiWorkflows"), value: loading ? "—" : data.workflows, sub: t("admin.active") },
+          { label: t("admin.kpiRecords"), value: loading ? "—" : data.records, sub: t("admin.total") },
+          { label: t("admin.users"), value: loading ? "—" : data.users, sub: t("admin.active") },
+          { label: t("admin.kpiConflicts"), value: loading ? "—" : data.conflicts, sub: t("admin.toResolve") },
         ].map((k) => (
           <div key={k.label} className="rounded-lg border border-graph-line bg-white p-5">
             <p className="text-xs uppercase tracking-wider text-pencil">{k.label}</p>
@@ -69,17 +78,20 @@ export default function AdminDashboard() {
         <div className="lg:col-span-2 rounded-lg border border-graph-line bg-white p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-medium text-ink-black">{t("admin.workflows", "Workflows")}</h2>
-            <Link href="/admin/workflows/new" className="rounded-md bg-ink-blue text-white px-4 py-2 text-sm font-medium hover:bg-ink-blue/90">+ Nouveau</Link>
+            <Link href="/admin/workflows/new" className="rounded-md bg-ink-blue text-white px-4 py-2 text-sm font-medium hover:bg-ink-blue/90">{t("admin.newWorkflow")}</Link>
           </div>
           {workflows.map((wf) => (
-            <Link key={wf.name} href="/admin/workflows/wf-1" className="flex items-center justify-between py-3 border-b border-graph-line last:border-0 hover:bg-graph-paper -mx-2 px-2 rounded">
+            <Link key={wf.id} href={`/admin/workflows/${wf.id}`} className="flex items-center justify-between py-3 border-b border-graph-line last:border-0 hover:bg-graph-paper -mx-2 px-2 rounded">
               <div>
                 <p className="text-sm font-medium text-ink-black">{wf.name}</p>
-                <p className="text-xs text-pencil">v{wf.version} · {wf.count} enregistrements</p>
+                <p className="text-xs text-pencil">{t("admin.workflowRecordSummary", { version: wf.version, count: wf.count })}</p>
               </div>
-              <Badge variant={wf.status === "published" ? "success" : "warning"}>{wf.status === "published" ? "Publié" : "Brouillon"}</Badge>
+              <Badge variant={wf.status === "published" ? "success" : "warning"}>{wf.status === "published" ? t("workflow.published") : t("workflow.draft")}</Badge>
             </Link>
           ))}
+          {!loading && workflows.length === 0 && (
+            <p className="py-6 text-sm text-pencil">{t("admin.noWorkflows")}</p>
+          )}
         </div>
 
         <div className="rounded-lg border border-graph-line bg-white p-6">
@@ -92,9 +104,12 @@ export default function AdminDashboard() {
                   <p className="text-sm font-medium text-ink-black truncate">{u.name}</p>
                   <p className="text-xs text-pencil">{u.email}</p>
                 </div>
-                <Badge variant="info">{u.role === "org_admin" ? "Admin" : u.role === "supervisor" ? "Superviseur" : "Agent"}</Badge>
+                <Badge variant="info">{t(`roles.${u.role}`)}</Badge>
               </div>
             ))}
+            {!loading && users.length === 0 && (
+              <p className="text-sm text-pencil">{t("admin.noUsers")}</p>
+            )}
           </div>
         </div>
       </div>

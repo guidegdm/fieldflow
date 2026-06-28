@@ -16,7 +16,7 @@ const STATE_COLORS: Record<string, string> = {
 }
 
 export function WorkflowFlow() {
-  const { t } = useTranslation()
+  const { i18n } = useTranslation()
   const { workflow, selectedStateId } = useWorkflowStore()
 
   const svgArrows = useMemo(() => {
@@ -38,6 +38,7 @@ export function WorkflowFlow() {
   if (!workflow) return null
 
   const stateColor = (key: string) => STATE_COLORS[key] ?? "#6B7280"
+  const english = (i18n.resolvedLanguage || i18n.language)?.startsWith("en")
 
   return (
     <div className="flex-1 relative bg-kivu-paper overflow-hidden">
@@ -94,7 +95,7 @@ export function WorkflowFlow() {
             color: stateColor(state.key),
           }}
         >
-          {state.label}
+          {english ? state.labelEn || state.label : state.label}
         </div>
       ))}
     </div>

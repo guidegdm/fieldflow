@@ -12,21 +12,22 @@ const FIELD_TYPES = [
 ]
 
 const TYPE_LABELS: Record<string, string> = {
-  text: "Texte court",
-  number: "Nombre",
-  select: "Liste déroulante",
-  "multi-select": "Choix multiples",
-  date: "Date",
-  gps: "GPS",
-  photo: "Photo",
-  textarea: "Texte long",
+  text: "workflow.fieldTypes.text",
+  number: "workflow.fieldTypes.number",
+  select: "workflow.fieldTypes.select",
+  "multi-select": "workflow.fieldTypes.multiSelect",
+  date: "workflow.fieldTypes.date",
+  gps: "workflow.fieldTypes.gps",
+  photo: "workflow.fieldTypes.photo",
+  textarea: "workflow.fieldTypes.textarea",
 }
 
 export function FieldEditor() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { workflow, selectedFieldId, updateField, removeField } = useWorkflowStore()
 
   const field = workflow?.entity.fields.find((f) => f.id === selectedFieldId)
+  const english = (i18n.resolvedLanguage || i18n.language)?.startsWith("en")
 
   if (!field) {
     return (
@@ -63,8 +64,8 @@ export function FieldEditor() {
 
       <Input
         label={t("workflow.fieldLabel", "Label")}
-        value={field.label}
-        onChange={(e) => updateField(field.id, { label: e.target.value })}
+        value={english ? field.labelEn || field.label : field.label}
+        onChange={(e) => updateField(field.id, english ? { labelEn: e.target.value } : { label: e.target.value })}
       />
 
       <Input
@@ -89,7 +90,7 @@ export function FieldEditor() {
         >
           {FIELD_TYPES.map((type) => (
             <option key={type} value={type}>
-              {TYPE_LABELS[type] ?? type}
+              {TYPE_LABELS[type] ? t(TYPE_LABELS[type]) : type}
             </option>
           ))}
         </Select>

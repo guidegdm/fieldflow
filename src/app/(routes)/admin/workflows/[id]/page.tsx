@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect } from "react"
 import { useTranslation } from "react-i18next"
 import { useParams, useRouter } from "next/navigation"
 import { useAuthStore } from "@/stores/authStore"
@@ -13,13 +13,15 @@ import { FormCanvas } from "@/components/builder/FormCanvas"
 import { FieldEditor } from "@/components/builder/FieldEditor"
 import { WorkflowFlow } from "@/components/builder/WorkflowFlow"
 import { FormPreview } from "@/components/builder/FormPreview"
+import type { DemoUser } from "@/types/auth"
+import type { WorkflowDefinition } from "@/types/workflow"
 
 const MODE_TABS = [
-  { key: "fields", label: "📋 Fields" },
-  { key: "flow", label: "🔀 Flow" },
-  { key: "roles", label: "👥 Roles" },
-  { key: "settings", label: "⚙ Settings" },
-  { key: "preview", label: "📱 Preview" },
+  { key: "fields", icon: "📋", labelKey: "workflow.fields" },
+  { key: "flow", icon: "🔀", labelKey: "workflow.flow" },
+  { key: "roles", icon: "👥", labelKey: "workflow.roles" },
+  { key: "settings", icon: "⚙", labelKey: "workflow.settings" },
+  { key: "preview", icon: "📱", labelKey: "workflow.preview" },
 ]
 
 const STATE_COLORS: Record<string, string> = {
@@ -32,10 +34,93 @@ const STATE_COLORS: Record<string, string> = {
   confirme: "#1B4F72",
 }
 
+function isEnglish(language?: string) {
+  return language?.startsWith("en") ?? false
+}
+
+function localizedLabel(item: { label: string; labelEn?: string }, english: boolean) {
+  return english ? item.labelEn || item.label : item.label
+}
+
+function createDraftWorkflow(id: string, user: DemoUser, translate: (key: string) => string): WorkflowDefinition {
+  const now = new Date().toISOString()
+  return {
+    id,
+    orgId: user.orgId,
+    version: 1,
+    name: "Nouveau workflow",
+    nameEn: translate("workflow.newDefaultName"),
+    description: "",
+    descriptionEn: "",
+    entity: {
+      id: "entity-1",
+      key: "record",
+      label: "Fiche",
+      labelEn: translate("workflow.defaultEntity"),
+      fields: [],
+    },
+    states: [
+      {
+        id: "state-draft",
+        key: "draft",
+        label: "Brouillon",
+        labelEn: translate("workflow.stateDraft"),
+        color: "#6B7280",
+        isInitial: true,
+        isTerminal: false,
+        x: 160,
+        y: 120,
+      },
+      {
+        id: "state-submitted",
+        key: "submitted",
+        label: "Soumis",
+        labelEn: translate("workflow.stateSubmitted"),
+        color: "#2563EB",
+        isInitial: false,
+        isTerminal: false,
+        x: 420,
+        y: 120,
+      },
+    ],
+    transitions: [
+      {
+        id: "transition-submit",
+        key: "submit",
+        label: "Soumettre",
+        labelEn: translate("workflow.transitionSubmit"),
+        fromState: "state-draft",
+        toState: "state-submitted",
+        requiredRoles: ["field_worker"],
+      },
+    ],
+    roles: [
+      { id: "role-field-worker", key: "field_worker", label: "Agent terrain", labelEn: translate("roles.field_worker"), permissions: ["record:create", "record:read_own", "record:update_own", "sync:push", "sync:pull"] },
+      { id: "role-supervisor", key: "supervisor", label: "Superviseur", labelEn: translate("roles.supervisor"), permissions: ["record:read_team", "record:verify", "record:approve", "conflict:resolve", "sync:pull"] },
+      { id: "role-admin", key: "org_admin", label: "Administrateur", labelEn: translate("roles.org_admin"), permissions: ["workflow:publish", "admin:manage_users", "audit:view"] },
+    ],
+    offlinePolicy: {
+      maxOfflineHours: 72,
+      allowedOperations: { create: true, update: true, delete: false, evidence: true },
+      conflictStrategy: "manual",
+      manualResolutionFields: [],
+      autoResolutionNumeric: "max",
+      maxAttachmentSizeMb: 10,
+      allowedAttachmentTypes: ["image/jpeg", "image/png", "application/pdf"],
+      attachmentSyncPriority: "deferred",
+    },
+    status: "draft",
+    createdAt: now,
+    updatedAt: now,
+    author: user.email,
+  }
+}
+
 function StatePropertiesPanel() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { workflow, selectedStateId, updateState } = useWorkflowStore()
   const state = workflow?.states.find((s) => s.id === selectedStateId)
+  const english = isEnglish(i18n.resolvedLanguage || i18n.language)
 
   if (!state) {
     return (
@@ -52,10 +137,10 @@ function StatePropertiesPanel() {
       </h3>
       <div>
         <label className="text-[11px] uppercase tracking-[0.1em] text-volcanic-ash font-medium">{t("admin.stateLabel", "Label")}</label>
-        <p className="text-sm font-medium text-ink-black mt-1">{state.label}</p>
+        <p className="text-sm font-medium text-ink-black mt-1">{localizedLabel(state, english)}</p>
       </div>
       <div>
-        <label className="text-[11px] uppercase tracking-[0.1em] text-volcanic-ash font-medium">{"Clé"}</label>
+        <label className="text-[11px] uppercase tracking-[0.1em] text-volcanic-ash font-medium">{t("workflow.key")}</label>
         <p className="font-mono text-sm text-volcanic-ash mt-1">{state.key}</p>
       </div>
       <div className="flex items-center gap-2">
@@ -64,10 +149,10 @@ function StatePropertiesPanel() {
       </div>
       <div className="flex gap-2">
         <Badge variant={state.isInitial ? "info" : "default"} size="sm">
-          {state.isInitial ? "Initial" : ""}
+          {state.isInitial ? t("workflow.initial") : ""}
         </Badge>
         <Badge variant={state.isTerminal ? "success" : "default"} size="sm">
-          {state.isTerminal ? "Terminal" : ""}
+          {state.isTerminal ? t("workflow.terminal") : ""}
         </Badge>
       </div>
     </div>
@@ -94,7 +179,7 @@ function AIPanel({ onClose }: { onClose: () => void }) {
       })
 
       if (!res.ok) {
-        setResponse("Erreur de connexion à l'assistant.")
+        setResponse(t("workflow.aiConnectionError"))
         return
       }
 
@@ -122,7 +207,7 @@ function AIPanel({ onClose }: { onClose: () => void }) {
         }
       }
     } catch {
-      setResponse("Erreur réseau.")
+      setResponse(t("workflow.aiNetworkError"))
     } finally {
       setLoading(false)
     }
@@ -133,7 +218,7 @@ function AIPanel({ onClose }: { onClose: () => void }) {
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-ink-black flex items-center gap-2">
           <Sparkles size={16} className="text-clay" />
-          {"Assistant IA"}
+          {t("workflow.aiAssistant")}
         </h3>
         <button onClick={onClose} className="text-pencil/40 hover:text-ink-black transition-colors">
           <X size={16} />
@@ -162,24 +247,41 @@ function AIPanel({ onClose }: { onClose: () => void }) {
 }
 
 export default function WorkflowBuilder() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const params = useParams<{ id: string }>()
   const router = useRouter()
   const { user } = useAuthStore()
-  const { workflow, setWorkflow, updateWorkflow, addState, removeState, addTransition, removeTransition, publish } = useWorkflowStore()
+  const { workflow, setWorkflow, updateWorkflow, addState, removeState, removeTransition, publish } = useWorkflowStore()
 
   const [activeMode, setActiveMode] = useState("fields")
   const [aiPanelOpen, setAiPanelOpen] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
   const [publishConfirm, setPublishConfirm] = useState(false)
+  const [loadingWorkflow, setLoadingWorkflow] = useState(true)
+  const english = isEnglish(i18n.resolvedLanguage || i18n.language)
 
   useEffect(() => {
-    if (!params.id || workflow) return
+    if (!params.id || !user || user.role !== "org_admin") return
+    if (workflow?.id === params.id) {
+      setLoadingWorkflow(false)
+      return
+    }
+    let cancelled = false
+    setLoadingWorkflow(true)
     fetch(`/api/workflows/${params.id}/definition`, { credentials: "include" })
       .then((res) => res.ok ? res.json() : null)
-      .then((data) => { if (data) setWorkflow(data) })
-      .catch(() => {})
-  }, [params.id, workflow, setWorkflow])
+      .then((data) => {
+        if (cancelled) return
+        setWorkflow(data ?? createDraftWorkflow(params.id, user, (key) => t(key)))
+      })
+      .catch(() => {
+        if (!cancelled) setWorkflow(createDraftWorkflow(params.id, user, (key) => t(key)))
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingWorkflow(false)
+      })
+    return () => { cancelled = true }
+  }, [params.id, workflow?.id, user, setWorkflow, t])
 
   useEffect(() => {
     if (!user || user.role !== "org_admin") router.push("/")
@@ -189,17 +291,33 @@ export default function WorkflowBuilder() {
 
   const stateColor = (key: string) => STATE_COLORS[key] ?? "#6B7280"
 
-  const visibleTransitions = useMemo(() => {
-    if (!workflow) return []
-    return workflow.transitions
-  }, [workflow])
-
-  const handleSave = () => {
-    updateWorkflow({ updatedAt: new Date().toISOString() })
+  const persistWorkflow = async () => {
+    const currentWorkflow = useWorkflowStore.getState().workflow
+    if (!currentWorkflow) return null
+    const updatedWorkflow = { ...currentWorkflow, updatedAt: new Date().toISOString() }
+    const res = await fetch(`/api/workflows/${updatedWorkflow.id}/definition`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(updatedWorkflow),
+    })
+    if (!res.ok) throw new Error("SAVE_FAILED")
+    const saved = await res.json()
+    setWorkflow(saved)
     setLastSaved(new Date())
+    return saved as WorkflowDefinition
+  }
+
+  const handleSave = async () => {
+    try {
+      await persistWorkflow()
+    } catch {
+      updateWorkflow({ updatedAt: new Date().toISOString() })
+    }
   }
 
   const handlePublish = async () => {
+    await persistWorkflow()
     await publish()
     setPublishConfirm(false)
     setLastSaved(new Date())
@@ -217,7 +335,15 @@ export default function WorkflowBuilder() {
   }
 
   if (!user || user.role !== "org_admin") return null
-  if (!workflow) return null
+  if (loadingWorkflow || !workflow) {
+    return (
+      <div className="flex min-h-[420px] items-center justify-center rounded-md border border-graph-line bg-white p-8">
+        <p className="text-sm text-pencil">{t("workflow.loading")}</p>
+      </div>
+    )
+  }
+
+  const workflowName = english ? workflow.nameEn || workflow.name : workflow.name
 
   return (
     <div className="flex h-[calc(100vh-6.5rem)] min-h-[620px] flex-col overflow-hidden rounded-md border border-graph-line bg-kivu-paper">
@@ -232,7 +358,7 @@ export default function WorkflowBuilder() {
           </button>
           <span className="hidden text-volcanic-ash/30 sm:inline">|</span>
           <span className="min-w-0 truncate font-display text-lg tracking-tight text-lake-deep sm:text-xl">
-            {workflow.name}
+            {workflowName}
           </span>
           <Badge variant={workflow.status === "published" ? "success" : "default"} size="sm">
             {workflow.status === "published" ? t("workflow.published", "Publié") : t("workflow.draft", "Brouillon")}
@@ -242,7 +368,7 @@ export default function WorkflowBuilder() {
         <div className="flex flex-wrap items-center gap-2 lg:justify-end">
           {lastSaved && (
             <span className="w-full text-[10px] text-pencil/60 sm:w-auto">
-              {t("admin.saved", "Sauvegardé")} {lastSaved.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+              {t("admin.saved", "Sauvegardé")} {lastSaved.toLocaleTimeString(english ? "en-US" : "fr-FR", { hour: "2-digit", minute: "2-digit" })}
             </span>
           )}
           <Button
@@ -262,7 +388,7 @@ export default function WorkflowBuilder() {
           <button
             onClick={() => setAiPanelOpen(!aiPanelOpen)}
             className={`p-2 rounded-md transition-colors ${aiPanelOpen ? "bg-clay/10 text-clay" : "text-pencil hover:text-clay"}`}
-            title="Assistant IA"
+            title={t("workflow.aiAssistant")}
           >
             <Sparkles size={18} />
           </button>
@@ -331,7 +457,7 @@ export default function WorkflowBuilder() {
                       >
                         <div className="flex items-center gap-2 min-w-0">
                           <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: stateColor(state.key) }} />
-                          <span className="text-ink-black truncate">{state.label}</span>
+                          <span className="text-ink-black truncate">{localizedLabel(state, english)}</span>
                         </div>
                         <button
                           onClick={(e) => { e.stopPropagation(); removeState(state.id) }}
@@ -352,9 +478,9 @@ export default function WorkflowBuilder() {
                       const to = workflow.states.find((s) => s.id === tr.toState)
                       return (
                         <div key={tr.id} className="flex items-center gap-2 px-3 py-2 text-xs text-volcanic-ash">
-                          <span className="text-ink-black truncate">{from?.label ?? "?"}</span>
+                          <span className="text-ink-black truncate">{from ? localizedLabel(from, english) : "?"}</span>
                           <ArrowRight size={12} className="text-clay shrink-0" />
-                          <span className="text-ink-black truncate">{to?.label ?? "?"}</span>
+                          <span className="text-ink-black truncate">{to ? localizedLabel(to, english) : "?"}</span>
                           <button
                             onClick={() => removeTransition(tr.id)}
                             className="ml-auto text-volcanic-ash/50 hover:text-rebar transition-colors shrink-0"
@@ -381,7 +507,7 @@ export default function WorkflowBuilder() {
             <div className="space-y-3 max-w-2xl">
               {workflow.roles.map((role) => (
                 <div key={role.id} className="p-4 rounded-md border border-graph-line bg-white">
-                  <p className="text-sm font-medium text-ink-black">{role.label}</p>
+                  <p className="text-sm font-medium text-ink-black">{localizedLabel(role, english)}</p>
                   <div className="flex flex-wrap gap-1.5 mt-2">
                     {role.permissions.map((perm) => (
                       <span
@@ -408,13 +534,13 @@ export default function WorkflowBuilder() {
               </div>
               <div>
                 <label className="text-[11px] uppercase tracking-[0.1em] text-volcanic-ash font-medium">{t("admin.status", "Statut")}</label>
-                <p className="text-sm text-ink-black mt-1 capitalize">{workflow.status}</p>
+                <p className="text-sm text-ink-black mt-1">{workflow.status === "published" ? t("workflow.published") : t("workflow.draft")}</p>
               </div>
               {workflow.publishedAt && (
                 <div>
                   <label className="text-[11px] uppercase tracking-[0.1em] text-volcanic-ash font-medium">{t("admin.publishedOn", "Publié le")}</label>
                   <p className="text-sm text-ink-black mt-1">
-                    {new Date(workflow.publishedAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" })}
+                    {new Date(workflow.publishedAt).toLocaleDateString(english ? "en-US" : "fr-FR", { day: "2-digit", month: "long", year: "numeric" })}
                   </p>
                 </div>
               )}
@@ -431,7 +557,7 @@ export default function WorkflowBuilder() {
 
       {/* Mode Tabs */}
       <div className="flex overflow-x-auto border-t border-graph-line bg-white">
-        {MODE_TABS.map(({ key, label }) => (
+        {MODE_TABS.map(({ key, icon, labelKey }) => (
           <button
             key={key}
             onClick={() => setActiveMode(key)}
@@ -441,7 +567,7 @@ export default function WorkflowBuilder() {
                 : "border-t-2 border-transparent text-pencil hover:text-ink-black"
             }`}
           >
-            {label}
+            <span aria-hidden="true">{icon}</span> {t(labelKey)}
           </button>
         ))}
       </div>

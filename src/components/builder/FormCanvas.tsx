@@ -7,14 +7,14 @@ import { GripVertical, Plus, X } from "lucide-react"
 import type { WorkflowField } from "@/types/workflow"
 
 const FIELD_PREVIEWS: Record<string, string> = {
-  text: "Texte court...",
-  number: "123",
-  select: "Sélectionner...",
-  "multi-select": "Choisir...",
-  date: "JJ/MM/AAAA",
-  gps: "📍 Capturer la position",
-  photo: "📷 Prendre une photo",
-  textarea: "Texte long...",
+  text: "workflow.previews.text",
+  number: "workflow.previews.number",
+  select: "workflow.previews.select",
+  "multi-select": "workflow.previews.multiSelect",
+  date: "workflow.previews.date",
+  gps: "workflow.previews.gps",
+  photo: "workflow.previews.photo",
+  textarea: "workflow.previews.textarea",
 }
 
 function reorder(arr: WorkflowField[], from: number, to: number) {
@@ -25,7 +25,7 @@ function reorder(arr: WorkflowField[], from: number, to: number) {
 }
 
 export function FormCanvas() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { workflow, selectedFieldId, addField, updateField, removeField, updateWorkflow } =
     useWorkflowStore()
   const [dragSource, setDragSource] = useState<number | null>(null)
@@ -34,6 +34,8 @@ export function FormCanvas() {
 
   if (!workflow) return null
 
+  const english = (i18n.resolvedLanguage || i18n.language)?.startsWith("en")
+  const workflowName = english ? workflow.nameEn || workflow.name : workflow.name
   const fields = workflow.entity.fields
   const sortedFields = [...fields].sort((a, b) => a.order - b.order)
   const displayFields =
@@ -73,15 +75,15 @@ export function FormCanvas() {
         {titleEditing ? (
           <input
             autoFocus
-            defaultValue={workflow.name}
+            defaultValue={workflowName}
             onBlur={(e) => {
-              if (e.target.value.trim()) updateWorkflow({ name: e.target.value })
+              if (e.target.value.trim()) updateWorkflow(english ? { nameEn: e.target.value } : { name: e.target.value })
               setTitleEditing(false)
             }}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 if ((e.target as HTMLInputElement).value.trim())
-                  updateWorkflow({ name: (e.target as HTMLInputElement).value })
+                  updateWorkflow(english ? { nameEn: (e.target as HTMLInputElement).value } : { name: (e.target as HTMLInputElement).value })
                 setTitleEditing(false)
               }
               if (e.key === "Escape") setTitleEditing(false)
@@ -93,7 +95,7 @@ export function FormCanvas() {
             onClick={() => setTitleEditing(true)}
             className="font-display text-2xl text-lake-deep tracking-tight cursor-pointer hover:text-clay transition-colors"
           >
-            {workflow.name}
+            {workflowName}
           </h1>
         )}
       </div>
@@ -130,7 +132,7 @@ export function FormCanvas() {
                 >
                   <GripVertical size={16} />
                 </span>
-                <span className="text-sm font-medium text-ink-black">{field.label}</span>
+                <span className="text-sm font-medium text-ink-black">{english ? field.labelEn || field.label : field.label}</span>
                 {field.required && <span className="text-danger-500 text-sm font-medium">*</span>}
                 <span className="text-[10px] uppercase tracking-wider text-volcanic-ash ml-1">
                   {field.type}
@@ -146,7 +148,7 @@ export function FormCanvas() {
                 </button>
               </div>
               <div className="ml-6 text-sm text-pencil/60 bg-kivu-paper rounded-sm px-3 py-2 border border-graph-line/50">
-                {FIELD_PREVIEWS[field.type] ?? field.type}
+                {FIELD_PREVIEWS[field.type] ? t(FIELD_PREVIEWS[field.type]) : field.type}
               </div>
             </div>
           </div>

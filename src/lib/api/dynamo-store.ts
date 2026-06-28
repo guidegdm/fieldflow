@@ -34,25 +34,51 @@ const rawClient = new DynamoDBClient({
 const client = DynamoDBDocumentClient.from(rawClient)
 
 const TABLE = process.env.DYNAMODB_TABLE || "FieldFlowRecords"
-let sortKeyEnabledPromise: Promise<boolean> | null = null
-let sortKeyOverride: boolean | null = null
-
-async function sortKeyEnabled() {
-  if (process.env.DYNAMODB_SORT_KEY_ENABLED === "true") return true
-  if (process.env.DYNAMODB_SORT_KEY_ENABLED === "false") return false
-  if (sortKeyOverride !== null) return sortKeyOverride
-  sortKeyEnabledPromise ||= rawClient.send(new DescribeTableCommand({ TableName: TABLE }))
-    .then((result) => result.Table?.KeySchema?.some((key) => key.AttributeName === "sk" && key.KeyType === "RANGE") ?? false)
-    .catch(() => true)
-  return sortKeyEnabledPromise
+interface TableKeyShape {
+  hashName: string
+  rangeName?: string
 }
 
-function keyFor(pk: string, sk: string, hasSortKey: boolean) {
-  return hasSortKey ? { pk, sk } : { pk }
+let tableKeyShapePromise: Promise<TableKeyShape> | null = null
+let tableKeyShapeOverride: TableKeyShape | null = null
+
+async function tableKeyShape(): Promise<TableKeyShape> {
+  const envHash = process.env.DYNAMODB_HASH_KEY
+  const envRange = process.env.DYNAMODB_RANGE_KEY
+  if (envHash) return envRange ? { hashName: envHash, rangeName: envRange } : { hashName: envHash }
+  if (process.env.DYNAMODB_SORT_KEY_ENABLED === "true") return { hashName: "pk", rangeName: "sk" }
+  if (process.env.DYNAMODB_SORT_KEY_ENABLED === "false") return { hashName: "pk" }
+  if (tableKeyShapeOverride) return tableKeyShapeOverride
+
+  tableKeyShapePromise ||= rawClient.send(new DescribeTableCommand({ TableName: TABLE }))
+    .then((result) => {
+      const keys = result.Table?.KeySchema || []
+      const hashName = keys.find((key) => key.KeyType === "HASH")?.AttributeName || "id"
+      const rangeName = keys.find((key) => key.KeyType === "RANGE")?.AttributeName
+      return rangeName ? { hashName, rangeName } : { hashName }
+    })
+    .catch(() => ({ hashName: "id" }))
+  return tableKeyShapePromise
+}
+
+function keyFor(pk: string, sk: string, shape: TableKeyShape) {
+  return shape.rangeName ? { [shape.hashName]: pk, [shape.rangeName]: sk } : { [shape.hashName]: pk }
 }
 
 async function tableKey(pk: string, sk: string) {
-  return keyFor(pk, sk, await sortKeyEnabled())
+  return keyFor(pk, sk, await tableKeyShape())
+}
+
+function itemForKey(pk: string, sk: string, entityType: string, attrs: Record<string, unknown>, entityId?: string) {
+  const originalId = entityId || (typeof attrs.id === "string" ? attrs.id : undefined)
+  return {
+    ...attrs,
+    id: pk,
+    pk,
+    sk,
+    entityType,
+    ...(originalId ? { entityId: originalId } : {}),
+  }
 }
 
 function isKeySchemaError(error: unknown) {
@@ -60,46 +86,74 @@ function isKeySchemaError(error: unknown) {
 }
 
 async function sendGet(pk: string, sk: string, projectionExpression?: string) {
-  const firstMode = await sortKeyEnabled()
+  const firstShape = await tableKeyShape()
   try {
     return await client.send(
       new GetCommand({
         TableName: TABLE,
-        Key: keyFor(pk, sk, firstMode),
+        Key: keyFor(pk, sk, firstShape),
         ProjectionExpression: projectionExpression,
       })
     )
   } catch (error) {
     if (!isKeySchemaError(error) || process.env.DYNAMODB_SORT_KEY_ENABLED) throw error
-    sortKeyOverride = !firstMode
-    sortKeyEnabledPromise = Promise.resolve(sortKeyOverride)
-    return client.send(
-      new GetCommand({
-        TableName: TABLE,
-        Key: keyFor(pk, sk, sortKeyOverride),
-        ProjectionExpression: projectionExpression,
-      })
-    )
+    const fallbackShapes = [
+      { hashName: "id" },
+      { hashName: "pk" },
+      { hashName: "pk", rangeName: "sk" },
+    ].filter((shape) => shape.hashName !== firstShape.hashName || shape.rangeName !== firstShape.rangeName)
+
+    for (const shape of fallbackShapes) {
+      tableKeyShapeOverride = shape
+      tableKeyShapePromise = Promise.resolve(shape)
+      try {
+        return await client.send(
+          new GetCommand({
+            TableName: TABLE,
+            Key: keyFor(pk, sk, shape),
+            ProjectionExpression: projectionExpression,
+          })
+        )
+      } catch (retryError) {
+        if (!isKeySchemaError(retryError)) throw retryError
+      }
+    }
+
+    try {
+      const result = await client.send(
+        new ScanCommand({
+          TableName: TABLE,
+          FilterExpression: "pk = :pk AND sk = :sk",
+          ExpressionAttributeValues: { ":pk": pk, ":sk": sk },
+          ProjectionExpression: projectionExpression,
+          Limit: 1,
+        })
+      )
+      return { Item: result.Items?.[0] }
+    } catch (scanError) {
+      throw scanError
+    }
   }
 }
 
 async function sendDelete(pk: string, sk: string) {
-  const firstMode = await sortKeyEnabled()
+  const firstShape = await tableKeyShape()
   try {
     return await client.send(
       new DeleteCommand({
         TableName: TABLE,
-        Key: keyFor(pk, sk, firstMode),
+        Key: keyFor(pk, sk, firstShape),
       })
     )
   } catch (error) {
     if (!isKeySchemaError(error) || process.env.DYNAMODB_SORT_KEY_ENABLED) throw error
-    sortKeyOverride = !firstMode
-    sortKeyEnabledPromise = Promise.resolve(sortKeyOverride)
+    const fallbackShape = firstShape.hashName === "id" ? { hashName: "pk" } : { hashName: "id" }
+    tableKeyShapeOverride = fallbackShape
+    tableKeyShapePromise = Promise.resolve(fallbackShape)
     return client.send(
       new DeleteCommand({
         TableName: TABLE,
-        Key: keyFor(pk, sk, sortKeyOverride),
+        Key: keyFor(pk, sk, fallbackShape),
       })
     )
   }
@@ -107,7 +161,8 @@ async function sendDelete(pk: string, sk: string) {
 
 function stripKeys<T>(item: (T & Record<string, unknown>) | undefined): T | undefined {
   if (!item) return undefined
-  const { pk: _pk, sk: _sk, entityType: _entityType, ...rest } = item
+  const { pk: _pk, sk: _sk, entityType: _entityType, entityId, id: _tableId, ...rest } = item
+  if (typeof entityId === "string") return { ...rest, id: entityId } as unknown as T
   return rest as unknown as T
 }
 
@@ -158,7 +213,7 @@ export const dynamoStore = {
     await client.send(
       new PutCommand({
         TableName: TABLE,
-        Item: { pk: orgRecordPk(orgId, record.id), sk: "PROFILE", entityType: "record", ...record },
+        Item: itemForKey(orgRecordPk(orgId, record.id), "PROFILE", "record", record as unknown as Record<string, unknown>, record.id),
       })
     )
   },
@@ -200,7 +255,7 @@ export const dynamoStore = {
     await client.send(
       new PutCommand({
         TableName: TABLE,
-        Item: { pk: orgWorkflowPk(orgId, workflow.id), sk: "DEFINITION", entityType: "workflow", ...workflow },
+        Item: itemForKey(orgWorkflowPk(orgId, workflow.id), "DEFINITION", "workflow", workflow as unknown as Record<string, unknown>, workflow.id),
       })
     )
   },
@@ -226,7 +281,7 @@ export const dynamoStore = {
     await client.send(
       new PutCommand({
         TableName: TABLE,
-        Item: { pk: orgDevicePk(device.orgId, device.device_id), sk: "STATE", entityType: "device", ...device },
+        Item: itemForKey(orgDevicePk(device.orgId, device.device_id), "STATE", "device", device as unknown as Record<string, unknown>, device.device_id),
       })
     )
   },
@@ -251,7 +306,7 @@ export const dynamoStore = {
     await client.send(
       new PutCommand({
         TableName: TABLE,
-        Item: { pk: orgConflictPk(orgId, conflict.id), sk: "PROFILE", entityType: "conflict", orgId, ...conflict },
+        Item: itemForKey(orgConflictPk(orgId, conflict.id), "PROFILE", "conflict", { orgId, ...conflict } as unknown as Record<string, unknown>, conflict.id),
       })
     )
   },
@@ -277,7 +332,7 @@ export const dynamoStore = {
     await client.send(
       new PutCommand({
         TableName: TABLE,
-        Item: { pk: orgInventoryPk(item.orgId, item.id), sk: "PROFILE", entityType: "inventory", ...item },
+        Item: itemForKey(orgInventoryPk(item.orgId, item.id), "PROFILE", "inventory", item as unknown as Record<string, unknown>, item.id),
       })
     )
   },
@@ -325,9 +380,6 @@ export const dynamoStore = {
     if (available < qty) {
       const failureId = `ledger-${timestamp}-${contentHash.slice(0, 10)}`
       const receipt = {
-        pk: orgInventoryReceiptPk(orgId, idempotencyKey),
-        sk: "PROFILE",
-        entityType: "inventory_receipt",
         orgId,
         itemId,
         quantity: qty,
@@ -361,14 +413,14 @@ export const dynamoStore = {
             {
               Put: {
                 TableName: TABLE,
-                Item: receipt,
+                Item: itemForKey(orgInventoryReceiptPk(orgId, idempotencyKey), "PROFILE", "inventory_receipt", receipt),
                 ConditionExpression: "attribute_not_exists(pk)",
               },
             },
             {
               Put: {
                 TableName: TABLE,
-                Item: { pk: orgInventoryLedgerPk(orgId, failureId), sk: "PROFILE", entityType: "inventory_ledger", ...ledger },
+                Item: itemForKey(orgInventoryLedgerPk(orgId, failureId), "PROFILE", "inventory_ledger", ledger, ledger.id),
               },
             },
           ],
@@ -403,9 +455,6 @@ export const dynamoStore = {
       expiresAt: item.expiresAt,
     }
     const receipt = {
-      pk: orgInventoryReceiptPk(orgId, idempotencyKey),
-      sk: "PROFILE",
-      entityType: "inventory_receipt",
       orgId,
       itemId,
       quantity: qty,
@@ -425,7 +474,7 @@ export const dynamoStore = {
             {
               Put: {
                 TableName: TABLE,
-                Item: receipt,
+                Item: itemForKey(orgInventoryReceiptPk(orgId, idempotencyKey), "PROFILE", "inventory_receipt", receipt),
                 ConditionExpression: "attribute_not_exists(pk)",
               },
             },
@@ -445,7 +494,7 @@ export const dynamoStore = {
             {
               Put: {
                 TableName: TABLE,
-                Item: { pk: orgInventoryLedgerPk(orgId, committedId), sk: "PROFILE", entityType: "inventory_ledger", ...ledger },
+                Item: itemForKey(orgInventoryLedgerPk(orgId, committedId), "PROFILE", "inventory_ledger", ledger, ledger.id),
               },
             },
           ],
@@ -492,7 +541,7 @@ export const dynamoStore = {
     await client.send(
       new PutCommand({
         TableName: TABLE,
-        Item: { pk: orgMutationPk(orgId, mutation.client_id), sk: "PROFILE", entityType: "mutation", orgId, ...mutation, server_seq: serverSeq },
+        Item: itemForKey(orgMutationPk(orgId, mutation.client_id), "PROFILE", "mutation", { orgId, ...mutation, server_seq: serverSeq } as unknown as Record<string, unknown>, mutation.client_id),
       })
     )
   },
@@ -531,7 +580,7 @@ export const dynamoStore = {
     await client.send(
       new PutCommand({
         TableName: TABLE,
-        Item: { pk: `ORG#${id}`, sk: "PROFILE", entityType: "org", ...item },
+        Item: itemForKey(`ORG#${id}`, "PROFILE", "org", item, id),
       })
     )
   },
@@ -543,7 +592,7 @@ export const dynamoStore = {
     await client.send(
       new PutCommand({
         TableName: TABLE,
-        Item: { pk: `ORG#${orgId}#USER#${userId}`, sk: "PROFILE", entityType: "user", ...item },
+        Item: itemForKey(`ORG#${orgId}#USER#${userId}`, "PROFILE", "user", item, userId),
       })
     )
   },
@@ -576,20 +625,16 @@ export const dynamoStore = {
     const eventId = String(event.id || `audit-${timestamp}`)
     const auditPk = orgAuditPk(orgId, recordId)
     const auditSk = `EVENT#${timestamp}#${eventId}`
-    const hasSortKey = await sortKeyEnabled()
     await client.send(
       new PutCommand({
         TableName: TABLE,
-        Item: {
-          pk: hasSortKey ? auditPk : `${auditPk}#${auditSk}`,
-          sk: auditSk,
-          entityType: "audit",
+        Item: itemForKey(auditPk, auditSk, "audit", {
           orgId,
           recordId,
           eventId,
           ...event,
           timestamp,
-        },
+        }, eventId),
       })
     )
   },
@@ -602,13 +647,10 @@ export const dynamoStore = {
     await client.send(
       new PutCommand({
         TableName: TABLE,
-        Item: {
-          pk: demoSandboxMetricPk(installId, orgId, timestamp),
-          sk: "PROFILE",
-          entityType: "demo_sandbox_metric",
+        Item: itemForKey(demoSandboxMetricPk(installId, orgId, timestamp), "PROFILE", "demo_sandbox_metric", {
           ...metric,
           timestamp,
-        },
+        }),
       })
     )
   },

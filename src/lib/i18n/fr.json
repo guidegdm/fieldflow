@@ -485,5 +485,45 @@
     "demo": "Démo",
     "signin": "Connexion",
     "start": "Commencer"
+  },
+  "ai": {
+    "status": {
+      "thinking": "Réflexion",
+      "generating": "Construction",
+      "validating": "Vérification",
+      "correcting": "Ajustement",
+      "proposing": "Prêt",
+      "proposingWithWarnings": "Prêt",
+      "question": "En attente",
+      "error": "Erreur",
+      "cancelled": "Annulé",
+      "retry": "Nouvel essai",
+      "empty": "Rien à suggérer",
+      "maxSteps": "Presque terminé"
+    },
+    "proposal": {
+      "section": "Propositions",
+      "applyAll": "Tout appliquer",
+      "dismissAll": "Tout ignorer"
+    },
+    "question": {
+      "confirm": "Confirmer",
+      "dismiss": "Passer",
+      "customPlaceholder": "Autre…",
+      "timeout": "Expiré"
+    },
+    "error": {
+      "apiKey": "IA indisponible",
+      "network": "Vérifiez votre connexion",
+      "maxSteps": "Voilà ce que j'ai — à vous d'affiner",
+      "unknown": "Quelque chose a mal tourné"
+    },
+    "ghost": {
+      "tooltip": "Proposition IA — approuver pour modifier",
+      "badge": "AI"
+    },
+    "cancel": "Annuler",
+    "retry": "Réessayer",
+    "dismiss": "Ignorer"
   }
 }

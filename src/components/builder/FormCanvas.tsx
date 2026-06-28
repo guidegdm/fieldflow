@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useWorkflowStore } from "@/stores/workflowStore"
+import { useAgentStore } from "@/stores/agentStore"
 import { GripVertical, Plus, X } from "lucide-react"
 import type { WorkflowField } from "@/types/workflow"
 
@@ -167,6 +168,62 @@ export function FormCanvas() {
       >
         <Plus size={16} /> {t("workflow.addField", "Ajouter un champ")}
       </button>
+
+      <GhostFields english={english} />
+    </div>
+  )
+}
+
+function GhostFields({ english }: { english: boolean }) {
+  const { t } = useTranslation()
+  const proposals = useAgentStore((s) => s.proposals)
+
+  if (!proposals || proposals.fields.length === 0) return null
+
+  return (
+    <div className="mt-6">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-xs bg-clay/20 text-clay px-2 py-0.5 rounded-full">✨</span>
+        <span className="text-[11px] uppercase tracking-[0.1em] text-volcanic-ash font-medium">
+          {t("ai.proposal.section", "Propositions IA")} ({proposals.fields.length})
+        </span>
+      </div>
+      <div className="space-y-2">
+        {proposals.fields.map((pf) => (
+          <div
+            key={pf.id}
+            className="border-2 border-dashed border-clay/40 bg-clay/5 rounded-md px-4 py-3 opacity-90"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] bg-clay/20 text-clay px-2 py-0.5 rounded-full">
+                {t("ai.ghost.badge", "AI")}
+              </span>
+              <span className="text-sm text-ink-black/70">
+                {english ? pf.field.labelEn || pf.field.label : pf.field.label}
+              </span>
+              <span className="text-[10px] uppercase text-volcanic-ash">{pf.field.type}</span>
+              {pf.conflicts.length > 0 && (
+                <span className="text-[10px] text-warning-500" title={pf.conflicts.join("\n")}>⚠</span>
+              )}
+              <button
+                onClick={() => useAgentStore.getState().applyProposal("field", pf.id)}
+                className="ml-auto p-1 text-success-600 hover:bg-success-500/10 rounded transition-colors"
+              >
+                ✓
+              </button>
+              <button
+                onClick={() => useAgentStore.getState().dismissProposal("field", pf.id)}
+                className="p-1 text-danger-500 hover:bg-danger-500/10 rounded transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="ml-6 mt-2 text-sm text-pencil/50 bg-kivu-paper/50 rounded-sm px-3 py-1.5 border border-clay/10">
+              {FIELD_PREVIEWS[pf.field.type] ? t(FIELD_PREVIEWS[pf.field.type]) : pf.field.type}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

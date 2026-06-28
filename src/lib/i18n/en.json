@@ -485,5 +485,45 @@
     "demo": "Demo",
     "signin": "Sign in",
     "start": "Start"
+  },
+  "ai": {
+    "status": {
+      "thinking": "Thinking",
+      "generating": "Building",
+      "validating": "Validating",
+      "correcting": "Refining",
+      "proposing": "Ready",
+      "proposingWithWarnings": "Ready",
+      "question": "Awaiting input",
+      "error": "Error",
+      "cancelled": "Cancelled",
+      "retry": "Retry",
+      "empty": "Nothing to suggest",
+      "maxSteps": "Almost done"
+    },
+    "proposal": {
+      "section": "Proposals",
+      "applyAll": "Apply all",
+      "dismissAll": "Dismiss all"
+    },
+    "question": {
+      "confirm": "Confirm",
+      "dismiss": "Skip",
+      "customPlaceholder": "Other…",
+      "timeout": "Timed out"
+    },
+    "error": {
+      "apiKey": "AI unavailable",
+      "network": "Check your connection",
+      "maxSteps": "That's what I got — refine from here",
+      "unknown": "Something went wrong"
+    },
+    "ghost": {
+      "tooltip": "AI proposal — approve to edit",
+      "badge": "AI"
+    },
+    "cancel": "Cancel",
+    "retry": "Retry",
+    "dismiss": "Dismiss"
   }
 }

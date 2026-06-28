@@ -7,12 +7,15 @@ import { useAuthStore } from "@/stores/authStore"
 import { useWorkflowStore } from "@/stores/workflowStore"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ArrowRight, Plus, Trash2, Save, Send, X, Sparkles } from "lucide-react"
+import { ArrowRight, Plus, Trash2, Save, Send, Sparkles } from "lucide-react"
 import { FieldPalette } from "@/components/builder/FieldPalette"
 import { FormCanvas } from "@/components/builder/FormCanvas"
 import { FieldEditor } from "@/components/builder/FieldEditor"
 import { WorkflowFlow } from "@/components/builder/WorkflowFlow"
 import { FormPreview } from "@/components/builder/FormPreview"
+import { AgentStatusBar } from "@/components/ai/AgentStatusBar"
+import { QuestionCard } from "@/components/ai/QuestionCard"
+import { useAgentStore } from "@/stores/agentStore"
 import type { DemoUser } from "@/types/auth"
 import type { WorkflowDefinition } from "@/types/workflow"
 
@@ -159,102 +162,16 @@ function StatePropertiesPanel() {
   )
 }
 
-function AIPanel({ onClose }: { onClose: () => void }) {
-  const { t } = useTranslation()
-  const [prompt, setPrompt] = useState("")
-  const [response, setResponse] = useState("")
-  const [loading, setLoading] = useState(false)
-
-  const handleGenerate = async () => {
-    if (!prompt.trim() || loading) return
-    setLoading(true)
-    setResponse("")
-
-    try {
-      const res = await fetch("/api/ai/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ messages: [{ role: "user", content: prompt }] }),
-      })
-
-      if (!res.ok) {
-        setResponse(t("workflow.aiConnectionError"))
-        return
-      }
-
-      const reader = res.body?.getReader()
-      if (!reader) return
-
-      const decoder = new TextDecoder()
-      let buffer = ""
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split("\n")
-        buffer = lines.pop() || ""
-
-        for (const line of lines) {
-          if (line.startsWith("data: ") && line !== "data: [DONE]") {
-            try {
-              const parsed = JSON.parse(line.slice(6))
-              setResponse((prev) => prev + (parsed.content || parsed.text || ""))
-            } catch { /* skip malformed */ }
-          }
-        }
-      }
-    } catch {
-      setResponse(t("workflow.aiNetworkError"))
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  return (
-    <div className="p-4">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-ink-black flex items-center gap-2">
-          <Sparkles size={16} className="text-clay" />
-          {t("workflow.aiAssistant")}
-        </h3>
-        <button onClick={onClose} className="text-pencil/40 hover:text-ink-black transition-colors">
-          <X size={16} />
-        </button>
-      </div>
-      <div className="flex gap-2">
-        <input
-          type="text"
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
-          placeholder={t("admin.aiPrompt", "Décrivez le formulaire dont vous avez besoin...")}
-          className="flex-1 h-10 rounded-md border border-[#CBD5E1] px-3 py-2 text-sm text-ink-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-blue"
-        />
-        <Button variant="primary" size="sm" onClick={handleGenerate} loading={loading}>
-          {t("admin.generate", "Générer")}
-        </Button>
-      </div>
-      {response && (
-        <div className="mt-3 p-3 rounded-md bg-graph-paper border border-graph-line text-sm text-ink-black whitespace-pre-wrap">
-          {response}
-        </div>
-      )}
-    </div>
-  )
-}
-
 export default function WorkflowBuilder() {
   const { t, i18n } = useTranslation()
   const params = useParams<{ id: string }>()
   const router = useRouter()
   const { user } = useAuthStore()
   const { workflow, setWorkflow, updateWorkflow, addState, removeState, removeTransition, publish } = useWorkflowStore()
+  const agentPhase = useAgentStore((s) => s.phase)
+  const startGeneration = useAgentStore((s) => s.startGeneration)
 
   const [activeMode, setActiveMode] = useState("fields")
-  const [aiPanelOpen, setAiPanelOpen] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
   const [publishConfirm, setPublishConfirm] = useState(false)
   const [loadingWorkflow, setLoadingWorkflow] = useState(true)
@@ -386,8 +303,15 @@ export default function WorkflowBuilder() {
             <Send size={14} /> {t("workflow.publish", "Publier")}
           </Button>
           <button
-            onClick={() => setAiPanelOpen(!aiPanelOpen)}
-            className={`p-2 rounded-md transition-colors ${aiPanelOpen ? "bg-clay/10 text-clay" : "text-pencil hover:text-clay"}`}
+            onClick={() => {
+              if (workflow && agentPhase === "idle") {
+                startGeneration(
+                  window.prompt(t("admin.aiPrompt", "Décrivez le workflow que vous souhaitez créer...")) || "",
+                  workflow
+                )
+              }
+            }}
+            className={`p-2 rounded-md transition-colors ${agentPhase !== "idle" ? "bg-clay/10 text-clay" : "text-pencil hover:text-clay"}`}
             title={t("workflow.aiAssistant")}
           >
             <Sparkles size={18} />
@@ -412,19 +336,16 @@ export default function WorkflowBuilder() {
         </div>
       )}
 
-      {/* AI Panel */}
-      {aiPanelOpen && (
-        <div className="border-b border-graph-line bg-white">
-          <AIPanel onClose={() => setAiPanelOpen(false)} />
-        </div>
-      )}
+      {/* AI Status Bar */}
+      <AgentStatusBar />
 
       {/* Content */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
+        <QuestionCard />
         {activeMode === "fields" && (
           <div className="flex flex-1 overflow-hidden">
             <aside className="w-56 border-r border-graph-line bg-white overflow-y-auto shrink-0">
-              <FieldPalette onOpenAI={() => setAiPanelOpen(!aiPanelOpen)} />
+              <FieldPalette />
             </aside>
             <FormCanvas />
             <aside className="w-80 border-l border-graph-line bg-white overflow-y-auto shrink-0">

@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto"
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb"
+import { DescribeTableCommand, DynamoDBClient } from "@aws-sdk/client-dynamodb"
 import {
   DynamoDBDocumentClient,
   PutCommand,
@@ -21,24 +21,32 @@ export interface InventoryItem {
   expiresAt?: number
 }
 
-const client = DynamoDBDocumentClient.from(
-  new DynamoDBClient({
-    region: process.env.AWS_REGION || "us-east-1",
-    credentials:
-      process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY
-        ? {
-            accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-          }
-        : undefined,
-  })
-)
+const rawClient = new DynamoDBClient({
+  region: process.env.AWS_REGION || "us-east-1",
+  credentials:
+    process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY
+      ? {
+          accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+        }
+      : undefined,
+})
+const client = DynamoDBDocumentClient.from(rawClient)
 
 const TABLE = process.env.DYNAMODB_TABLE || "FieldFlowRecords"
-const DYNAMODB_SORT_KEY_ENABLED = process.env.DYNAMODB_SORT_KEY_ENABLED !== "false"
+let sortKeyEnabledPromise: Promise<boolean> | null = null
 
-function tableKey(pk: string, sk: string) {
-  return DYNAMODB_SORT_KEY_ENABLED ? { pk, sk } : { pk }
+async function sortKeyEnabled() {
+  if (process.env.DYNAMODB_SORT_KEY_ENABLED === "true") return true
+  if (process.env.DYNAMODB_SORT_KEY_ENABLED === "false") return false
+  sortKeyEnabledPromise ||= rawClient.send(new DescribeTableCommand({ TableName: TABLE }))
+    .then((result) => result.Table?.KeySchema?.some((key) => key.AttributeName === "sk" && key.KeyType === "RANGE") ?? false)
+    .catch(() => false)
+  return sortKeyEnabledPromise
+}
+
+async function tableKey(pk: string, sk: string) {
+  return (await sortKeyEnabled()) ? { pk, sk } : { pk }
 }
 
 function stripKeys<T>(item: (T & Record<string, unknown>) | undefined): T | undefined {
@@ -103,7 +111,7 @@ export const dynamoStore = {
     const result = await client.send(
       new GetCommand({
         TableName: TABLE,
-        Key: tableKey(orgRecordPk(orgId, id), "PROFILE"),
+        Key: await tableKey(orgRecordPk(orgId, id), "PROFILE"),
       })
     )
     return stripKeys<RecordData>(result.Item as (RecordData & Record<string, unknown>) | undefined)
@@ -113,7 +121,7 @@ export const dynamoStore = {
     await client.send(
       new DeleteCommand({
         TableName: TABLE,
-        Key: tableKey(orgRecordPk(orgId, id), "PROFILE"),
+        Key: await tableKey(orgRecordPk(orgId, id), "PROFILE"),
       })
     )
   },
@@ -155,7 +163,7 @@ export const dynamoStore = {
     const result = await client.send(
       new GetCommand({
         TableName: TABLE,
-        Key: tableKey(orgWorkflowPk(orgId, id), "DEFINITION"),
+        Key: await tableKey(orgWorkflowPk(orgId, id), "DEFINITION"),
       })
     )
     return stripKeys<WorkflowDefinition>(result.Item as (WorkflowDefinition & Record<string, unknown>) | undefined)
@@ -186,7 +194,7 @@ export const dynamoStore = {
     const result = await client.send(
       new GetCommand({
         TableName: TABLE,
-        Key: tableKey(orgDevicePk(orgId, deviceId), "STATE"),
+        Key: await tableKey(orgDevicePk(orgId, deviceId), "STATE"),
       })
     )
     return stripKeys<DeviceState>(result.Item as (DeviceState & Record<string, unknown>) | undefined)
@@ -216,7 +224,7 @@ export const dynamoStore = {
     const result = await client.send(
       new GetCommand({
         TableName: TABLE,
-        Key: tableKey(orgConflictPk(orgId, id), "PROFILE"),
+        Key: await tableKey(orgConflictPk(orgId, id), "PROFILE"),
       })
     )
     return stripKeys<ConflictRecord>(result.Item as (ConflictRecord & Record<string, unknown>) | undefined)
@@ -247,7 +255,7 @@ export const dynamoStore = {
     const result = await client.send(
       new GetCommand({
         TableName: TABLE,
-        Key: tableKey(orgInventoryPk(orgId, id), "PROFILE"),
+        Key: await tableKey(orgInventoryPk(orgId, id), "PROFILE"),
       })
     )
     return stripKeys<InventoryItem>(result.Item as (InventoryItem & Record<string, unknown>) | undefined)
@@ -275,7 +283,7 @@ export const dynamoStore = {
     const existingReceipt = await client.send(
       new GetCommand({
         TableName: TABLE,
-        Key: tableKey(orgInventoryReceiptPk(orgId, idempotencyKey), "PROFILE"),
+        Key: await tableKey(orgInventoryReceiptPk(orgId, idempotencyKey), "PROFILE"),
       })
     )
     if (existingReceipt.Item) {
@@ -403,7 +411,7 @@ export const dynamoStore = {
             {
               Update: {
                 TableName: TABLE,
-                Key: tableKey(orgInventoryPk(orgId, itemId), "PROFILE"),
+                Key: await tableKey(orgInventoryPk(orgId, itemId), "PROFILE"),
                 UpdateExpression: "SET reserved = reserved + :qty",
                 ConditionExpression: "orgId = :orgId AND reserved <= :reservedLimit",
                 ExpressionAttributeValues: {
@@ -427,7 +435,7 @@ export const dynamoStore = {
       const receiptAfterFailure = await client.send(
         new GetCommand({
           TableName: TABLE,
-          Key: tableKey(orgInventoryReceiptPk(orgId, idempotencyKey), "PROFILE"),
+          Key: await tableKey(orgInventoryReceiptPk(orgId, idempotencyKey), "PROFILE"),
         })
       )
       if (receiptAfterFailure.Item) {
@@ -477,7 +485,7 @@ export const dynamoStore = {
     const result = await client.send(
       new GetCommand({
         TableName: TABLE,
-        Key: tableKey(orgMutationPk(orgId, clientId), "PROFILE"),
+        Key: await tableKey(orgMutationPk(orgId, clientId), "PROFILE"),
         ProjectionExpression: "pk",
       })
     )
@@ -558,11 +566,12 @@ export const dynamoStore = {
     const eventId = String(event.id || `audit-${timestamp}`)
     const auditPk = orgAuditPk(orgId, recordId)
     const auditSk = `EVENT#${timestamp}#${eventId}`
+    const hasSortKey = await sortKeyEnabled()
     await client.send(
       new PutCommand({
         TableName: TABLE,
         Item: {
-          pk: DYNAMODB_SORT_KEY_ENABLED ? auditPk : `${auditPk}#${auditSk}`,
+          pk: hasSortKey ? auditPk : `${auditPk}#${auditSk}`,
           sk: auditSk,
           entityType: "audit",
           orgId,

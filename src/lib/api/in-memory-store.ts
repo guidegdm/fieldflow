@@ -31,6 +31,7 @@ class Store {
   private userProfiles = new Map<string, any>()
   private auditEvents: AuditEvent[] = []
   private inventoryLedger: InventoryLedgerEntry[] = []
+  private demoSandboxMetrics: Array<Record<string, unknown>> = []
   private inventoryLocks = new Set<string>()
   private ledgerSeq = 0
   private seq = 0
@@ -184,6 +185,11 @@ class Store {
     this.auditEvents.push(e)
   }
   getAuditEvents() { return this.auditEvents }
+  async putDemoSandboxMetric(metric: Record<string, unknown>) {
+    if (DYNAMODB_ENABLED) await (await getDynamo())?.putDemoSandboxMetric(metric)
+    this.demoSandboxMetrics.push(metric)
+  }
+  getDemoSandboxMetrics() { return this.demoSandboxMetrics }
 
   getInventoryLedger() { return this.inventoryLedger }
   async getInventoryLedgerByOrg(orgId: string) {

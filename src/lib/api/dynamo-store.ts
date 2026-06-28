@@ -35,7 +35,7 @@ const client = DynamoDBDocumentClient.from(
 )
 
 const TABLE = process.env.DYNAMODB_TABLE || "FieldFlowRecords"
-const DYNAMODB_SORT_KEY_ENABLED = process.env.DYNAMODB_SORT_KEY_ENABLED === "true"
+const DYNAMODB_SORT_KEY_ENABLED = process.env.DYNAMODB_SORT_KEY_ENABLED !== "false"
 
 function tableKey(pk: string, sk: string) {
   return DYNAMODB_SORT_KEY_ENABLED ? { pk, sk } : { pk }
@@ -81,6 +81,10 @@ function orgMutationPk(orgId: string, id: string) {
 
 function orgAuditPk(orgId: string, recordId: string) {
   return `ORG#${orgId}#AUDIT#${recordId}`
+}
+
+function demoSandboxMetricPk(installId: string, orgId: string, timestamp: number) {
+  return `DEMO#${installId}#SANDBOX#${orgId}#${timestamp}`
 }
 
 export const dynamoStore = {
@@ -565,6 +569,25 @@ export const dynamoStore = {
           recordId,
           eventId,
           ...event,
+          timestamp,
+        },
+      })
+    )
+  },
+
+  async putDemoSandboxMetric(metric: Record<string, unknown>) {
+    const installId = String(metric.installId || "")
+    const orgId = String(metric.orgId || "")
+    const timestamp = Number(metric.timestamp || Date.now())
+    if (!installId || !orgId) throw new Error("demo sandbox metric installId and orgId are required")
+    await client.send(
+      new PutCommand({
+        TableName: TABLE,
+        Item: {
+          pk: demoSandboxMetricPk(installId, orgId, timestamp),
+          sk: "PROFILE",
+          entityType: "demo_sandbox_metric",
+          ...metric,
           timestamp,
         },
       })

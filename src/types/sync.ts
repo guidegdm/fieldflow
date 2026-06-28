@@ -50,6 +50,12 @@ export interface AuditEvent {
   org_id?: string
   selected_org_key?: string
   sandbox_created?: boolean
+  workspace_count?: number
+  workflow_count?: number
+  record_count?: number
+  conflict_count?: number
+  inventory_item_count?: number
+  demo_account_count?: number
   expiresAt?: number
   detail: string
   timestamp: number

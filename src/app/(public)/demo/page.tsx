@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next"
 import { Building2, ChevronDown, ChevronRight, Shield, User, Users, WifiOff } from "lucide-react"
 
 import { useAuthStore } from "@/stores/authStore"
-import { hydrateDemoWorkspaceOffline, type DemoOfflineWorkspace } from "@/lib/demo/offline-demo-cache"
+import { hydrateDemoWorkspaceOffline, loadOfflineDemoSandbox, persistDemoSandbox, type DemoOfflineWorkspace } from "@/lib/demo/offline-demo-cache"
 import { DEMO_ORGS, DEMO_SCENARIOS, DEMO_USERS, ORG_MEMBERSHIPS, type DemoOrgKey } from "@/types/auth"
 
 const roleIcons = { field_worker: User, supervisor: Shield, org_admin: Users } as const
@@ -57,18 +57,32 @@ export default function DemoPage() {
         credentials: "include",
         body: JSON.stringify({ email, demoOrgKey }),
       })
-      if (!res.ok) {
-        setError(t("demo.loginFailed"))
-        return
-      }
+      if (!res.ok) throw new Error("demo_login_failed")
       const data = await res.json()
       setAuthFromApi(data.user, data.org, data.orgs)
       try {
         await hydrateDemoWorkspaceOffline(data.user, data.demo?.offlineWorkspaces as DemoOfflineWorkspace[] | undefined)
+        if (data.demo?.expiresAt && data.demo?.offlineWorkspaces?.length && data.demo?.offlineAccounts?.length) {
+          persistDemoSandbox({
+            expiresAt: data.demo.expiresAt,
+            workspaces: data.demo.offlineWorkspaces,
+            accounts: data.demo.offlineAccounts,
+          })
+        }
       } catch {
         // Demo auth must still enter the app; the user can sync once the session is active.
       }
       router.push(routeForRole(data.user.role))
+    } catch {
+      const offlineSandbox = loadOfflineDemoSandbox()
+      const offlineAccount = offlineSandbox?.accounts.find((account) => account.email === email && account.orgKey === demoOrgKey)
+      if (!offlineSandbox || !offlineAccount) {
+        setError(t("demo.loginFailed"))
+        return
+      }
+      setAuthFromApi(offlineAccount.user, offlineAccount.org, offlineAccount.orgs)
+      await hydrateDemoWorkspaceOffline(offlineAccount.user, offlineSandbox.workspaces)
+      router.push(routeForRole(offlineAccount.user.role))
     } finally {
       setLoadingKey(null)
     }

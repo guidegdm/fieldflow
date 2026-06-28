@@ -69,7 +69,10 @@ export async function POST(request: NextRequest) {
           installId: demoInstall.installId.slice(0, 12),
           workspace: seeded.org.id,
           seeded: seeded.seeded,
+          expiresAt: seeded.expiresAt,
+          seedCounts: seeded.seedCounts,
           offlineWorkspaces: seeded.offlineWorkspaces,
+          offlineAccounts: seeded.offlineAccounts,
         },
       })
       response.headers.set("Set-Cookie", setSessionCookie(sessionToken))

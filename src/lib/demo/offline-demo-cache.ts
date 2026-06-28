@@ -2,9 +2,12 @@
 
 import { db } from "@/lib/db/indexeddb"
 import type { DemoUser } from "@/types/auth"
+import type { DemoOrgKey, Org } from "@/types/auth"
 import type { RecordData } from "@/types/record"
 import type { ConflictRecord } from "@/types/sync"
 import type { WorkflowDefinition } from "@/types/workflow"
+
+const DEMO_SANDBOX_STORAGE_KEY = "fieldflow-demo-sandbox"
 
 type WorkflowListItem = WorkflowDefinition & { recordCount?: number }
 export interface DemoOfflineWorkspace {
@@ -12,6 +15,21 @@ export interface DemoOfflineWorkspace {
   workflows: WorkflowDefinition[]
   records: RecordData[]
   conflicts?: ConflictRecord[]
+}
+
+export interface DemoOfflineAccount {
+  email: string
+  orgKey: DemoOrgKey
+  user: DemoUser
+  org: Org
+  orgs: Org[]
+}
+
+export interface DemoOfflineSandbox {
+  expiresAt: number
+  savedAt: number
+  workspaces: DemoOfflineWorkspace[]
+  accounts: DemoOfflineAccount[]
 }
 
 async function getJson<T>(url: string): Promise<T | null> {
@@ -45,6 +63,22 @@ async function writeWorkspace(user: DemoUser, workspace: DemoOfflineWorkspace) {
       last_sync_at: Date.now(),
       pending_count: 0,
     })
+  }
+}
+
+export function persistDemoSandbox(sandbox: Omit<DemoOfflineSandbox, "savedAt">) {
+  if (typeof window === "undefined") return
+  window.localStorage.setItem(DEMO_SANDBOX_STORAGE_KEY, JSON.stringify({ ...sandbox, savedAt: Date.now() }))
+}
+
+export function loadOfflineDemoSandbox(): DemoOfflineSandbox | null {
+  if (typeof window === "undefined") return null
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(DEMO_SANDBOX_STORAGE_KEY) || "null") as DemoOfflineSandbox | null
+    if (!parsed?.expiresAt || parsed.expiresAt * 1000 <= Date.now()) return null
+    return parsed
+  } catch {
+    return null
   }
 }
 

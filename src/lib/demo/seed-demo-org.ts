@@ -135,7 +135,16 @@ export async function seedIsolatedDemoOrg(
   persona: DemoUser,
   installId: string,
   selectedOrgKey?: DemoOrgKey,
-): Promise<{ org: Org; orgs: Org[]; user: DemoUser; seeded: boolean; offlineWorkspaces: Array<{ orgId: string; workflows: WorkflowDefinition[]; records: RecordData[]; conflicts: ConflictRecord[] }> }> {
+): Promise<{
+  org: Org
+  orgs: Org[]
+  user: DemoUser
+  seeded: boolean
+  expiresAt: number
+  seedCounts: { workspaces: number; workflows: number; records: number; conflicts: number; inventoryItems: number; demoAccounts: number }
+  offlineWorkspaces: Array<{ orgId: string; workflows: WorkflowDefinition[]; records: RecordData[]; conflicts: ConflictRecord[] }>
+  offlineAccounts: Array<{ email: string; orgKey: DemoOrgKey; user: DemoUser; org: Org; orgs: Org[] }>
+}> {
   const store = getStore()
   const suffix = installId.slice(0, 12)
   const expiresAt = Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60
@@ -214,6 +223,40 @@ export async function seedIsolatedDemoOrg(
     deviceId: `${persona.deviceId}-${suffix}-${selectedMembership.orgKey.toLowerCase()}`,
   }
 
+  const allInstalledOrgs = (Object.keys(DEMO_ORGS) as DemoOrgKey[]).map((orgKey) => installedOrg(installId, orgKey))
+  const offlineWorkspaces = await Promise.all(allInstalledOrgs.map(async (workspaceOrg) => ({
+    orgId: workspaceOrg.id,
+    workflows: await store.getWorkflowsByOrgAsync(workspaceOrg.id),
+    records: await store.getAllRecordsForOrg(workspaceOrg.id),
+    conflicts: await store.getOpenConflictsForOrg(workspaceOrg.id),
+  })))
+  const inventoryCounts = await Promise.all(allInstalledOrgs.map((workspaceOrg) => store.getInventoryItemsForOrg(workspaceOrg.id).then((items) => items.length)))
+  const offlineAccounts = ORG_MEMBERSHIPS.map((membership) => {
+    const demoUser = DEMO_USERS.find((candidate) => candidate.id === membership.userId)!
+    const accountOrg = installedOrg(installId, membership.orgKey)
+    return {
+      email: demoUser.email,
+      orgKey: membership.orgKey,
+      user: {
+        ...demoUser,
+        id: `${demoUser.id}-${suffix}-${membership.orgKey.toLowerCase()}`,
+        role: membership.role,
+        orgId: accountOrg.id,
+        deviceId: `${demoUser.deviceId}-${suffix}-${membership.orgKey.toLowerCase()}`,
+      },
+      org: accountOrg,
+      orgs: membershipsFor(demoUser.id).map((allowed) => installedOrg(installId, allowed.orgKey)),
+    }
+  })
+  const seedCounts = {
+    workspaces: offlineWorkspaces.length,
+    workflows: offlineWorkspaces.reduce((total, workspace) => total + workspace.workflows.length, 0),
+    records: offlineWorkspaces.reduce((total, workspace) => total + workspace.records.length, 0),
+    conflicts: offlineWorkspaces.reduce((total, workspace) => total + workspace.conflicts.length, 0),
+    inventoryItems: inventoryCounts.reduce((total, count) => total + count, 0),
+    demoAccounts: offlineAccounts.length,
+  }
+
   await store.pushAuditEventForOrg({
     id: `demo-sandbox-${suffix}-${selectedMembership.orgKey}-${Date.now()}`,
     type: "demo_sandbox_login",
@@ -222,17 +265,22 @@ export async function seedIsolatedDemoOrg(
     org_id: org.id,
     selected_org_key: selectedMembership.orgKey,
     sandbox_created: seeded,
+    status: "installed",
     detail: seeded ? `Created demo sandbox ${org.id}` : `Reopened demo sandbox ${org.id}`,
     expiresAt,
     timestamp: Date.now(),
   }, org.id)
 
-  const offlineWorkspaces = await Promise.all(orgs.map(async (workspaceOrg) => ({
-    orgId: workspaceOrg.id,
-    workflows: await store.getWorkflowsByOrgAsync(workspaceOrg.id),
-    records: await store.getAllRecordsForOrg(workspaceOrg.id),
-    conflicts: await store.getOpenConflictsForOrg(workspaceOrg.id),
-  })))
+  await store.putDemoSandboxMetric({
+    installId: suffix,
+    orgId: org.id,
+    selectedOrgKey: selectedMembership.orgKey,
+    userId: user.id,
+    seeded,
+    ...seedCounts,
+    expiresAt,
+    timestamp: Date.now(),
+  })
 
-  return { org, orgs, user, seeded, offlineWorkspaces }
+  return { org, orgs, user, seeded, expiresAt, seedCounts, offlineWorkspaces, offlineAccounts }
 }

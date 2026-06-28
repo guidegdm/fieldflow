@@ -71,38 +71,39 @@ export function FormCanvas() {
     dragSource !== null && dragOver !== null && index === dragSource && dragSource !== dragOver
 
   return (
-    <div className="flex-1 overflow-y-auto p-6">
-      <div className="mb-6">
-        {titleEditing ? (
-          <input
-            autoFocus
-            defaultValue={workflowName}
-            onBlur={(e) => {
-              if (e.target.value.trim()) updateWorkflow(english ? { nameEn: e.target.value } : { name: e.target.value })
-              setTitleEditing(false)
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                if ((e.target as HTMLInputElement).value.trim())
-                  updateWorkflow(english ? { nameEn: (e.target as HTMLInputElement).value } : { name: (e.target as HTMLInputElement).value })
+    <div className="flex-1 overflow-y-auto bg-slate-50 p-6">
+      <div className="mx-auto max-w-3xl">
+        <div className="mb-6 rounded-lg border border-graph-line bg-white px-5 py-4 shadow-sm">
+          {titleEditing ? (
+            <input
+              autoFocus
+              defaultValue={workflowName}
+              onBlur={(e) => {
+                if (e.target.value.trim()) updateWorkflow(english ? { nameEn: e.target.value } : { name: e.target.value })
                 setTitleEditing(false)
-              }
-              if (e.key === "Escape") setTitleEditing(false)
-            }}
-            className="font-display text-2xl text-lake-deep tracking-tight bg-transparent border-b-2 border-clay/30 outline-none w-full pb-1"
-          />
-        ) : (
-          <h1
-            onClick={() => setTitleEditing(true)}
-            className="font-display text-2xl text-lake-deep tracking-tight cursor-pointer hover:text-clay transition-colors"
-          >
-            {workflowName}
-          </h1>
-        )}
-      </div>
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  if ((e.target as HTMLInputElement).value.trim())
+                    updateWorkflow(english ? { nameEn: (e.target as HTMLInputElement).value } : { name: (e.target as HTMLInputElement).value })
+                  setTitleEditing(false)
+                }
+                if (e.key === "Escape") setTitleEditing(false)
+              }}
+              className="font-display text-2xl text-lake-deep tracking-tight bg-transparent border-b-2 border-clay/30 outline-none w-full pb-1"
+            />
+          ) : (
+            <h1
+              onClick={() => setTitleEditing(true)}
+              className="font-display text-2xl text-lake-deep tracking-tight cursor-pointer hover:text-clay transition-colors"
+            >
+              {workflowName}
+            </h1>
+          )}
+        </div>
 
       {displayFields.length === 0 && (
-        <div className="text-center py-16 text-pencil">
+        <div className="rounded-lg border border-dashed border-graph-line bg-white px-5 py-16 text-center text-pencil shadow-sm">
           <p className="text-sm mb-2">{t("workflow.noFields", "Aucun champ")}</p>
           <p className="text-xs text-pencil/60">
             {t("workflow.clickPalette", "Cliquez sur un type de champ dans la palette à gauche")}
@@ -148,7 +149,7 @@ export function FormCanvas() {
                   <X size={14} />
                 </button>
               </div>
-              <div className="ml-6 text-sm text-pencil/60 bg-kivu-paper rounded-sm px-3 py-2 border border-graph-line/50">
+              <div className="ml-6 rounded-sm border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-pencil/60">
                 {FIELD_PREVIEWS[field.type] ? t(FIELD_PREVIEWS[field.type]) : field.type}
               </div>
             </div>
@@ -164,12 +165,13 @@ export function FormCanvas() {
           const field = w.entity.fields[w.entity.fields.length - 1]
           useWorkflowStore.setState({ selectedFieldId: field.id })
         }}
-        className="mt-3 w-full py-3 text-sm text-clay hover:text-clay/80 transition-colors flex items-center justify-center gap-1.5 border-2 border-dashed border-graph-line rounded-md hover:border-clay/30"
+        className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-ink-blue/30 bg-white py-3 text-sm font-medium text-ink-blue shadow-sm transition-colors hover:border-ink-blue/50 hover:bg-ink-blue/5"
       >
         <Plus size={16} /> {t("workflow.addField", "Ajouter un champ")}
       </button>
 
       <GhostFields english={english} />
+      </div>
     </div>
   )
 }
@@ -192,7 +194,7 @@ function GhostFields({ english }: { english: boolean }) {
         {proposals.fields.map((pf) => (
           <div
             key={pf.id}
-            className="border-2 border-dashed border-clay/40 bg-clay/5 rounded-md px-4 py-3 opacity-90"
+            className="rounded-lg border border-dashed border-ink-blue/40 bg-white px-4 py-3 opacity-90 shadow-sm"
           >
             <div className="flex items-center gap-2">
               <span className="text-[10px] bg-clay/20 text-clay px-2 py-0.5 rounded-full">
@@ -207,18 +209,18 @@ function GhostFields({ english }: { english: boolean }) {
               )}
               <button
                 onClick={() => useAgentStore.getState().applyProposal("field", pf.id)}
-                className="ml-auto p-1 text-success-600 hover:bg-success-500/10 rounded transition-colors"
+                className="ml-auto rounded p-1 text-success-600 transition-colors hover:bg-success-500/10"
               >
                 ✓
               </button>
               <button
                 onClick={() => useAgentStore.getState().dismissProposal("field", pf.id)}
-                className="p-1 text-danger-500 hover:bg-danger-500/10 rounded transition-colors"
+                className="rounded p-1 text-danger-500 transition-colors hover:bg-danger-500/10"
               >
                 ✕
               </button>
             </div>
-            <div className="ml-6 mt-2 text-sm text-pencil/50 bg-kivu-paper/50 rounded-sm px-3 py-1.5 border border-clay/10">
+            <div className="ml-6 mt-2 rounded-sm border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-pencil/60">
               {FIELD_PREVIEWS[pf.field.type] ? t(FIELD_PREVIEWS[pf.field.type]) : pf.field.type}
             </div>
           </div>

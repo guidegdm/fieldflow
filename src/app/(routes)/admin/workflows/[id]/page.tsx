@@ -483,17 +483,23 @@ export default function WorkflowBuilder() {
         )}
 
         {activeMode === "roles" && (
-          <div className="flex-1 overflow-y-auto p-8">
-            <h2 className="font-display text-xl text-lake-deep tracking-tight mb-6">{t("workflow.roles", "Rôles")}</h2>
-            <div className="space-y-3 max-w-2xl">
+          <div className="flex-1 overflow-y-auto bg-slate-50 p-6 lg:p-8">
+            <div className="mx-auto max-w-5xl">
+              <div className="mb-5 rounded-lg border border-graph-line bg-white px-5 py-4 shadow-sm">
+                <h2 className="font-display text-2xl tracking-tight text-lake-deep">{t("workflow.roles", "Rôles")}</h2>
+                <p className="mt-1 text-sm text-pencil">
+                  {t("workflow.rolesHelp", "Review who can collect, approve, publish, and resolve work in this workflow.")}
+                </p>
+              </div>
+            <div className="grid gap-3 lg:grid-cols-3">
               {workflow.roles.map((role) => (
-                <div key={role.id} className="p-4 rounded-md border border-graph-line bg-white">
-                  <p className="text-sm font-medium text-ink-black">{localizedLabel(role, english)}</p>
-                  <div className="flex flex-wrap gap-1.5 mt-2">
+                <div key={role.id} className="rounded-lg border border-graph-line bg-white p-4 shadow-sm">
+                  <p className="text-sm font-semibold text-ink-black">{localizedLabel(role, english)}</p>
+                  <div className="mt-3 flex flex-wrap gap-1.5">
                     {role.permissions.map((perm) => (
                       <span
                         key={perm}
-                        className="text-[10px] uppercase tracking-[0.05em] bg-kivu-paper text-volcanic-ash px-1.5 py-0.5 rounded"
+                        className="rounded border border-slate-200 bg-slate-50 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.04em] text-slate-600"
                       >
                         {perm}
                       </span>
@@ -502,29 +508,37 @@ export default function WorkflowBuilder() {
                 </div>
               ))}
             </div>
+            </div>
           </div>
         )}
 
         {activeMode === "settings" && (
-          <div className="flex-1 overflow-y-auto p-8 space-y-6">
-            <h2 className="font-display text-xl text-lake-deep tracking-tight mb-6">{t("workflow.settings", "Paramètres")}</h2>
-            <div className="max-w-xl space-y-4">
-              <div>
+          <div className="flex-1 overflow-y-auto bg-slate-50 p-6 lg:p-8">
+            <div className="mx-auto max-w-3xl">
+              <div className="mb-5 rounded-lg border border-graph-line bg-white px-5 py-4 shadow-sm">
+                <h2 className="font-display text-2xl tracking-tight text-lake-deep">{t("workflow.settings", "Paramètres")}</h2>
+                <p className="mt-1 text-sm text-pencil">
+                  {t("workflow.settingsHelp", "Version and publication details for the current workflow draft.")}
+                </p>
+              </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-lg border border-graph-line bg-white p-4 shadow-sm">
                 <label className="text-[11px] uppercase tracking-[0.1em] text-volcanic-ash font-medium">{t("admin.version", "Version")}</label>
                 <p className="font-display text-2xl text-lake-deep mt-1">v{workflow.version}</p>
               </div>
-              <div>
+              <div className="rounded-lg border border-graph-line bg-white p-4 shadow-sm">
                 <label className="text-[11px] uppercase tracking-[0.1em] text-volcanic-ash font-medium">{t("admin.status", "Statut")}</label>
                 <p className="text-sm text-ink-black mt-1">{workflow.status === "published" ? t("workflow.published") : t("workflow.draft")}</p>
               </div>
               {workflow.publishedAt && (
-                <div>
+                <div className="rounded-lg border border-graph-line bg-white p-4 shadow-sm sm:col-span-2">
                   <label className="text-[11px] uppercase tracking-[0.1em] text-volcanic-ash font-medium">{t("admin.publishedOn", "Publié le")}</label>
                   <p className="text-sm text-ink-black mt-1">
                     {new Date(workflow.publishedAt).toLocaleDateString(english ? "en-US" : "fr-FR", { day: "2-digit", month: "long", year: "numeric" })}
                   </p>
                 </div>
               )}
+            </div>
             </div>
           </div>
         )}

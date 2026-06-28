@@ -1,7 +1,7 @@
 import { getStore } from "@/lib/api/in-memory-store"
 import { DEMO_ORGS, DEMO_USERS, ORG_MEMBERSHIPS, type DemoOrgKey, type DemoUser, type Org } from "@/types/auth"
 import type { RecordData } from "@/types/record"
-import type { DeviceState } from "@/types/sync"
+import type { ConflictRecord, DeviceState } from "@/types/sync"
 import type { WorkflowDefinition } from "@/types/workflow"
 
 const nowIso = () => new Date().toISOString()
@@ -135,7 +135,7 @@ export async function seedIsolatedDemoOrg(
   persona: DemoUser,
   installId: string,
   selectedOrgKey?: DemoOrgKey,
-): Promise<{ org: Org; orgs: Org[]; user: DemoUser; seeded: boolean }> {
+): Promise<{ org: Org; orgs: Org[]; user: DemoUser; seeded: boolean; offlineWorkspaces: Array<{ orgId: string; workflows: WorkflowDefinition[]; records: RecordData[]; conflicts: ConflictRecord[] }> }> {
   const store = getStore()
   const suffix = installId.slice(0, 12)
   const expiresAt = Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60
@@ -214,5 +214,25 @@ export async function seedIsolatedDemoOrg(
     deviceId: `${persona.deviceId}-${suffix}-${selectedMembership.orgKey.toLowerCase()}`,
   }
 
-  return { org, orgs, user, seeded }
+  await store.pushAuditEventForOrg({
+    id: `demo-sandbox-${suffix}-${selectedMembership.orgKey}-${Date.now()}`,
+    type: "demo_sandbox_login",
+    install_id: suffix,
+    user_id: user.id,
+    org_id: org.id,
+    selected_org_key: selectedMembership.orgKey,
+    sandbox_created: seeded,
+    detail: seeded ? `Created demo sandbox ${org.id}` : `Reopened demo sandbox ${org.id}`,
+    expiresAt,
+    timestamp: Date.now(),
+  }, org.id)
+
+  const offlineWorkspaces = await Promise.all(orgs.map(async (workspaceOrg) => ({
+    orgId: workspaceOrg.id,
+    workflows: await store.getWorkflowsByOrgAsync(workspaceOrg.id),
+    records: await store.getAllRecordsForOrg(workspaceOrg.id),
+    conflicts: await store.getOpenConflictsForOrg(workspaceOrg.id),
+  })))
+
+  return { org, orgs, user, seeded, offlineWorkspaces }
 }

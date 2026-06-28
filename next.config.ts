@@ -10,7 +10,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "img-src 'self' data: blob: https:",
       "font-src 'self' data: https://fonts.gstatic.com",
-      "connect-src 'self' https://api.deepseek.com https://*.amazonaws.com https://*.amazoncognito.com",
+      "connect-src 'self' https://api.deepseek.com https://*.amazonaws.com https://*.amazoncognito.com https://fonts.googleapis.com https://fonts.gstatic.com",
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",
@@ -41,7 +41,6 @@ const withPWA = withPWAInit({
       handler: "NetworkFirst",
       options: {
         cacheName: "fieldflow-pages",
-        networkTimeoutSeconds: 3,
       },
     },
     {

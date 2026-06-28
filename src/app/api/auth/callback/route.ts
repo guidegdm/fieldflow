@@ -5,6 +5,16 @@ import { getStore } from "@/lib/api/in-memory-store"
 const CLIENT_ID = process.env.COGNITO_CLIENT_ID || process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID || "7r60o7fnej4vitoksrp6e93n9g"
 const DOMAIN = process.env.COGNITO_DOMAIN || process.env.NEXT_PUBLIC_COGNITO_DOMAIN || "fieldflow-hackathon.auth.us-east-1.amazoncognito.com"
 
+function callbackUrl(requestUrl: URL) {
+  const explicit = process.env.COGNITO_REDIRECT_URI
+  if (explicit) return explicit
+
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_PROJECT_PRODUCTION_URL
+  if (siteUrl) return `${new URL(siteUrl.startsWith("http") ? siteUrl : `https://${siteUrl}`).origin}/api/auth/callback`
+
+  return `${requestUrl.origin}/api/auth/callback`
+}
+
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
   try {
     const payload = token.split(".")[1]
@@ -32,7 +42,7 @@ export async function GET(request: Request) {
     return NextResponse.redirect(redirectUrl)
   }
 
-  const redirectUri = `${url.origin}/api/auth/callback`
+  const redirectUri = callbackUrl(url)
 
   const tokenRes = await fetch(`https://${DOMAIN}/oauth2/token`, {
     method: "POST",

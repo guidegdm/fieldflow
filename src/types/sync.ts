@@ -33,7 +33,7 @@ export interface SyncBatchResponse {
 
 export interface AuditEvent {
   id: string
-  type: "conflict_auto_resolved" | "conflict_escalated" | "inventory_reservation"
+  type: "conflict_auto_resolved" | "conflict_escalated" | "inventory_reservation" | "demo_sandbox_login"
   record_id?: string
   field?: string
   strategy?: string
@@ -45,6 +45,12 @@ export interface AuditEvent {
   quantity?: number
   content_hash?: string
   status?: string
+  install_id?: string
+  user_id?: string
+  org_id?: string
+  selected_org_key?: string
+  sandbox_created?: boolean
+  expiresAt?: number
   detail: string
   timestamp: number
 }

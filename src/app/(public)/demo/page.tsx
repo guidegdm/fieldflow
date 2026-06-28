@@ -6,14 +6,10 @@ import { useTranslation } from "react-i18next"
 import { Building2, ChevronDown, ChevronRight, Shield, User, Users, WifiOff } from "lucide-react"
 
 import { useAuthStore } from "@/stores/authStore"
-import { hydrateDemoWorkspaceOffline } from "@/lib/demo/offline-demo-cache"
+import { hydrateDemoWorkspaceOffline, type DemoOfflineWorkspace } from "@/lib/demo/offline-demo-cache"
 import { DEMO_ORGS, DEMO_SCENARIOS, DEMO_USERS, ORG_MEMBERSHIPS, type DemoOrgKey } from "@/types/auth"
 
 const roleIcons = { field_worker: User, supervisor: Shield, org_admin: Users } as const
-
-function hydrationBudget(ms: number) {
-  return new Promise((resolve) => window.setTimeout(resolve, ms))
-}
 
 function routeForRole(role: string) {
   if (role === "field_worker") return "/field-worker/home"
@@ -68,7 +64,7 @@ export default function DemoPage() {
       const data = await res.json()
       setAuthFromApi(data.user, data.org, data.orgs)
       try {
-        await Promise.race([hydrateDemoWorkspaceOffline(data.user), hydrationBudget(10000)])
+        await hydrateDemoWorkspaceOffline(data.user, data.demo?.offlineWorkspaces as DemoOfflineWorkspace[] | undefined)
       } catch {
         // Demo auth must still enter the app; the user can sync once the session is active.
       }

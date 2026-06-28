@@ -58,29 +58,31 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="min-h-dvh bg-[#F8FAFC] px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mx-auto grid min-h-[calc(100dvh-4rem)] w-full max-w-6xl items-center gap-10 lg:grid-cols-[1fr_1fr]">
-        <section className="hidden lg:block">
-          <div className="max-w-xl">
+    <div className="min-h-dvh bg-[#F8FAFC] px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mx-auto grid min-h-[calc(100dvh-3rem)] w-full max-w-6xl items-start gap-8 lg:grid-cols-[0.95fr_1.05fr] lg:gap-12 lg:py-10">
+        <section className="hidden lg:flex lg:min-h-[calc(100dvh-5rem)] lg:items-start lg:pt-12 xl:pt-16">
+          <div className="max-w-lg">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-pencil">{t("signup.heroEyebrow")}</p>
-            <h1 className="mt-5 font-display text-6xl font-bold leading-none tracking-tight text-lake-deep">
+            <h1 className="mt-5 font-display text-5xl font-bold leading-[0.98] tracking-tight text-lake-deep xl:text-6xl">
               {t("signup.heroTitle")}
             </h1>
-            <p className="mt-6 max-w-md text-lg leading-8 text-soil">
+            <p className="mt-6 max-w-md text-lg leading-8 text-soil xl:text-xl">
               {t("signup.heroBody")}
             </p>
           </div>
         </section>
 
-        <main className="mx-auto w-full max-w-md">
-          <div className="mb-8 text-center lg:hidden">
+        <main className="mx-auto flex w-full max-w-md items-start lg:max-w-lg">
+          <div className="w-full">
+          <div className="mb-6 text-center lg:hidden">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-pencil">{t("signup.heroEyebrow")}</p>
             <h1 className="mt-3 font-display text-4xl font-bold tracking-tight text-lake-deep">
               {t("signup.heroTitle")}
             </h1>
+            <p className="mt-3 text-sm leading-6 text-soil">{t("signup.heroBody")}</p>
           </div>
 
-          <div className="rounded-2xl border border-white/80 bg-white/90 p-5 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur sm:p-8">
+          <div className="rounded-2xl border border-white/80 bg-white/90 p-5 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur sm:p-7">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 className="font-display text-2xl font-bold tracking-tight text-lake-deep">
@@ -206,6 +208,7 @@ export default function SignUpPage() {
               <ArrowRight size={12} />
             </Link>
           </p>
+          </div>
         </div>
         </main>
       </div>

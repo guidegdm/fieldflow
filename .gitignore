@@ -7,5 +7,10 @@ node_modules/
 *.tsbuildinfo
 *.log
 advice.md
+story.md
+docs/
+docs2/
+codex/
+tmp/
 package-lock.json
 pnpm-lock.yaml

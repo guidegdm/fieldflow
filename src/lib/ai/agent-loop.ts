@@ -27,7 +27,7 @@ interface AgentCallbacks {
 const MAX_STEPS = 8
 const MAX_RETRIES = 3
 const MAX_QUESTIONS = 3
-const QUESTION_TIMEOUT_MS = 120_000
+const QUESTION_TIMEOUT_MS = 300_000
 
 function autoPositionStates(
   existingStates: WorkflowState[],

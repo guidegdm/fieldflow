@@ -50,7 +50,6 @@ export async function POST(request: Request) {
         UserAttributes: [
           { Name: "email", Value: email },
           { Name: "name", Value: name },
-          { Name: "custom:orgId", Value: pendingOrgId },
           { Name: "custom:role", Value: "org_admin" },
         ],
       }))

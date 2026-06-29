@@ -83,7 +83,6 @@ export async function POST(request: Request) {
       Username: email,
       UserAttributes: [
         { Name: "name", Value: name },
-        { Name: "custom:orgId", Value: orgId },
         { Name: "custom:role", Value: "org_admin" },
         { Name: "email_verified", Value: "true" },
       ],

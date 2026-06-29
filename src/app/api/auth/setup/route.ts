@@ -85,7 +85,6 @@ export async function POST(request: NextRequest) {
       UserPoolId: POOL_ID,
       Username: pendingUser.username,
       UserAttributes: [
-        { Name: "custom:orgId", Value: orgId },
         { Name: "custom:role", Value: "org_admin" },
         { Name: "name", Value: pendingUser.name },
       ],

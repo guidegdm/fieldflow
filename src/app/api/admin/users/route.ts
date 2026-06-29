@@ -59,17 +59,32 @@ export async function POST(request: NextRequest) {
   if (cognito) {
     try {
       try {
-        await cognito.send(new AdminGetUserCommand({ UserPoolId: POOL_ID, Username: email }))
+        const existing = await cognito.send(new AdminGetUserCommand({ UserPoolId: POOL_ID, Username: email }))
         await cognito.send(new AdminUpdateUserAttributesCommand({
           UserPoolId: POOL_ID,
           Username: email,
           UserAttributes: [
             { Name: "name", Value: name },
-            { Name: "custom:orgId", Value: user.orgId },
             { Name: "custom:role", Value: role },
           ],
         }))
-        delivery = "linked"
+        if (existing.UserStatus === "FORCE_CHANGE_PASSWORD") {
+          await cognito.send(new AdminCreateUserCommand({
+            UserPoolId: POOL_ID,
+            Username: email,
+            MessageAction: "RESEND",
+            DesiredDeliveryMediums: ["EMAIL"],
+            UserAttributes: [
+              { Name: "email", Value: email },
+              { Name: "email_verified", Value: "true" },
+              { Name: "name", Value: name },
+              { Name: "custom:role", Value: role },
+            ],
+          }))
+          delivery = "invite_email_sent"
+        } else {
+          delivery = "linked"
+        }
       } catch (error) {
         if (!(error instanceof Error) || error.name !== "UserNotFoundException") throw error
         await cognito.send(new AdminCreateUserCommand({
@@ -80,7 +95,6 @@ export async function POST(request: NextRequest) {
             { Name: "email", Value: email },
             { Name: "email_verified", Value: "true" },
             { Name: "name", Value: name },
-            { Name: "custom:orgId", Value: user.orgId },
             { Name: "custom:role", Value: role },
           ],
         }))

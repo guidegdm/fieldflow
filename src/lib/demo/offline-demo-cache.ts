@@ -46,12 +46,12 @@ async function getJson<T>(url: string): Promise<T | null> {
   }
 }
 
-async function writeWorkspace(user: DemoUser, workspace: DemoOfflineWorkspace) {
+async function writeWorkspace(user: DemoUser | null, workspace: DemoOfflineWorkspace) {
   await db.replaceWorkflowsForOrg(workspace.orgId, workspace.workflows)
   await db.replaceRecordsForOrg(workspace.orgId, workspace.records)
   await db.replaceConflictsForRecords(workspace.records.map((record) => record.id), Array.isArray(workspace.conflicts) ? workspace.conflicts : [])
 
-  if (workspace.orgId === user.orgId) {
+  if (user?.orgId && workspace.orgId === user.orgId) {
     await db.updateDeviceState({
       device_id: user.deviceId,
       user_id: user.id,
@@ -126,4 +126,20 @@ export async function hydrateDemoWorkspaceOffline(user: DemoUser, workspaces?: D
     conflicts: Array.isArray(conflicts) ? conflicts.length : 0,
     workspaces: 1,
   }
+}
+
+export async function hydrateDemoSandboxOffline(workspaces?: DemoOfflineWorkspace[]) {
+  if (!workspaces?.length) return { workflows: 0, records: 0, conflicts: 0, workspaces: 0 }
+
+  let workflows = 0
+  let records = 0
+  let conflicts = 0
+  for (const workspace of workspaces) {
+    await writeWorkspace(null, workspace)
+    workflows += workspace.workflows.length
+    records += workspace.records.length
+    conflicts += workspace.conflicts?.length || 0
+  }
+
+  return { workflows, records, conflicts, workspaces: workspaces.length }
 }

@@ -6,6 +6,7 @@ import { I18nextProvider } from "react-i18next"
 import { Toaster } from "@/components/layout/Toaster"
 import { AppLoader } from "@/components/layout/AppLoader"
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister"
+import { OfflineWarmup } from "@/components/OfflineWarmup"
 import { useNetworkStatus } from "@/hooks/useNetworkStatus"
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
@@ -33,6 +34,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
           {children}
           <Toaster />
           <ServiceWorkerRegister />
+          <OfflineWarmup />
         </>
       ) : (
         <AppLoader />

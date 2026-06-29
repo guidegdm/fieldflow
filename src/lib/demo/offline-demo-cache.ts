@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db/indexeddb"
 import type { DemoUser } from "@/types/auth"
-import type { DemoOrgKey, Org } from "@/types/auth"
+import { DEMO_ORGS, DEMO_USERS, ORG_MEMBERSHIPS, type DemoOrgKey, type Org } from "@/types/auth"
 import type { RecordData } from "@/types/record"
 import type { ConflictRecord } from "@/types/sync"
 import type { WorkflowDefinition } from "@/types/workflow"
@@ -30,6 +30,196 @@ export interface DemoOfflineSandbox {
   savedAt: number
   workspaces: DemoOfflineWorkspace[]
   accounts: DemoOfflineAccount[]
+}
+
+function localInstallId() {
+  if (typeof window === "undefined") return "local-offline"
+  const key = "fieldflow-local-demo-install"
+  const existing = window.localStorage.getItem(key)
+  if (existing) return existing
+  const id = `local-${Math.random().toString(36).slice(2, 10)}`
+  window.localStorage.setItem(key, id)
+  return id
+}
+
+function localOrgId(installId: string, orgKey: DemoOrgKey) {
+  return `demo-${installId}-${orgKey.toLowerCase()}`
+}
+
+function localWorkflow(orgId: string, orgKey: DemoOrgKey): WorkflowDefinition {
+  const now = new Date().toISOString()
+  const org = DEMO_ORGS[orgKey]
+  return {
+    id: "wf-1",
+    orgId,
+    version: 1,
+    name: `${org.name} Field Operations`,
+    nameEn: `${org.name} Field Operations`,
+    description: org.summary || "Offline-first field workflow",
+    descriptionEn: org.summary || "Offline-first field workflow",
+    entity: {
+      id: "entity-household",
+      key: "household",
+      label: "Menage",
+      labelEn: "Household",
+      displayField: "household_name",
+      fields: [
+        { id: "f-1", key: "household_name", label: "Nom du menage", labelEn: "Household name", type: "text", required: true, order: 1, section: "Identification" },
+        { id: "f-2", key: "head_of_household", label: "Chef de menage", labelEn: "Head of household", type: "text", required: true, order: 2, section: "Identification" },
+        { id: "f-3", key: "household_size", label: "Taille du menage", labelEn: "Household size", type: "number", required: true, validation: { min: 1, max: 20 }, order: 3, section: "Identification" },
+        { id: "f-4", key: "shelter_type", label: "Type d'abri", labelEn: "Shelter type", type: "select", required: true, options: [{ label: "Tente", labelEn: "Tent", value: "tent" }, { label: "Abri provisoire", labelEn: "Temporary shelter", value: "temporary" }, { label: "Hebergement", labelEn: "Hosted", value: "hosted" }], order: 4, section: "Living conditions" },
+        { id: "f-5", key: "village", label: "Village", labelEn: "Village", type: "text", required: true, order: 5, section: "Living conditions" },
+        { id: "f-6", key: "vulnerability_score", label: "Score de vulnerabilite", labelEn: "Vulnerability score", type: "number", required: true, validation: { min: 1, max: 5 }, order: 6, section: "Priority needs" },
+        { id: "f-7", key: "needs", label: "Besoins prioritaires", labelEn: "Priority needs", type: "multi_select", required: true, options: [{ label: "Nourriture", labelEn: "Food", value: "food" }, { label: "Eau potable", labelEn: "Drinking water", value: "water" }, { label: "Abri", labelEn: "Shelter", value: "shelter" }, { label: "Sante", labelEn: "Medical care", value: "medicine" }], order: 7, section: "Priority needs" },
+        { id: "f-8", key: "notes", label: "Notes", labelEn: "Notes", type: "textarea", required: false, order: 8, section: "Priority needs" },
+      ],
+    },
+    states: [
+      { id: "s-draft", key: "draft", label: "Brouillon", labelEn: "Draft", color: "#6B7280", isInitial: true, isTerminal: false, x: 160, y: 120 },
+      { id: "s-submitted", key: "submitted", label: "Soumis", labelEn: "Submitted", color: "#2563EB", isInitial: false, isTerminal: false, x: 380, y: 120 },
+      { id: "s-verified", key: "verified", label: "Verifie", labelEn: "Verified", color: "#9333EA", isInitial: false, isTerminal: false, x: 600, y: 120 },
+      { id: "s-approved", key: "approved", label: "Approuve", labelEn: "Approved", color: "#16A34A", isInitial: false, isTerminal: false, x: 820, y: 120 },
+    ],
+    transitions: [
+      { id: "t-submit", key: "submit", label: "Soumettre", labelEn: "Submit", fromState: "s-draft", toState: "s-submitted", requiredRoles: ["field_worker"] },
+      { id: "t-verify", key: "verify", label: "Verifier", labelEn: "Verify", fromState: "s-submitted", toState: "s-verified", requiredRoles: ["supervisor"] },
+      { id: "t-approve", key: "approve", label: "Approuver", labelEn: "Approve", fromState: "s-verified", toState: "s-approved", requiredRoles: ["supervisor"] },
+    ],
+    roles: [
+      { id: "r-field", key: "field_worker", label: "Agent terrain", labelEn: "Field Agent", permissions: ["record:create", "record:read_own", "record:update_own", "sync:push", "sync:pull"] },
+      { id: "r-supervisor", key: "supervisor", label: "Superviseur", labelEn: "Supervisor", permissions: ["record:read_team", "record:verify", "record:approve", "sync:pull"] },
+      { id: "r-admin", key: "org_admin", label: "Administrateur", labelEn: "Administrator", permissions: ["workflow:publish", "admin:manage_users", "audit:view"] },
+    ],
+    offlinePolicy: {
+      maxOfflineHours: 72,
+      allowedOperations: { create: true, update: true, delete: false, evidence: true },
+      conflictStrategy: "manual",
+      manualResolutionFields: ["household_size", "vulnerability_score"],
+      autoResolutionNumeric: "average",
+      maxAttachmentSizeMb: 5,
+      allowedAttachmentTypes: ["image/jpeg", "image/png"],
+      attachmentSyncPriority: "normal",
+    },
+    status: "published",
+    createdAt: now,
+    updatedAt: now,
+    publishedAt: now,
+    author: "offline-demo",
+  }
+}
+
+function localRecords(orgId: string, orgKey: DemoOrgKey): RecordData[] {
+  const now = Date.now()
+  return [
+    {
+      id: `local-${orgKey.toLowerCase()}-submitted`,
+      workflowId: "wf-1",
+      workflowVersion: 1,
+      entityKey: "household",
+      deviceId: "offline-demo-device",
+      status: "submitted",
+      syncStatus: "local",
+      state: "s-submitted",
+      fields: {
+        household_name: "Mukwege family",
+        head_of_household: "Aline Mukwege",
+        household_size: 6,
+        shelter_type: "tent",
+        village: "Mugunga",
+        vulnerability_score: 5,
+        needs: ["food", "water", "shelter"],
+        notes: "Offline fallback demo record ready for supervisor review.",
+      },
+      version: 1,
+      createdAt: now - 3600000,
+      updatedAt: now - 1800000,
+      createdBy: "offline-demo",
+      orgId,
+    },
+    {
+      id: `local-${orgKey.toLowerCase()}-approved`,
+      workflowId: "wf-1",
+      workflowVersion: 1,
+      entityKey: "household",
+      deviceId: "offline-demo-device",
+      status: "approved",
+      syncStatus: "synced",
+      state: "s-approved",
+      fields: {
+        household_name: "Bahati household",
+        head_of_household: "Patrick Bahati",
+        household_size: 4,
+        shelter_type: "temporary",
+        village: "Sake",
+        vulnerability_score: 3,
+        needs: ["food"],
+      },
+      version: 2,
+      createdAt: now - 7200000,
+      updatedAt: now - 2400000,
+      createdBy: "offline-demo",
+      orgId,
+    },
+  ]
+}
+
+function localConflicts(orgId: string, orgKey: DemoOrgKey): ConflictRecord[] {
+  return [{
+    id: `local-${orgKey.toLowerCase()}-conflict`,
+    workflow_id: "wf-1",
+    record_id: `local-${orgKey.toLowerCase()}-submitted`,
+    field: "vulnerability_score",
+    value_a: 5,
+    device_a: "field-device",
+    value_b: 4,
+    device_b: "supervisor-device",
+    status: "OPEN",
+    created_at: Date.now() - 900000,
+  }]
+}
+
+export function createLocalDemoSandbox(): DemoOfflineSandbox {
+  const installId = localInstallId()
+  const expiresAt = Math.floor((Date.now() + 7 * 24 * 60 * 60 * 1000) / 1000)
+  const workspaces = (Object.keys(DEMO_ORGS) as DemoOrgKey[]).map((orgKey) => {
+    const orgId = localOrgId(installId, orgKey)
+    return {
+      orgId,
+      workflows: [localWorkflow(orgId, orgKey)],
+      records: localRecords(orgId, orgKey),
+      conflicts: localConflicts(orgId, orgKey),
+    }
+  })
+
+  const orgs = (Object.keys(DEMO_ORGS) as DemoOrgKey[]).map((orgKey) => ({
+    ...DEMO_ORGS[orgKey],
+    id: localOrgId(installId, orgKey),
+    key: orgKey,
+    name: `${DEMO_ORGS[orgKey].name} Demo`,
+  }))
+
+  const accounts = ORG_MEMBERSHIPS.map((membership) => {
+    const template = DEMO_USERS.find((candidate) => candidate.id === membership.userId)!
+    const org = orgs.find((candidate) => candidate.key === membership.orgKey)!
+    return {
+      email: template.email,
+      orgKey: membership.orgKey,
+      user: {
+        ...template,
+        id: `${template.id}-${installId}-${membership.orgKey.toLowerCase()}`,
+        role: membership.role,
+        orgId: org.id,
+        deviceId: `${template.deviceId}-${installId}-${membership.orgKey.toLowerCase()}`,
+      },
+      org,
+      orgs: ORG_MEMBERSHIPS
+        .filter((allowed) => allowed.userId === membership.userId)
+        .map((allowed) => orgs.find((candidate) => candidate.key === allowed.orgKey)!)
+        .filter(Boolean),
+    }
+  })
+
+  return { expiresAt, savedAt: Date.now(), workspaces, accounts }
 }
 
 export async function cacheOfflineRecordRoutes(workspaces?: DemoOfflineWorkspace[]) {

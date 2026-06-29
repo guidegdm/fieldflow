@@ -8,6 +8,7 @@ import { Building2, ChevronDown, ChevronRight, Loader2, Shield, User, Users, Wif
 import { useAuthStore } from "@/stores/authStore"
 import {
   cacheOfflineRecordRoutes,
+  createLocalDemoSandbox,
   hydrateDemoWorkspaceOffline,
   loadOfflineDemoSandbox,
   persistDemoSandbox,
@@ -82,7 +83,12 @@ export default function DemoPage() {
       }
       router.push(routeForRole(data.user.role))
     } catch {
-      const offlineSandbox = loadOfflineDemoSandbox()
+      const offlineSandbox = loadOfflineDemoSandbox() ?? createLocalDemoSandbox()
+      persistDemoSandbox({
+        expiresAt: offlineSandbox.expiresAt,
+        workspaces: offlineSandbox.workspaces,
+        accounts: offlineSandbox.accounts,
+      })
       const offlineAccount = offlineSandbox?.accounts.find((account) => account.email === email && account.orgKey === demoOrgKey)
       if (!offlineSandbox || !offlineAccount) {
         setError(t("demo.loginFailed"))

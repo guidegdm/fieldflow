@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
         const payloadState = normalizeStateId(workflow, payloadObject.state)
         const clientWorkflowVersion = typeof payloadObject.workflowVersion === "number" ? payloadObject.workflowVersion : workflow.version
         const createdAt = typeof payloadObject.createdAt === "number" ? payloadObject.createdAt : operationServerTs
-        const createdBy = typeof payloadObject.createdBy === "string" ? payloadObject.createdBy : user.id
+        const createdBy = typeof payloadObject.createdBy === "string" ? payloadObject.createdBy : user.sub
         const deviceId = typeof payloadObject.deviceId === "string" ? payloadObject.deviceId : body.device_id
         const record: RecordData = {
           id: op.record_id || crypto.randomUUID(),

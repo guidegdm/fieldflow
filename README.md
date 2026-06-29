@@ -25,6 +25,8 @@
   <img src="./screenshots/devpost-live-2026-06-28T18-25-00-769Z/01-desktop-public-landing.png" alt="FieldFlow landing page" width="920" />
 </p>
 
+This live desktop view shows the core promise: field teams can design workflows, install the PWA, keep working offline, synchronize operations, resolve conflicts, and preserve an auditable trail. The landing page also calls out the actual product foundation: IndexedDB on the device, DynamoDB as the primary backend, and TTL-scoped demo workspaces.
+
 ## What FieldFlow Solves
 
 FieldFlow is built for field teams working in limited-connectivity environments: humanitarian response, rural health, logistics, agriculture, construction, and community programs. These teams still need to register people, collect evidence, review cases, reserve inventory, and preserve an audit trail when internet access is unstable or unavailable.
@@ -46,41 +48,29 @@ FieldFlow turns operational workflows into installable Progressive Web Apps. Wor
 - English/French i18n loaded into the client bundle for offline language switching.
 - Mobile shell with bottom navigation plus account drawer for organization switching and logout.
 
-## Screenshots
-
-| Landing | Demo sandbox | Admin dashboard |
-| --- | --- | --- |
-| ![Landing](./screenshots/devpost-live-2026-06-28T18-25-00-769Z/01-desktop-public-landing.png) | ![Demo](./screenshots/devpost-live-2026-06-28T18-25-00-769Z/02-desktop-public-demo.png) | ![Admin dashboard](./screenshots/devpost-live-2026-06-28T18-25-00-769Z/09-desktop-admin-dashboard.png) |
-
-| Workflow builder | Worker registration | Sync status |
-| --- | --- | --- |
-| ![Workflow builder](./screenshots/devpost-live-2026-06-28T18-25-00-769Z/11-desktop-admin-workflow-builder-fields.png) | ![Worker registration](./screenshots/devpost-live-2026-06-28T18-25-00-769Z/20-desktop-worker-register-filled.png) | ![Sync status](./screenshots/devpost-live-2026-06-28T18-25-00-769Z/22-desktop-worker-sync-status.png) |
-
-| Mobile landing | Mobile demo | Mobile signup |
-| --- | --- | --- |
-| ![Mobile landing](./screenshots/devpost-live-2026-06-28T18-25-00-769Z/05-mobile-public-landing.png) | ![Mobile demo](./screenshots/devpost-live-2026-06-28T18-25-00-769Z/06-mobile-public-demo.png) | ![Mobile signup](./screenshots/devpost-live-2026-06-28T18-25-00-769Z/08-mobile-auth-signup.png) |
-
 ## Architecture
 
 <p align="center">
   <img src="./diagrams/02-runtime-architecture.png" alt="FieldFlow runtime architecture" width="920" />
 </p>
 
-FieldFlow uses a single-table-style DynamoDB access model through a Next.js API layer. The browser owns the local-first experience; the server owns authentication, tenant isolation, idempotency, sync ordering, conflict creation, and transactional inventory reservations.
+The runtime is split deliberately. The browser owns the resilient field experience with a PWA shell, IndexedDB, local mutation queues, and route caches. The Next.js API layer handles authentication, tenant boundaries, sync orchestration, workflow publication, AI drafting, and DynamoDB writes. DynamoDB stores the operational backbone: records, workflows, mutations, conflicts, inventory, audit events, and demo sandbox metadata.
 
-### Key Diagrams
+### System Context
 
-| System context | DynamoDB access model |
-| --- | --- |
-| ![System context](./diagrams/01-system-context.png) | ![DynamoDB access model](./diagrams/03-dynamodb-access-model.png) |
+<p align="center">
+  <img src="./diagrams/01-system-context.png" alt="FieldFlow system context" width="920" />
+</p>
 
-| Offline sync | Conflict resolution |
-| --- | --- |
-| ![Offline sync protocol](./diagrams/04-offline-sync-protocol.png) | ![Conflict resolution](./diagrams/05-conflict-resolution.png) |
+FieldFlow sits between administrators, field workers, supervisors, and the cloud services that keep the system shippable. Admins define workflows, workers use the generated app in the field, supervisors review exceptions, and the backend keeps every tenant isolated while still supporting anonymous demo sandboxes.
 
-| Demo isolation | Auth cookies |
-| --- | --- |
-| ![Demo isolation and TTL](./diagrams/06-demo-isolation-ttl.png) | ![Auth cookie refresh](./diagrams/07-auth-cookie-refresh.png) |
+### Conflict Resolution
+
+<p align="center">
+  <img src="./diagrams/05-conflict-resolution.png" alt="FieldFlow conflict resolution flow" width="920" />
+</p>
+
+The sync layer uses a git-like 3-way merge model for structured records. Mutations carry `base_version` and `base_fields`, so the server can tell whether a field changed only locally, only remotely, or on both sides. Clean changes merge automatically. Same-field disagreements in manual workflows become conflict records for human review instead of silent overwrites.
 
 ## Sync Model
 

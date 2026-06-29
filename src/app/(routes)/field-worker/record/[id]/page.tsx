@@ -12,6 +12,11 @@ import { useAuthStore } from "@/stores/authStore"
 import type { WorkflowDefinition } from "@/types/workflow"
 import { FieldRenderer } from "@/components/fields/FieldRenderer"
 import { groupFieldsBySection, recordTitle, sectionLabel } from "@/lib/workflows/runtime"
+import { db } from "@/lib/db/indexeddb"
+import { runBackgroundSync } from "@/lib/sync/run-background-sync"
+import { generateId } from "@/lib/utils"
+import { useSyncStore } from "@/stores/syncStore"
+import type { MutationEntry } from "@/types/sync"
 
 const statusConfig: Record<string, { label: string; color: string; border: string; bg: string; icon: typeof AlertTriangle }> = {
   draft: { label: "Brouillon", color: "text-pencil", border: "border-pencil", bg: "bg-pencil/5", icon: Clock },
@@ -74,6 +79,11 @@ export default function RecordDetailPage() {
   const [record, setRecord] = useState<RecordData | null>(null)
   const [workflow, setWorkflow] = useState<WorkflowDefinition | null>(null)
   const [loading, setLoading] = useState(true)
+  const [editing, setEditing] = useState(false)
+  const [draftFields, setDraftFields] = useState<Record<string, unknown>>({})
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState("")
 
   const id = params.id as string
 
@@ -86,6 +96,7 @@ export default function RecordDetailPage() {
         const found = await db.getRecord(id)
         if (found && (!user?.orgId || found.orgId === user.orgId)) {
           setRecord(found)
+          setDraftFields(found.fields ?? {})
           workflowId = found.workflowId || workflowId
           const workflow = await db.getWorkflow(found.workflowId)
           if (workflow) setWorkflow(workflow)
@@ -106,6 +117,7 @@ export default function RecordDetailPage() {
           const fresh = records.find((r: RecordData) => r.id === id) ?? null
           if (fresh) {
             setRecord(fresh)
+            setDraftFields(fresh.fields ?? {})
             const { db } = await import("@/lib/db/indexeddb")
             await db.putRecord(fresh)
             const definition = await db.getWorkflow(fresh.workflowId)
@@ -121,6 +133,79 @@ export default function RecordDetailPage() {
     }
     load()
   }, [id, user?.orgId])
+
+  const setFieldValue = (key: string, value: unknown) => {
+    setDraftFields((current) => ({ ...current, [key]: value }))
+    setErrors((current) => {
+      if (!current[key]) return current
+      const next = { ...current }
+      delete next[key]
+      return next
+    })
+  }
+
+  const validate = () => {
+    const next: Record<string, string> = {}
+    for (const field of workflow?.entity.fields ?? []) {
+      if (!field.required || field.type === "gps" || field.type === "photo") continue
+      const value = draftFields[field.key]
+      const missing = Array.isArray(value) ? value.length === 0 : value === undefined || value === null || value === ""
+      if (missing) next[field.key] = t("common.required")
+    }
+    setErrors(next)
+    return Object.keys(next).length === 0
+  }
+
+  async function saveEdit() {
+    if (!record || !workflow || !user?.orgId) return
+    if (!validate()) return
+    const now = Date.now()
+    const deviceId = user.deviceId || record.deviceId || "web"
+    const updated: RecordData = {
+      ...record,
+      fields: { ...draftFields },
+      syncStatus: "pending",
+      status: record.status === "synced" ? "pending_sync" : record.status,
+      updatedAt: now,
+      version: record.version + 1,
+    }
+    const mutation: MutationEntry = {
+      client_id: `update-${record.id}-${generateId()}`,
+      device_id: deviceId,
+      operation: "update",
+      resource: "record",
+      workflow_id: record.workflowId,
+      record_id: record.id,
+      payload: {
+        fields: updated.fields,
+        status: updated.status,
+        state: updated.state,
+        syncStatus: "pending",
+        workflowVersion: record.workflowVersion,
+      },
+      client_timestamp: now,
+      base_version: record.version,
+      base_fields: { ...(record.fields ?? {}) },
+      status: "PENDING",
+      retry_count: 0,
+      last_error: null,
+      enqueued_at: now,
+    }
+    setSaving(true)
+    try {
+      setSaveError("")
+      await db.putRecord(updated)
+      await db.enqueueMutation(mutation)
+      useSyncStore.getState().setPendingCount((await db.getPendingMutations()).length)
+      setRecord(updated)
+      setEditing(false)
+      void runBackgroundSync(user)
+    } catch {
+      setSaveError(t("record.saveFailed", "Could not save changes locally."))
+    } finally {
+      setSaving(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -154,22 +239,51 @@ export default function RecordDetailPage() {
         {t("common.back")}
       </button>
 
-      <div className="flex items-center gap-3 mb-6">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center gap-3">
         <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded border rotate-[-2deg] ${statusCfg.border} ${statusCfg.bg}`}>
           <StatusIcon size={18} className={statusCfg.color} />
           <span className={`text-xs font-semibold ${statusCfg.color}`}>{statusCfg.label}</span>
         </div>
         <span className="text-xs font-mono text-pencil">{record.id.slice(0, 8)}</span>
       </div>
+      {workflow && (
+        <div className="flex gap-2">
+          {editing ? (
+            <>
+              <Button variant="secondary" size="sm" onClick={() => { setDraftFields(record.fields ?? {}); setErrors({}); setEditing(false) }}>
+                {t("common.cancel")}
+              </Button>
+              <Button variant="primary" size="sm" loading={saving} onClick={saveEdit}>
+                {t("common.save")}
+              </Button>
+            </>
+          ) : (
+            <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>
+              {t("record.edit", "Edit")}
+            </Button>
+          )}
+        </div>
+      )}
+      </div>
 
       <h1 className="mb-4 font-display text-2xl font-semibold text-ink-black">{recordTitle(record, workflow)}</h1>
+      {saveError && <div className="mb-4 rounded-md border border-danger-500/30 bg-danger-500/10 px-3 py-2 text-sm text-danger-500">{saveError}</div>}
 
       <div className="space-y-4 mb-8">
         {sections.length > 0 ? sections.map(({ section, fields }) => (
           <section key={section} className="space-y-2">
             <h2 className="text-xs font-semibold uppercase tracking-wider text-pencil">{sectionLabel(section)}</h2>
             {fields.map((field) => (
-              <FieldRenderer key={field.id || field.key} field={field} value={record.fields[field.key]} readOnly language={i18n.language} />
+              <FieldRenderer
+                key={field.id || field.key}
+                field={field}
+                value={editing ? draftFields[field.key] : record.fields[field.key]}
+                error={errors[field.key]}
+                readOnly={!editing}
+                language={i18n.language}
+                onChange={(value) => setFieldValue(field.key, value)}
+              />
             ))}
           </section>
         )) : Object.entries(record.fields ?? {}).map(([key, value]) => (

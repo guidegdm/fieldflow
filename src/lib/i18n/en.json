@@ -366,6 +366,8 @@
     "urgent": "Urgent",
     "pendingSync": "Pending Sync",
     "today": "Today",
+    "currentWorkflow": "Current workflow",
+    "allWorkflows": "All workflows",
     "recordsCount": "{{count}} record(s)",
     "noRecords": "No records today",
     "conflictsBanner": "⚠ {{count}} conflict(s) detected — resolve"
@@ -419,7 +421,9 @@
     "submitted": "Submitted for review",
     "synced": "Synced",
     "conflict": "Conflict detected",
-    "resolved": "Conflict resolved"
+    "resolved": "Conflict resolved",
+    "edit": "Edit",
+    "saveFailed": "Could not save changes locally."
   },
   "landing": {
     "hero": "Humanitarian tools that work without the Internet.",

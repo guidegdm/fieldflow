@@ -366,6 +366,8 @@
     "urgent": "Urgent",
     "pendingSync": "En attente de sync",
     "today": "Aujourd'hui",
+    "currentWorkflow": "Workflow actuel",
+    "allWorkflows": "Tous les workflows",
     "recordsCount": "{{count}} enregistrement(s)",
     "noRecords": "Aucun enregistrement aujourd'hui",
     "conflictsBanner": "⚠ {{count}} conflit(s) détecté(s) — résoudre"
@@ -419,7 +421,9 @@
     "submitted": "Soumis pour validation",
     "synced": "Synchronisé",
     "conflict": "Conflit détecté",
-    "resolved": "Conflit résolu"
+    "resolved": "Conflit résolu",
+    "edit": "Modifier",
+    "saveFailed": "Impossible d'enregistrer les modifications localement."
   },
   "landing": {
     "hero": "Des outils humanitaires qui fonctionnent sans Internet.",

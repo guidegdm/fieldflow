@@ -12,6 +12,7 @@ import type { ConflictRecord } from "@/types/sync"
 import { useAuthStore } from "@/stores/authStore"
 import { useWorkflowContext } from "@/hooks/useWorkflowContext"
 import { recordSubtitle, recordTitle, workflowLabel } from "@/lib/workflows/runtime"
+import type { WorkflowDefinition } from "@/types/workflow"
 
 const statusDot: Record<string, string> = {
   draft: "bg-pencil",
@@ -34,10 +35,11 @@ export default function FieldWorkerHome() {
   const [records, setRecords] = useState<RecordData[]>([])
   const [loading, setLoading] = useState(true)
   const [conflictCount, setConflictCount] = useState(0)
+  const [scope, setScope] = useState<"current" | "all">("current")
 
   useEffect(() => {
     let cancelled = false
-    if (!user?.orgId || !activeWorkflowId) {
+    if (!user?.orgId || (!activeWorkflowId && scope === "current")) {
       if (!workflowsLoading && workflows.length > 1) router.replace("/field-worker/pick-workflow")
       setLoading(false)
       return
@@ -47,15 +49,17 @@ export default function FieldWorkerHome() {
       try {
         const { db } = await import("@/lib/db/indexeddb")
         let all = user?.orgId ? await db.getAllRecordsForOrg(user.orgId) : await db.getAllRecords()
-        all = all.filter((record) => record.workflowId === activeWorkflowId)
+        all = scope === "all" ? all : all.filter((record) => record.workflowId === activeWorkflowId)
         if (all.length === 0) {
           try {
-            const response = await fetch(`/api/workflows/${activeWorkflowId}/records`, { credentials: "include" })
-            const server = response.ok ? await response.json() : []
-            if (Array.isArray(server)) {
-              all = server.filter((record: RecordData) => record.workflowId === activeWorkflowId)
-              await Promise.all(all.map((record) => db.putRecord(record)))
-            }
+            const workflowIds = scope === "all" ? workflows.map((workflow) => workflow.id) : activeWorkflowId ? [activeWorkflowId] : []
+            const serverRecords = await Promise.all(workflowIds.map(async (workflowId) => {
+              const response = await fetch(`/api/workflows/${workflowId}/records`, { credentials: "include" })
+              const server = response.ok ? await response.json() : []
+              return Array.isArray(server) ? server.filter((record: RecordData) => record.workflowId === workflowId) : []
+            }))
+            all = serverRecords.flat()
+            await Promise.all(all.map((record) => db.putRecord(record)))
           } catch {
             // Keep the local empty state when the device is offline.
           }
@@ -70,7 +74,7 @@ export default function FieldWorkerHome() {
     }
     load()
     return () => { cancelled = true }
-  }, [activeWorkflowId, router, user?.orgId, workflows.length, workflowsLoading])
+  }, [activeWorkflowId, router, scope, user?.orgId, workflows, workflows.length, workflowsLoading])
 
   const urgent = records.filter((r) => r.status === "in_conflict" || r.status === "rejected" || r.status === "blocked")
   const pending = records.filter((r) => r.syncStatus === "pending" || r.syncStatus === "local")
@@ -80,7 +84,10 @@ export default function FieldWorkerHome() {
   }).sort((a, b) => b.createdAt - a.createdAt)
   const visibleRecords = today.length > 0 ? today : [...records].sort((a, b) => b.updatedAt - a.updatedAt)
 
+  const workflowsById = new Map<string, WorkflowDefinition>(workflows.map((workflow) => [workflow.id, workflow]))
+
   function RecordRow({ r }: { r: RecordData }) {
+    const rowWorkflow = scope === "all" ? workflowsById.get(r.workflowId) ?? activeWorkflow : activeWorkflow
     return (
       <Link
         href={`/field-worker/record/${r.id}`}
@@ -88,8 +95,11 @@ export default function FieldWorkerHome() {
       >
         <span className={`w-2 h-2 rounded-full shrink-0 ${statusDot[r.status] || "bg-pencil"}`} />
         <span className="flex-1 min-w-0">
-          <span className="text-sm font-medium text-ink-black truncate block">{recordTitle(r, activeWorkflow)}</span>
-          <span className="text-xs text-pencil">{recordSubtitle(r, activeWorkflow, i18n.language)}</span>
+          <span className="text-sm font-medium text-ink-black truncate block">{recordTitle(r, rowWorkflow)}</span>
+          <span className="text-xs text-pencil">
+            {scope === "all" && rowWorkflow ? `${workflowLabel(rowWorkflow, i18n.language)} · ` : ""}
+            {recordSubtitle(r, rowWorkflow, i18n.language)}
+          </span>
         </span>
         <ChevronRight size={16} className="text-pencil shrink-0" />
       </Link>
@@ -117,6 +127,21 @@ export default function FieldWorkerHome() {
         <SyncButton />
       </div>
 
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {(["current", "all"] as const).map((key) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setScope(key)}
+            className={`min-h-9 shrink-0 rounded-full px-3 text-xs font-medium transition-colors ${
+              scope === key ? "bg-ink-blue text-white" : "border border-grid-line bg-white text-pencil hover:bg-graph-paper"
+            }`}
+          >
+            {key === "current" ? t("home.currentWorkflow", "Current workflow") : t("home.allWorkflows", "All workflows")}
+          </button>
+        ))}
+      </div>
+
       {loading && records.length === 0 ? (
         <div className="space-y-2">
           {[1,2,3,4,5].map(i => <div key={i} className="h-[44px] rounded-md bg-graph-paper animate-pulse" />)}
@@ -124,7 +149,7 @@ export default function FieldWorkerHome() {
       ) : records.length === 0 ? (
         <div className="text-center py-12">
           <MapPin size={24} className="mx-auto text-pencil/40 mb-2" />
-          <p className="text-sm text-pencil">Aucun enregistrement</p>
+          <p className="text-sm text-pencil">{t("home.noRecords")}</p>
         </div>
       ) : (
       <>

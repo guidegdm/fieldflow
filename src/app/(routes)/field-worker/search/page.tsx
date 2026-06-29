@@ -7,7 +7,8 @@ import Link from "next/link"
 import type { RecordData } from "@/types/record"
 import { useAuthStore } from "@/stores/authStore"
 import { useWorkflowContext } from "@/hooks/useWorkflowContext"
-import { recordSubtitle, recordTitle } from "@/lib/workflows/runtime"
+import { recordSubtitle, recordTitle, workflowLabel } from "@/lib/workflows/runtime"
+import type { WorkflowDefinition } from "@/types/workflow"
 
 type FilterKey = "all" | "pending" | "verified" | "synced"
 
@@ -33,36 +34,41 @@ const statusDot: Record<string, string> = {
 export default function SearchPage() {
   const { t, i18n } = useTranslation()
   const user = useAuthStore((s) => s.user)
-  const { activeWorkflow, activeWorkflowId } = useWorkflowContext()
+  const { activeWorkflow, activeWorkflowId, workflows } = useWorkflowContext()
   const [query, setQuery] = useState("")
   const [activeFilter, setActiveFilter] = useState<FilterKey>("all")
   const [records, setRecords] = useState<RecordData[]>([])
+  const [scope, setScope] = useState<"current" | "all">("current")
 
   useEffect(() => {
     async function load() {
-      if (!activeWorkflowId) return
+      if (!activeWorkflowId && scope === "current") return
       try {
         const { db } = await import("@/lib/db/indexeddb")
-        const local = (user?.orgId ? await db.getAllRecordsForOrg(user.orgId) : await db.getAllRecords())
-          .filter((record) => record.workflowId === activeWorkflowId)
+        const localRecords = user?.orgId ? await db.getAllRecordsForOrg(user.orgId) : await db.getAllRecords()
+        const local = scope === "all" ? localRecords : localRecords.filter((record) => record.workflowId === activeWorkflowId)
         if (local.length > 0) setRecords(local)
       } catch { /* IndexedDB can be unavailable */ }
 
       try {
-        const res = await fetch(`/api/workflows/${activeWorkflowId}/records`, { credentials: "include" })
-        const server = res.ok ? await res.json() : []
-        if (Array.isArray(server)) {
-          const scoped = server.filter((record: RecordData) => record.workflowId === activeWorkflowId)
+        const workflowIds = scope === "all" ? workflows.map((workflow) => workflow.id) : activeWorkflowId ? [activeWorkflowId] : []
+        const serverRecords = await Promise.all(workflowIds.map(async (workflowId) => {
+          const res = await fetch(`/api/workflows/${workflowId}/records`, { credentials: "include" })
+          const server = res.ok ? await res.json() : []
+          return Array.isArray(server) ? server.filter((record: RecordData) => record.workflowId === workflowId) : []
+        }))
+        const scoped = serverRecords.flat()
+        if (scoped.length > 0) {
           setRecords(scoped)
-          if (user?.orgId) {
-            const { db } = await import("@/lib/db/indexeddb")
-            await Promise.all(scoped.map((record: RecordData) => db.putRecord(record)))
-          }
+          const { db } = await import("@/lib/db/indexeddb")
+          await Promise.all(scoped.map((record: RecordData) => db.putRecord(record)))
         }
       } catch { /* keep local records */ }
     }
     load()
-  }, [activeWorkflowId, user?.orgId])
+  }, [activeWorkflowId, scope, user?.orgId, workflows])
+
+  const workflowsById = useMemo(() => new Map<string, WorkflowDefinition>(workflows.map((workflow) => [workflow.id, workflow])), [workflows])
 
   const filtered = useMemo(() => {
     let results = records
@@ -88,6 +94,21 @@ export default function SearchPage() {
   return (
     <div className="py-4 space-y-4">
       <h1 className="font-display text-2xl font-bold text-ink-black tracking-tight">{t("common.search")}</h1>
+
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {(["current", "all"] as const).map((key) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setScope(key)}
+            className={`min-h-9 shrink-0 rounded-full px-3 text-xs font-medium transition-colors ${
+              scope === key ? "bg-ink-blue text-white" : "border border-grid-line bg-white text-pencil hover:bg-graph-paper"
+            }`}
+          >
+            {key === "current" ? t("home.currentWorkflow", "Current workflow") : t("home.allWorkflows", "All workflows")}
+          </button>
+        ))}
+      </div>
 
       <div className="relative">
         <SearchIcon size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-pencil" />
@@ -123,6 +144,9 @@ export default function SearchPage() {
       ) : (
         <div className="space-y-1">
           {filtered.map((r) => (
+            (() => {
+              const rowWorkflow = scope === "all" ? workflowsById.get(r.workflowId) ?? activeWorkflow : activeWorkflow
+              return (
             <Link
               key={r.id}
               href={`/field-worker/record/${r.id}`}
@@ -130,11 +154,16 @@ export default function SearchPage() {
             >
               <span className={`w-2 h-2 rounded-full shrink-0 ${statusDot[r.status] || "bg-pencil"}`} />
               <span className="flex-1 min-w-0">
-                <span className="text-sm font-medium text-ink-black truncate block">{recordTitle(r, activeWorkflow)}</span>
-                <span className="text-xs text-pencil">{recordSubtitle(r, activeWorkflow, i18n.language)}</span>
+                <span className="text-sm font-medium text-ink-black truncate block">{recordTitle(r, rowWorkflow)}</span>
+                <span className="text-xs text-pencil">
+                  {scope === "all" && rowWorkflow ? `${workflowLabel(rowWorkflow, i18n.language)} · ` : ""}
+                  {recordSubtitle(r, rowWorkflow, i18n.language)}
+                </span>
               </span>
               <ChevronRight size={16} className="text-pencil shrink-0" />
             </Link>
+              )
+            })()
           ))}
         </div>
       )}

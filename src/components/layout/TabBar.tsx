@@ -44,25 +44,25 @@ const configByRole: Record<string, TabConfig> = {
   },
   supervisor: {
     tabs: [
+      { labelKey: "nav.dashboard", fallback: "Dashboard", href: "/supervisor/dashboard", icon: LayoutDashboard },
       { labelKey: "nav.reviewQueue", fallback: "File d'attente", href: "/supervisor/review", icon: Inbox },
-      { labelKey: "nav.conflicts", fallback: "Conflits", href: "/supervisor/conflicts", icon: AlertTriangle },
+      { labelKey: "nav.search", fallback: "Search", href: "/field-worker/search", icon: Search },
       { labelKey: "nav.inventory", fallback: "Inventaire", href: "/supervisor/inventory", icon: Package },
-      { labelKey: "nav.settings", fallback: "Paramètres", href: "/supervisor/settings", icon: Settings },
     ],
-    plusHref: "/supervisor/review",
-    plusLabel: "nav.reviewQueue",
-    plusIndex: 3,
+    plusHref: "/field-worker/register",
+    plusLabel: "nav.newRecord",
+    plusIndex: 2,
   },
   admin: {
     tabs: [
       { labelKey: "nav.dashboard", fallback: "Tableau de bord", href: "/admin/dashboard", icon: LayoutDashboard },
       { labelKey: "nav.workflows", fallback: "Workflows", href: "/admin/workflows", icon: Workflow },
-      { labelKey: "nav.users", fallback: "Utilisateurs", href: "/admin/users", icon: Users },
-      { labelKey: "nav.settings", fallback: "Paramètres", href: "/admin/settings", icon: Settings },
+      { labelKey: "nav.reviewQueue", fallback: "Review", href: "/supervisor/review", icon: Inbox },
+      { labelKey: "nav.inventory", fallback: "Inventory", href: "/supervisor/inventory", icon: Package },
     ],
-    plusHref: "/admin/workflows/new",
-    plusLabel: "admin.newWorkflow",
-    plusIndex: 3,
+    plusHref: "/field-worker/register",
+    plusLabel: "nav.newRecord",
+    plusIndex: 2,
   },
   engineering: {
     tabs: [

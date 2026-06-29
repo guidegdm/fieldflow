@@ -27,6 +27,7 @@ const withPWA = withPWAInit({
   register: true,
   skipWaiting: true,
   disable: process.env.NODE_ENV === "development",
+  customWorkerDir: "worker",
   runtimeCaching: [
     {
       urlPattern: ({ url }) => url.pathname.startsWith("/api/"),

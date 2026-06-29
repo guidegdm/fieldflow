@@ -6,6 +6,7 @@ import type { SyncBatchRequest, SyncBatchResponse, ConflictEntry } from "@/types
 import type { ConflictRecord } from "@/types/sync"
 import type { RecordData } from "@/types/record"
 import type { WorkflowDefinition, WorkflowField } from "@/types/workflow"
+import { hasAnyRoleAccess } from "@/lib/auth/roles"
 
 const mutationSchema = z.object({
   client_id: z.string().min(1),
@@ -92,7 +93,7 @@ function isValidTransition(workflow: WorkflowDefinition, fromState: string | und
   return workflow.transitions.some((transition) =>
     transition.fromState === normalizedFrom &&
     transition.toState === normalizedTo &&
-    (transition.requiredRoles.length === 0 || transition.requiredRoles.includes(role)),
+    hasAnyRoleAccess(role, transition.requiredRoles),
   )
 }
 

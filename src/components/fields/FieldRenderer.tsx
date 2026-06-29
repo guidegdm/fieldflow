@@ -201,7 +201,6 @@ export function FieldRenderer({ field, value, onChange, error, language, readOnl
             <input
               type="file"
               accept="image/*"
-              capture="environment"
               className="sr-only"
               disabled={photoBusy}
               onChange={(event) => void handlePhoto(event.target.files?.[0])}

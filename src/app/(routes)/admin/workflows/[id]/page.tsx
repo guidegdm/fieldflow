@@ -17,6 +17,7 @@ import { FormPreview } from "@/components/builder/FormPreview"
 import { AgentStatusBar } from "@/components/ai/AgentStatusBar"
 import { QuestionCard } from "@/components/ai/QuestionCard"
 import { useAgentStore } from "@/stores/agentStore"
+import { db } from "@/lib/db/indexeddb"
 import type { DemoUser } from "@/types/auth"
 import type { WorkflowDefinition } from "@/types/workflow"
 
@@ -182,22 +183,34 @@ export default function WorkflowBuilder() {
 
   useEffect(() => {
     if (!params.id || !user || user.role !== "org_admin") return
+    const currentUser = user
     if (workflow?.id === params.id) {
       setLoadingWorkflow(false)
       return
     }
     let cancelled = false
     setLoadingWorkflow(true)
-    fetch(`/api/workflows/${params.id}/definition`, { credentials: "include" })
-      .then((res) => res.ok ? res.json() : null)
-      .then((data) => {
+
+    async function loadWorkflow() {
+      try {
+        const res = await fetch(`/api/workflows/${params.id}/definition`, { credentials: "include" })
+        const data = res.ok ? await res.json() as WorkflowDefinition : null
         if (cancelled) return
-        setWorkflow(data ?? createDraftWorkflow(params.id, user, (key) => t(key)))
-      })
-      .catch(() => {
-        if (!cancelled) setWorkflow(createDraftWorkflow(params.id, user, (key) => t(key)))
-      })
-      .finally(() => {
+        if (data) {
+          setWorkflow(data)
+          await db.saveWorkflow(data)
+          return
+        }
+      } catch {}
+
+      const local = await db.getWorkflow(params.id).catch(() => undefined)
+      if (cancelled) return
+      const next = local ?? createDraftWorkflow(params.id, currentUser, (key) => t(key))
+      setWorkflow(next)
+      if (!local) await db.saveWorkflow(next).catch(() => {})
+    }
+
+    loadWorkflow().finally(() => {
         if (!cancelled) setLoadingWorkflow(false)
       })
     return () => { cancelled = true }
@@ -207,7 +220,7 @@ export default function WorkflowBuilder() {
     if (!user || user.role !== "org_admin") router.push("/")
   }, [user, router])
 
-  const { selectedStateId } = useWorkflowStore()
+  const { selectedStateId, selectedFieldId } = useWorkflowStore()
 
   const stateColor = (key: string) => STATE_COLORS[key] ?? "#6B7280"
 
@@ -221,8 +234,14 @@ export default function WorkflowBuilder() {
       credentials: "include",
       body: JSON.stringify(updatedWorkflow),
     })
-    if (!res.ok) throw new Error("SAVE_FAILED")
+    if (!res.ok) {
+      await db.saveWorkflow(updatedWorkflow)
+      setWorkflow(updatedWorkflow)
+      setLastSaved(new Date())
+      return updatedWorkflow as WorkflowDefinition
+    }
     const saved = await res.json()
+    await db.saveWorkflow(saved)
     setWorkflow(saved)
     setLastSaved(new Date())
     return saved as WorkflowDefinition
@@ -232,7 +251,12 @@ export default function WorkflowBuilder() {
     try {
       await persistWorkflow()
     } catch {
-      updateWorkflow({ updatedAt: new Date().toISOString() })
+      const currentWorkflow = useWorkflowStore.getState().workflow
+      if (!currentWorkflow) return
+      const updatedWorkflow = { ...currentWorkflow, updatedAt: new Date().toISOString() }
+      await db.saveWorkflow(updatedWorkflow).catch(() => {})
+      setWorkflow(updatedWorkflow)
+      setLastSaved(new Date())
     }
   }
 
@@ -274,7 +298,7 @@ export default function WorkflowBuilder() {
   const workflowName = workflow.name || workflow.nameEn
 
   return (
-    <div className="flex h-[calc(100vh-6.5rem)] min-h-[620px] flex-col overflow-hidden rounded-lg border border-graph-line bg-slate-50 shadow-sm">
+    <div className="flex min-h-[calc(100dvh-9rem)] flex-col overflow-hidden rounded-lg border border-graph-line bg-slate-50 shadow-sm lg:h-[calc(100vh-6.5rem)] lg:min-h-[620px]">
       {/* Toolbar */}
       <div className="flex flex-col gap-3 border-b border-graph-line bg-white px-4 py-3 lg:flex-row lg:items-center lg:justify-between lg:px-5">
         <div className="flex min-w-0 flex-wrap items-center gap-3">
@@ -343,13 +367,30 @@ export default function WorkflowBuilder() {
       {/* AI Status Bar */}
       <AgentStatusBar />
 
+      {/* Mode Tabs */}
+      <div className="flex shrink-0 overflow-x-auto border-b border-graph-line bg-white">
+        {MODE_TABS.map(({ key, icon, labelKey }) => (
+          <button
+            key={key}
+            onClick={() => setActiveMode(key)}
+            className={`min-w-24 flex-1 px-3 py-3 text-sm font-medium transition-colors sm:min-w-28 ${
+              activeMode === key
+                ? "border-b-2 border-ink-blue bg-ink-blue/5 text-ink-blue"
+                : "border-b-2 border-transparent text-pencil hover:text-ink-black"
+            }`}
+          >
+            <span aria-hidden="true">{icon}</span> {t(labelKey)}
+          </button>
+        ))}
+      </div>
+
       {/* Content */}
-      <div className="relative flex flex-1 overflow-hidden bg-slate-50">
+      <div className="relative flex min-h-0 flex-1 overflow-hidden bg-slate-50">
         {aiPromptOpen && (
-          <div className="absolute inset-0 z-40 flex items-center justify-center bg-white/55 p-4 backdrop-blur-sm">
-            <div className="w-full max-w-2xl rounded-2xl border border-graph-line bg-white p-5 shadow-2xl sm:p-6">
-              <div className="mb-4 flex items-start justify-between gap-4">
-                <div>
+          <div className="fixed inset-0 z-[80] flex min-h-dvh items-start justify-center overflow-y-auto bg-ink-black/20 px-3 py-5 backdrop-blur-sm sm:items-center sm:px-6">
+            <div className="flex max-h-[calc(100dvh-2.5rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-graph-line bg-white shadow-2xl">
+              <div className="flex shrink-0 items-start justify-between gap-4 border-b border-graph-line px-5 py-4 sm:px-6">
+                <div className="min-w-0">
                   <p className="font-display text-2xl font-semibold tracking-tight text-ink-black">
                     {t("workflow.aiAssistant")}
                   </p>
@@ -366,24 +407,26 @@ export default function WorkflowBuilder() {
                   <X size={18} />
                 </button>
               </div>
-              <Textarea
-                value={aiPromptText}
-                onChange={(event) => setAiPromptText(event.target.value)}
-                placeholder={t("workflow.aiPrompt")}
-                className="min-h-40 resize-none bg-white text-base leading-6"
-                autoFocus
-                onKeyDown={(event) => {
-                  if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
-                    event.preventDefault()
-                    submitAiPrompt()
-                  }
-                }}
-              />
-              <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
+                <Textarea
+                  value={aiPromptText}
+                  onChange={(event) => setAiPromptText(event.target.value)}
+                  placeholder={t("workflow.aiPrompt")}
+                  className="min-h-48 resize-y bg-white text-base leading-6 sm:min-h-56"
+                  autoFocus
+                  onKeyDown={(event) => {
+                    if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+                      event.preventDefault()
+                      submitAiPrompt()
+                    }
+                  }}
+                />
+              </div>
+              <div className="flex shrink-0 flex-col gap-3 border-t border-graph-line bg-white px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
                 <p className="text-xs leading-5 text-pencil">
                   {t("workflow.aiPromptHint")}
                 </p>
-                <div className="flex gap-2 sm:justify-end">
+                <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
                   <Button variant="secondary" size="md" onClick={() => setAiPromptOpen(false)}>
                     {t("common.cancel")}
                   </Button>
@@ -403,20 +446,20 @@ export default function WorkflowBuilder() {
         )}
         <QuestionCard />
         {activeMode === "fields" && (
-          <div className="flex flex-1 overflow-hidden bg-slate-50">
-            <aside className="w-56 border-r border-graph-line bg-white overflow-y-auto shrink-0">
+          <div className="flex flex-1 flex-col overflow-y-auto bg-slate-50 lg:flex-row lg:overflow-hidden">
+            <aside className="max-h-64 shrink-0 overflow-y-auto border-b border-graph-line bg-white lg:max-h-none lg:w-56 lg:border-b-0 lg:border-r">
               <FieldPalette />
             </aside>
             <FormCanvas />
-            <aside className="w-80 border-l border-graph-line bg-white overflow-y-auto shrink-0">
+            <aside className={`${selectedFieldId ? "block" : "hidden lg:block"} shrink-0 border-t border-graph-line bg-white lg:w-80 lg:overflow-y-auto lg:border-l lg:border-t-0`}>
               <FieldEditor />
             </aside>
           </div>
         )}
 
         {activeMode === "flow" && (
-          <div className="flex flex-1 overflow-hidden bg-slate-50">
-            <aside className="w-56 border-r border-graph-line bg-white overflow-y-auto p-4 shrink-0">
+          <div className="flex flex-1 flex-col overflow-y-auto bg-slate-50 lg:flex-row lg:overflow-hidden">
+            <aside className="max-h-72 shrink-0 overflow-y-auto border-b border-graph-line bg-white p-4 lg:max-h-none lg:w-56 lg:border-b-0 lg:border-r">
               <div className="space-y-4">
                 <div>
                   <div className="flex items-center justify-between mb-3">
@@ -476,7 +519,7 @@ export default function WorkflowBuilder() {
               </div>
             </aside>
             <WorkflowFlow />
-            <aside className="w-80 border-l border-graph-line bg-white overflow-y-auto shrink-0">
+            <aside className="shrink-0 border-t border-graph-line bg-white lg:w-80 lg:overflow-y-auto lg:border-l lg:border-t-0">
               <StatePropertiesPanel />
             </aside>
           </div>
@@ -552,22 +595,6 @@ export default function WorkflowBuilder() {
         )}
       </div>
 
-      {/* Mode Tabs */}
-      <div className="flex overflow-x-auto border-t border-graph-line bg-white">
-        {MODE_TABS.map(({ key, icon, labelKey }) => (
-          <button
-            key={key}
-            onClick={() => setActiveMode(key)}
-            className={`min-w-28 flex-1 px-3 py-3 text-sm font-medium transition-colors ${
-              activeMode === key
-                ? "border-t-2 border-ink-blue text-ink-blue bg-ink-blue/5"
-                : "border-t-2 border-transparent text-pencil hover:text-ink-black"
-            }`}
-          >
-            <span aria-hidden="true">{icon}</span> {t(labelKey)}
-          </button>
-        ))}
-      </div>
     </div>
   )
 }

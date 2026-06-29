@@ -3,6 +3,7 @@ import { CognitoIdentityProviderClient, RespondToAuthChallengeCommand } from "@a
 import { z } from "zod"
 import { createSessionToken, setAccessCookie, setRefreshCookie, setSessionCookie, verifyCognitoJWT } from "@/lib/auth/middleware"
 import { checkRateLimit } from "@/lib/auth/rate-limit"
+import { getStore } from "@/lib/api/in-memory-store"
 
 const CLIENT_ID = process.env.COGNITO_CLIENT_ID || "7r60o7fnej4vitoksrp6e93n9g"
 const REGION = process.env.AWS_REGION || "us-east-1"
@@ -54,8 +55,22 @@ export async function POST(request: NextRequest) {
     const refreshToken = result.AuthenticationResult?.RefreshToken
     if (!idToken || !accessToken) return NextResponse.json({ error: "Code invalide" }, { status: 401 })
 
-    const authUser = await verifyCognitoJWT(idToken)
-    if (!authUser) return NextResponse.json({ error: "Token invalide" }, { status: 401 })
+    const tokenUser = await verifyCognitoJWT(idToken)
+    if (!tokenUser) return NextResponse.json({ error: "Token invalide" }, { status: 401 })
+    const profile = await getStore().getUserProfileByEmailAsync(tokenUser.email)
+    const profileOrgId = typeof profile?.orgId === "string" ? profile.orgId : ""
+    const profileRole = typeof profile?.role === "string" ? profile.role : ""
+    const profileName = typeof profile?.name === "string" ? profile.name : ""
+    const authUser = profileOrgId
+      ? {
+          ...tokenUser,
+          name: profileName || tokenUser.name,
+          role: profileRole || tokenUser.role,
+          groups: [profileRole || tokenUser.role],
+          orgId: profileOrgId,
+          orgs: [{ id: profileOrgId, name: "" }],
+        }
+      : tokenUser
     const contextToken = createSessionToken(authUser, 3600)
 
     const response = NextResponse.json({

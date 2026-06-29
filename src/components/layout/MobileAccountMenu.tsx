@@ -38,6 +38,8 @@ const mobileNavByRole: Record<AppRole, MobileNavItem[]> = {
   ],
   supervisor: [
     { labelKey: "nav.dashboard", fallback: "Dashboard", href: "/supervisor/dashboard", icon: <LayoutDashboard size={18} /> },
+    { labelKey: "nav.newRecord", fallback: "New", href: "/field-worker/register", icon: <Plus size={18} /> },
+    { labelKey: "nav.search", fallback: "Search", href: "/field-worker/search", icon: <Search size={18} /> },
     { labelKey: "nav.reviewQueue", fallback: "Review", href: "/supervisor/review", icon: <Inbox size={18} /> },
     { labelKey: "nav.conflicts", fallback: "Conflicts", href: "/supervisor/conflicts", icon: <AlertTriangle size={18} /> },
     { labelKey: "nav.inventory", fallback: "Inventory", href: "/supervisor/inventory", icon: <Package size={18} /> },
@@ -46,6 +48,11 @@ const mobileNavByRole: Record<AppRole, MobileNavItem[]> = {
   admin: [
     { labelKey: "nav.dashboard", fallback: "Dashboard", href: "/admin/dashboard", icon: <LayoutDashboard size={18} /> },
     { labelKey: "nav.workflows", fallback: "Workflows", href: "/admin/workflows", icon: <Workflow size={18} /> },
+    { labelKey: "nav.newRecord", fallback: "New record", href: "/field-worker/register", icon: <Plus size={18} /> },
+    { labelKey: "nav.search", fallback: "Search", href: "/field-worker/search", icon: <Search size={18} /> },
+    { labelKey: "nav.reviewQueue", fallback: "Review", href: "/supervisor/review", icon: <Inbox size={18} /> },
+    { labelKey: "nav.inventory", fallback: "Inventory", href: "/supervisor/inventory", icon: <Package size={18} /> },
+    { labelKey: "nav.conflicts", fallback: "Conflicts", href: "/supervisor/conflicts", icon: <AlertTriangle size={18} /> },
     { labelKey: "nav.users", fallback: "Users", href: "/admin/users", icon: <Users size={18} /> },
     { labelKey: "nav.settings", fallback: "Settings", href: "/admin/settings", icon: <Settings size={18} /> },
   ],
@@ -108,7 +115,7 @@ export function MobileAccountMenu({ role }: { role: AppRole }) {
 
             <div className="border-b border-graph-line px-4 py-4">
               <OrgSwitcher />
-              {(role === "field_worker" || role === "supervisor") && (
+              {(role === "field_worker" || role === "supervisor" || role === "admin") && (
                 <div className="mt-3">
                   <WorkflowSwitcher compact />
                 </div>

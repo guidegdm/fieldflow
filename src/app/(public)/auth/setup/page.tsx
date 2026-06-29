@@ -9,12 +9,11 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { Select } from "@/components/ui/select"
 import { useAuthStore } from "@/stores/authStore"
-
-const SECTORS = ["humanitaire", "sante", "agriculture", "education"] as const
+import { WORKSPACE_SECTORS } from "@/lib/workspaces/sectors"
 
 const setupSchema = z.object({
   orgName: z.string().min(1),
-  orgSector: z.enum(SECTORS),
+  orgSector: z.enum(WORKSPACE_SECTORS),
 })
 
 type SetupValues = z.infer<typeof setupSchema>
@@ -27,7 +26,7 @@ export default function AuthSetupPage() {
   const [error, setError] = useState("")
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<SetupValues>({
     resolver: zodResolver(setupSchema),
-    defaultValues: { orgName: "", orgSector: "humanitaire" },
+    defaultValues: { orgName: "", orgSector: "humanitarian" },
   })
 
   useEffect(() => {
@@ -142,7 +141,7 @@ export default function AuthSetupPage() {
                   {t("setup.orgSector")}
                 </label>
                 <Select id="orgSector" {...register("orgSector")}>
-                  {SECTORS.map((sector) => (
+                  {WORKSPACE_SECTORS.map((sector) => (
                     <option key={sector} value={sector}>
                       {t(`signup.sectors.${sector}`)}
                     </option>

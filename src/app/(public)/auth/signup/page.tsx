@@ -10,15 +10,14 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { useAuthStore } from "@/stores/authStore"
 import { Select } from "@/components/ui/select"
-
-const SECTORS = ["humanitaire", "sante", "agriculture", "education"] as const
+import { WORKSPACE_SECTORS } from "@/lib/workspaces/sectors"
 
 const signUpSchema = z.object({
   email: z.string().min(1),
   name: z.string().min(1),
   password: z.string().min(8),
   orgName: z.string().min(1),
-  orgSector: z.enum(SECTORS),
+  orgSector: z.enum(WORKSPACE_SECTORS),
 })
 
 type SignUpValues = z.infer<typeof signUpSchema>
@@ -28,9 +27,12 @@ export default function SignUpPage() {
   const router = useRouter()
   const setAuthFromApi = useAuthStore((s) => s.setAuthFromApi)
   const [error, setError] = useState("")
+  const [pendingSignup, setPendingSignup] = useState<SignUpValues | null>(null)
+  const [verificationCode, setVerificationCode] = useState("")
+  const [confirming, setConfirming] = useState(false)
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<SignUpValues>({
     resolver: zodResolver(signUpSchema),
-    defaultValues: { email: "", name: "", password: "", orgName: "", orgSector: "humanitaire" },
+    defaultValues: { email: "", name: "", password: "", orgName: "", orgSector: "humanitarian" },
   })
 
   const onSubmit = async ({ email, name, password, orgName, orgSector }: SignUpValues) => {
@@ -50,10 +52,39 @@ export default function SignUpPage() {
       }
 
       const data = await res.json()
+      if (data.requiresConfirmation) {
+        setPendingSignup({ email, name, password, orgName, orgSector })
+        return
+      }
       if (data.user && data.org) setAuthFromApi(data.user, data.org, data.orgs)
       router.push(data.redirect || "/auth/signin")
     } catch {
       setError(t("signup.errors.network"))
+    }
+  }
+
+  const confirmSignup = async () => {
+    if (!pendingSignup || !verificationCode.trim()) return
+    setConfirming(true)
+    setError("")
+    try {
+      const res = await fetch("/api/auth/confirm-signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ ...pendingSignup, code: verificationCode.trim() }),
+      })
+      if (!res.ok) {
+        setError(t("signup.errors.confirm"))
+        return
+      }
+      const data = await res.json()
+      if (data.user && data.org) setAuthFromApi(data.user, data.org, data.orgs)
+      router.push(data.redirect || "/admin/dashboard")
+    } catch {
+      setError(t("signup.errors.network"))
+    } finally {
+      setConfirming(false)
     }
   }
 
@@ -86,9 +117,11 @@ export default function SignUpPage() {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 className="font-display text-2xl font-bold tracking-tight text-lake-deep">
-                  {t("signup.title")}
+                  {pendingSignup ? t("signup.verifyTitle") : t("signup.title")}
                 </h2>
-                <p className="mt-1 text-sm text-pencil">{t("signup.subtitle")}</p>
+                <p className="mt-1 text-sm text-pencil">
+                  {pendingSignup ? t("signup.verifySubtitle", { email: pendingSignup.email }) : t("signup.subtitle")}
+                </p>
               </div>
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink-blue/10 text-ink-blue">
                 <ShieldCheck size={18} />
@@ -101,6 +134,42 @@ export default function SignUpPage() {
             </div>
           )}
 
+          {pendingSignup ? (
+            <div className="mt-6 space-y-4">
+              <div>
+                <label htmlFor="verificationCode" className="block text-sm font-medium text-soil mb-1">
+                  {t("signup.verificationCode")}
+                </label>
+                <input
+                  id="verificationCode"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  value={verificationCode}
+                  onChange={(event) => setVerificationCode(event.target.value)}
+                  className="h-11 w-full rounded-md border border-graph-line px-3 text-base tracking-[0.2em] focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ink-blue sm:text-sm"
+                />
+              </div>
+              <button
+                type="button"
+                disabled={confirming || !verificationCode.trim()}
+                onClick={confirmSignup}
+                className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-ink-blue text-sm font-semibold text-white transition-colors hover:bg-ink-blue/90 disabled:opacity-60"
+              >
+                {confirming ? t("signup.verifying") : t("signup.verifySubmit")}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPendingSignup(null)
+                  setVerificationCode("")
+                }}
+                className="h-10 w-full rounded-md border border-graph-line text-sm font-medium text-pencil transition-colors hover:bg-graph-paper hover:text-ink-black"
+              >
+                {t("common.back")}
+              </button>
+            </div>
+          ) : (
           <form className="mt-6 space-y-4" onSubmit={handleSubmit(onSubmit)}>
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-soil mb-1">
@@ -169,7 +238,7 @@ export default function SignUpPage() {
                 {...register("orgSector")}
                 className="h-10"
               >
-                {SECTORS.map((sector) => (
+                {WORKSPACE_SECTORS.map((sector) => (
                   <option key={sector} value={sector}>
                     {t(`signup.sectors.${sector}`)}
                   </option>
@@ -186,28 +255,29 @@ export default function SignUpPage() {
               {isSubmitting ? t("signup.submitting") : t("signup.submit")}
             </button>
           </form>
+          )}
 
-          <div className="my-6 flex items-center gap-3">
+          {!pendingSignup && <div className="my-6 flex items-center gap-3">
             <div className="h-px flex-1 bg-graph-line" />
             <span className="text-xs font-medium text-pencil">{t("common.or", "or")}</span>
             <div className="h-px flex-1 bg-graph-line" />
-          </div>
+          </div>}
 
-          <button
+          {!pendingSignup && <button
             type="button"
             onClick={() => { window.location.href = "/api/auth/oauth/google?mode=signup" }}
             className="flex h-11 w-full items-center justify-center rounded-md border border-graph-line text-sm font-semibold text-ink-black transition-colors hover:bg-graph-paper"
           >
             {t("signup.google")}
-          </button>
+          </button>}
 
-          <p className="mt-6 text-center text-xs text-pencil">
+          {!pendingSignup && <p className="mt-6 text-center text-xs text-pencil">
             {t("signup.hasAccount")}{" "}
             <Link href="/auth/signin" className="inline-flex items-center gap-1 font-semibold text-ink-blue hover:underline">
               {t("signup.signin")}
               <ArrowRight size={12} />
             </Link>
-          </p>
+          </p>}
           </div>
         </div>
         </main>

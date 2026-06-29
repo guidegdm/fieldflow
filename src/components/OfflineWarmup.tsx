@@ -58,6 +58,22 @@ function runWhenIdle(task: () => void) {
 }
 
 async function cacheAppRoutes() {
+  const urls = Array.from(new Set([...APP_ROUTES_TO_CACHE, window.location.pathname]))
+
+  if ("caches" in window) {
+    const cache = await caches.open("fieldflow-pages")
+    await Promise.all(urls.map(async (url) => {
+      try {
+        const request = new Request(new URL(url, window.location.origin).href, {
+          credentials: "include",
+          cache: "reload",
+        })
+        const response = await fetch(request)
+        if (response.ok) await cache.put(request, response.clone())
+      } catch {}
+    }))
+  }
+
   if (!("serviceWorker" in navigator)) return
   const registration = await navigator.serviceWorker.ready.catch(() => null)
   const worker = registration?.active || registration?.waiting || registration?.installing
@@ -74,7 +90,7 @@ async function cacheAppRoutes() {
       {
         type: "CACHE_URLS",
         payload: {
-          urlsToCache: APP_ROUTES_TO_CACHE.map((url) => [
+          urlsToCache: urls.map((url) => [
             new URL(url, window.location.origin).href,
             { credentials: "include" },
           ]),
@@ -103,6 +119,26 @@ async function warmDemoSandbox() {
 
   await hydrateDemoSandboxOffline(data.offlineWorkspaces)
   await cacheOfflineRecordRoutes(data.offlineWorkspaces)
+  if ("caches" in window) {
+    const cache = await caches.open("fieldflow-pages")
+    const workflowUrls = data.offlineWorkspaces.flatMap((workspace) =>
+      workspace.workflows.flatMap((workflow) => [
+        `/admin/workflows/${workflow.id}`,
+        `/api/workflows/${workflow.id}/definition`,
+        `/api/workflows/${workflow.id}/records`,
+      ]),
+    )
+    await Promise.all(Array.from(new Set(workflowUrls)).map(async (url) => {
+      try {
+        const request = new Request(new URL(url, window.location.origin).href, {
+          credentials: "include",
+          cache: "reload",
+        })
+        const response = await fetch(request)
+        if (response.ok) await cache.put(request, response.clone())
+      } catch {}
+    }))
+  }
   persistDemoSandbox({
     expiresAt: data.expiresAt,
     workspaces: data.offlineWorkspaces,
@@ -118,22 +154,24 @@ export function OfflineWarmup() {
 
     let cancelled = false
     void cacheAppRoutes()
-    const shouldWarmDemo =
-      pathname === "/" ||
-      pathname === "/demo" ||
-      pathname === "/auth/signin" ||
-      pathname === "/auth/signup"
-
     const connection = "connection" in navigator
       ? (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection
       : undefined
     const connectionIsConstrained = Boolean(connection?.saveData || connection?.effectiveType === "2g")
 
-    if (!shouldWarmDemo || connectionIsConstrained) {
+    if (connectionIsConstrained) {
       return () => {
         cancelled = true
       }
     }
+
+    void warmDemoSandbox()
+      .then(() => {
+        try {
+          window.localStorage.setItem(WARMUP_STORAGE_KEY, String(Date.now()))
+        } catch {}
+      })
+      .catch(() => {})
 
     const cancelIdle = runWhenIdle(() => {
       if (cancelled) return

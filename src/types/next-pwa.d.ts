@@ -14,6 +14,7 @@ declare module "next-pwa" {
     skipWaiting?: boolean
     disable?: boolean
     runtimeCaching?: RuntimeCachingRule[]
+    customWorkerDir?: string
   }
 
   export default function withPWAInit(config: PWAConfig): (nextConfig: NextConfig) => NextConfig

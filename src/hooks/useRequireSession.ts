@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuthStore } from "@/stores/authStore"
 import { getCurrentMode } from "@/lib/network-simulator"
+import { hasAnyRoleAccess } from "@/lib/auth/roles"
 
 export function useRequireSession(allowedRoles: string[]) {
   const router = useRouter()
@@ -21,6 +22,13 @@ export function useRequireSession(allowedRoles: string[]) {
 
     let cancelled = false
     setChecking(true)
+
+    if (user?.orgId && hasAnyRoleAccess(user.role, roles) && (getCurrentMode() === "offline" || !navigator.onLine)) {
+      setAuthorizedRole(user.role)
+      setChecking(false)
+      return
+    }
+
     fetch("/api/auth/session", { credentials: "include" })
       .then(async (response) => {
         if (cancelled) return
@@ -31,7 +39,7 @@ export function useRequireSession(allowedRoles: string[]) {
         }
         const data = await response.json()
         if (data.user && data.org) setAuthFromApi(data.user, data.org, data.orgs)
-        if (!data.user || !roles.includes(data.user.role)) {
+        if (!data.user || !hasAnyRoleAccess(data.user.role, roles)) {
           logout()
           router.push("/")
           return
@@ -40,7 +48,7 @@ export function useRequireSession(allowedRoles: string[]) {
       })
       .catch(() => {
         if (!cancelled) {
-          if (user?.orgId && roles.includes(user.role) && (getCurrentMode() === "offline" || !navigator.onLine)) {
+          if (user?.orgId && hasAnyRoleAccess(user.role, roles) && (getCurrentMode() === "offline" || !navigator.onLine)) {
             setAuthorizedRole(user.role)
           } else {
             logout()
@@ -55,6 +63,6 @@ export function useRequireSession(allowedRoles: string[]) {
     return () => { cancelled = true }
   }, [allowedRoleKey, hasHydrated, logout, router, setAuthFromApi, user?.orgId, user?.role])
 
-  const authorized = !!authorizedRole && allowedRoleKey.split("|").includes(authorizedRole)
+  const authorized = !!authorizedRole && hasAnyRoleAccess(authorizedRole, allowedRoleKey.split("|"))
   return { ready: hasHydrated && !checking && authorized }
 }

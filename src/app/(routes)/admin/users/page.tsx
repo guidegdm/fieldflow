@@ -17,6 +17,7 @@ interface UserRow {
   email: string
   role: UserRole
   active: boolean
+  delivery?: string
 }
 
 const ROLES: { value: UserRole; label: string; labelEn: string }[] = [
@@ -33,6 +34,8 @@ export default function AdminUsersPage() {
   const [inviteEmail, setInviteEmail] = useState("")
   const [inviteRole, setInviteRole] = useState<UserRole>("field_worker")
   const [editingRole, setEditingRole] = useState<string | null>(null)
+  const [inviteBusy, setInviteBusy] = useState(false)
+  const [inviteError, setInviteError] = useState("")
 
   useEffect(() => {
     fetch("/api/admin/users", { credentials: "include" })
@@ -48,19 +51,36 @@ export default function AdminUsersPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  const handleInvite = () => {
+  const handleInvite = async () => {
     if (!inviteEmail) return
-    const newUser: UserRow = {
-      id: crypto.randomUUID(),
-      name: inviteEmail.split("@")[0],
-      email: inviteEmail,
-      role: inviteRole,
-      active: true,
+    setInviteBusy(true)
+    setInviteError("")
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email: inviteEmail, role: inviteRole }),
+      })
+      if (!res.ok) throw new Error("invite_failed")
+      const user = await res.json()
+      const newUser: UserRow = {
+        id: user.id || user.userId || user.email,
+        name: user.name || user.email,
+        email: user.email,
+        role: user.role,
+        active: user.active !== false,
+        delivery: user.delivery,
+      }
+      setUsers((prev) => [newUser, ...prev.filter((item) => item.email !== newUser.email)])
+      setInviteOpen(false)
+      setInviteEmail("")
+      setInviteRole("field_worker")
+    } catch {
+      setInviteError(t("admin.inviteFailed", "Invitation could not be sent."))
+    } finally {
+      setInviteBusy(false)
     }
-    setUsers((prev) => [...prev, newUser])
-    setInviteOpen(false)
-    setInviteEmail("")
-    setInviteRole("field_worker")
   }
 
   const handleRoleChange = (userId: string, role: UserRole) => {
@@ -85,8 +105,8 @@ export default function AdminUsersPage() {
       </div>
 
       {inviteOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="w-full max-w-md rounded-lg border border-graph-line bg-white p-6 shadow-xl">
+        <div className="fixed inset-0 z-50 flex min-h-dvh items-start justify-center overflow-y-auto bg-black/40 px-4 py-6 backdrop-blur-sm sm:items-center">
+          <div className="w-full max-w-md rounded-lg border border-graph-line bg-white p-5 shadow-xl sm:p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-ink-black">{t("admin.inviteTitle")}</h2>
               <button onClick={() => setInviteOpen(false)} className="text-pencil hover:text-ink-black">
@@ -94,6 +114,11 @@ export default function AdminUsersPage() {
               </button>
             </div>
             <div className="space-y-4">
+              {inviteError && (
+                <div className="rounded-md border border-danger-500/30 bg-danger-500/10 px-3 py-2 text-sm text-danger-500">
+                  {inviteError}
+                </div>
+              )}
               <Input
                 label={t("admin.inviteEmail")}
                 type="email"
@@ -120,7 +145,7 @@ export default function AdminUsersPage() {
                 <Button variant="secondary" onClick={() => setInviteOpen(false)}>
                   {t("common.cancel")}
                 </Button>
-                <Button variant="primary" onClick={handleInvite} disabled={!inviteEmail}>
+                <Button variant="primary" onClick={handleInvite} disabled={!inviteEmail || inviteBusy}>
                   {t("admin.inviteSubmit")}
                 </Button>
               </div>

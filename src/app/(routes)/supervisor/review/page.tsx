@@ -14,6 +14,7 @@ import { useWorkflowContext } from "@/hooks/useWorkflowContext"
 import { FieldRenderer } from "@/components/fields/FieldRenderer"
 import { groupFieldsBySection, recordTitle, sectionLabel } from "@/lib/workflows/runtime"
 import { useAuthStore } from "@/stores/authStore"
+import { hasAnyRoleAccess } from "@/lib/auth/roles"
 
 type TimelineStatus = "success" | "default" | "warning" | "danger"
 
@@ -83,7 +84,7 @@ export default function SupervisorReview() {
     return workflow.transitions.filter((transition) => {
       const from = normalizeStateId(workflow, transition.fromState)
       const roles = transition.requiredRoles ?? []
-      return from === current && (roles.length === 0 || roles.includes(role) || roles.includes("supervisor"))
+      return from === current && hasAnyRoleAccess(role, roles)
     })
   }, [record, user?.role, workflow])
 

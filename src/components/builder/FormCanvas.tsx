@@ -76,7 +76,7 @@ export function FormCanvas() {
     dragSource !== null && dragOver !== null && index === dragSource && dragSource !== dragOver
 
   return (
-    <div className="flex-1 overflow-y-auto bg-slate-50 p-6">
+    <div className="min-h-[32rem] flex-1 overflow-y-auto bg-slate-50 p-4 sm:p-6 lg:min-h-0">
       <div className="mx-auto max-w-3xl">
         <div className="mb-6 rounded-lg border border-graph-line bg-white px-5 py-4 shadow-sm">
           {titleEditing ? (

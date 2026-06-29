@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table"
 import { ChevronRight, Workflow as WorkflowIcon, Plus } from "lucide-react"
+import { db } from "@/lib/db/indexeddb"
+import { useAuthStore } from "@/stores/authStore"
 import type { WorkflowDefinition } from "@/types/workflow"
 
 type Row = {
@@ -22,6 +24,7 @@ type Row = {
 export default function AdminWorkflowsIndex() {
   const { t } = useTranslation()
   const router = useRouter()
+  const user = useAuthStore((state) => state.user)
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
   const loaded = useRef(false)
@@ -32,7 +35,8 @@ export default function AdminWorkflowsIndex() {
     async function load() {
       try {
         const res = await fetch("/api/workflows", { credentials: "include" })
-        const all = res.ok ? await res.json() : []
+        const all = res.ok ? await res.json() : user?.orgId ? await db.getAllWorkflowsForOrg(user.orgId) : []
+        if (res.ok && user?.orgId) await db.replaceWorkflowsForOrg(user.orgId, all).catch(() => {})
         setRows(
           all.map((w: WorkflowDefinition & { recordCount?: number }) => ({
             id: w.id,
@@ -44,12 +48,22 @@ export default function AdminWorkflowsIndex() {
           })),
         )
       } catch {
-        setRows([])
+        const local = user?.orgId ? await db.getAllWorkflowsForOrg(user.orgId).catch(() => []) : []
+        setRows(
+          local.map((w: WorkflowDefinition & { recordCount?: number }) => ({
+            id: w.id,
+            name: w.name,
+            version: w.version,
+            status: w.status ?? "published",
+            recordCount: w.recordCount ?? 0,
+            updatedAt: w.updatedAt,
+          })),
+        )
       }
       setLoading(false)
     }
     load()
-  }, [])
+  }, [user?.orgId])
 
   return (
     <div className="max-w-5xl space-y-8">

@@ -60,7 +60,7 @@ export function WorkflowFlow() {
   }
 
   return (
-    <div className="min-w-0 flex-1 overflow-auto bg-slate-50">
+    <div className="min-h-[30rem] min-w-0 flex-1 overflow-auto bg-slate-50 lg:min-h-0">
       <div
         className="relative m-4 rounded-lg border border-graph-line bg-white shadow-sm"
         style={{

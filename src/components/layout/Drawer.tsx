@@ -24,6 +24,8 @@ const navByRole: Record<string, { labelKey: string; fallback: string; href: stri
   ],
   supervisor: [
     { labelKey: "nav.dashboard", fallback: "Tableau de bord", href: "/supervisor/dashboard", icon: <LayoutDashboard size={20} /> },
+    { labelKey: "nav.newRecord", fallback: "Nouvelle fiche", href: "/field-worker/register", icon: <Plus size={20} /> },
+    { labelKey: "nav.search", fallback: "Rechercher", href: "/field-worker/search", icon: <Search size={20} /> },
     { labelKey: "nav.reviewQueue", fallback: "File d'attente", href: "/supervisor/review", icon: <Inbox size={20} /> },
     { labelKey: "nav.conflicts", fallback: "Conflits", href: "/supervisor/conflicts", icon: <AlertTriangle size={20} /> },
     { labelKey: "nav.inventory", fallback: "Inventaire", href: "/supervisor/inventory", icon: <Package size={20} /> },
@@ -32,6 +34,11 @@ const navByRole: Record<string, { labelKey: string; fallback: string; href: stri
   admin: [
     { labelKey: "nav.dashboard", fallback: "Tableau de bord", href: "/admin/dashboard", icon: <LayoutDashboard size={20} /> },
     { labelKey: "nav.workflows", fallback: "Workflows", href: "/admin/workflows", icon: <Workflow size={20} /> },
+    { labelKey: "nav.newRecord", fallback: "Nouvelle fiche", href: "/field-worker/register", icon: <Plus size={20} /> },
+    { labelKey: "nav.search", fallback: "Recherche terrain", href: "/field-worker/search", icon: <Search size={20} /> },
+    { labelKey: "nav.reviewQueue", fallback: "Validation", href: "/supervisor/review", icon: <Inbox size={20} /> },
+    { labelKey: "nav.inventory", fallback: "Inventaire", href: "/supervisor/inventory", icon: <Package size={20} /> },
+    { labelKey: "nav.conflicts", fallback: "Conflits", href: "/supervisor/conflicts", icon: <AlertTriangle size={20} /> },
     { labelKey: "nav.users", fallback: "Utilisateurs", href: "/admin/users", icon: <Users size={20} /> },
     { labelKey: "nav.settings", fallback: "Paramètres", href: "/admin/settings", icon: <Settings size={20} /> },
   ],
@@ -69,7 +76,7 @@ export function Drawer({ role, open, onToggle }: DrawerProps) {
         <OrgSwitcher />
       </div>
 
-      {(role === "field_worker" || role === "supervisor") && (
+      {(role === "field_worker" || role === "supervisor" || role === "admin") && (
         <div className="px-4 pb-3">
           <WorkflowSwitcher />
         </div>

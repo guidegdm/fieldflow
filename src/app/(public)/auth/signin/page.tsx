@@ -23,6 +23,12 @@ type SignInValues = z.infer<typeof signInSchema>
 type OtpValues = z.infer<typeof otpSchema>
 type AuthChallenge = { challengeName: "EMAIL_OTP" | "SMS_MFA" | "SOFTWARE_TOKEN_MFA"; session: string; email: string } | null
 
+function routeForRole(role: string) {
+  if (role === "field_worker") return "/field-worker/home"
+  if (role === "supervisor") return "/supervisor/dashboard"
+  return "/admin/dashboard"
+}
+
 export default function SignInPage() {
   const { t } = useTranslation()
   const router = useRouter()
@@ -60,7 +66,7 @@ export default function SignInPage() {
         return
       }
       setAuthFromApi(data.user, data.org, data.orgs)
-      router.push(data.user.role === "field_worker" ? "/field-worker/home" : "/supervisor/dashboard")
+      router.push(routeForRole(data.user.role))
     } catch {
       setError(t("signin.errors.network"))
     }
@@ -85,7 +91,7 @@ export default function SignInPage() {
 
       const data = await res.json()
       setAuthFromApi(data.user, data.org, data.orgs)
-      router.push(data.user.role === "field_worker" ? "/field-worker/home" : data.user.role === "supervisor" ? "/supervisor/dashboard" : "/admin/dashboard")
+      router.push(routeForRole(data.user.role))
     } catch {
       setError(t("signin.errors.network"))
     }
@@ -208,7 +214,7 @@ export default function SignInPage() {
           )}
 
           <div className="mt-3 text-right">
-            <Link href="/auth/signin" className="text-xs text-pencil hover:text-ink-black">
+            <Link href="/auth/reset-password" className="text-xs text-pencil hover:text-ink-black">
               {t("signin.forgotPassword")}
             </Link>
           </div>

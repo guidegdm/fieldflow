@@ -73,6 +73,23 @@ export async function GET(request: Request) {
   let authUser = await verifyCognitoJWT(tokens.id_token)
   const payload = decodeJwtPayload(tokens.id_token)
 
+  if (authUser) {
+    const existingProfile = await getStore().getUserProfileByEmailAsync(authUser.email)
+    const orgId = typeof existingProfile?.orgId === "string" ? existingProfile.orgId : ""
+    const name = typeof existingProfile?.name === "string" ? existingProfile.name : authUser.name
+    const role = typeof existingProfile?.role === "string" ? existingProfile.role : authUser.role
+    if (orgId) {
+      authUser = {
+        ...authUser,
+        name,
+        role,
+        groups: [role],
+        orgId,
+        orgs: [{ id: orgId, name: "" }],
+      }
+    }
+  }
+
   if (!authUser && payload) {
     const email = String(payload.email || "")
     const name = String(payload.name || email)

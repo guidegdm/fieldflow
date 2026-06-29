@@ -10,7 +10,7 @@ export function FormPreview() {
   if (!workflow) return null
 
   const english = (i18n.resolvedLanguage || i18n.language)?.startsWith("en")
-  const workflowName = english ? workflow.nameEn || workflow.name : workflow.name
+  const workflowName = workflow.name || workflow.nameEn
   const fields = [...workflow.entity.fields].sort((a, b) => a.order - b.order)
 
   return (

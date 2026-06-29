@@ -3,7 +3,7 @@ import { getAuthUser } from "@/lib/auth/middleware"
 
 export async function GET(request: NextRequest) {
   const user = await getAuthUser(request)
-  if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 })
+  if (!user) return NextResponse.json({ user: null, org: null, orgs: [] })
 
   const org = user.orgs?.find((candidate) => candidate.id === user.orgId) ?? { id: user.orgId, name: "" }
   return NextResponse.json({

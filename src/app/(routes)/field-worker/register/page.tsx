@@ -219,16 +219,22 @@ export default function RegisterPage() {
             </div>
           </section>
         ))}
-      </form>
 
-      <div className="sticky bottom-24 z-10 mt-4 rounded-lg border border-graph-line bg-white/95 px-4 py-3 shadow-sm backdrop-blur lg:static lg:bottom-auto">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs leading-5 text-pencil">{t("register.saveHint")}</p>
-          <Button type="submit" form="field-register-form" variant="primary" size="lg" className="w-full shrink-0 sm:w-auto" loading={saving} disabled={!user?.orgId || fields.length === 0}>
-            {t("common.save")}
-          </Button>
+        {Object.keys(errors).length > 0 && (
+          <div className="rounded-md border border-danger-500/30 bg-danger-500/10 px-3 py-2 text-sm text-danger-500">
+            {t("register.fixRequired", "Complete the required fields before saving.")}
+          </div>
+        )}
+
+        <div className="sticky bottom-24 z-10 mt-4 rounded-lg border border-graph-line bg-white/95 px-4 py-3 shadow-sm backdrop-blur lg:static lg:bottom-auto">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs leading-5 text-pencil">{t("register.saveHint")}</p>
+            <Button type="submit" variant="primary" size="lg" className="w-full shrink-0 sm:w-auto" loading={saving} disabled={!user?.orgId || fields.length === 0}>
+              {t("common.save")}
+            </Button>
+          </div>
         </div>
-      </div>
+      </form>
     </div>
   )
 }

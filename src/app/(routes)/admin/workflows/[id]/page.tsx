@@ -271,7 +271,7 @@ export default function WorkflowBuilder() {
     )
   }
 
-  const workflowName = english ? workflow.nameEn || workflow.name : workflow.name
+  const workflowName = workflow.name || workflow.nameEn
 
   return (
     <div className="flex h-[calc(100vh-6.5rem)] min-h-[620px] flex-col overflow-hidden rounded-lg border border-graph-line bg-slate-50 shadow-sm">

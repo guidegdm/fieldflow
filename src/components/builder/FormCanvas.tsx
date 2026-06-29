@@ -36,7 +36,12 @@ export function FormCanvas() {
   if (!workflow) return null
 
   const english = (i18n.resolvedLanguage || i18n.language)?.startsWith("en")
-  const workflowName = english ? workflow.nameEn || workflow.name : workflow.name
+  const workflowName = workflow.name || workflow.nameEn
+  const renameWorkflow = (value: string) => {
+    const name = value.trim()
+    if (!name) return
+    updateWorkflow({ name, nameEn: name })
+  }
   const fields = workflow.entity.fields
   const sortedFields = [...fields].sort((a, b) => a.order - b.order)
   const displayFields =
@@ -79,13 +84,12 @@ export function FormCanvas() {
               autoFocus
               defaultValue={workflowName}
               onBlur={(e) => {
-                if (e.target.value.trim()) updateWorkflow(english ? { nameEn: e.target.value } : { name: e.target.value })
+                renameWorkflow(e.target.value)
                 setTitleEditing(false)
               }}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
-                  if ((e.target as HTMLInputElement).value.trim())
-                    updateWorkflow(english ? { nameEn: (e.target as HTMLInputElement).value } : { name: (e.target as HTMLInputElement).value })
+                  renameWorkflow((e.target as HTMLInputElement).value)
                   setTitleEditing(false)
                 }
                 if (e.key === "Escape") setTitleEditing(false)

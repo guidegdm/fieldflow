@@ -37,6 +37,7 @@ FieldFlow turns operational workflows into installable Progressive Web Apps. Wor
 
 - Offline-first PWA shell with service worker route warmup.
 - DynamoDB-backed org, workflow, record, mutation, conflict, inventory, audit, and demo sandbox storage.
+- Offline-first photo evidence: browser compression, local thumbnail cache, retryable IndexedDB attachment queue, and private S3 upload through presigned URLs.
 - Demo sandbox authentication for visitors who do not want to create an account.
 - Per-browser demo install isolation with DynamoDB TTL cleanup metadata.
 - Local demo data hydration so demo users can explore records and workflows offline after the first online load.
@@ -54,7 +55,7 @@ FieldFlow turns operational workflows into installable Progressive Web Apps. Wor
   <img src="./diagrams/02-runtime-architecture.png" alt="FieldFlow runtime architecture" width="920" />
 </p>
 
-The runtime is split deliberately. The browser owns the resilient field experience with a PWA shell, IndexedDB, local mutation queues, and route caches. The Next.js API layer handles authentication, tenant boundaries, sync orchestration, workflow publication, AI drafting, and DynamoDB writes. DynamoDB stores the operational backbone: records, workflows, mutations, conflicts, inventory, audit events, and demo sandbox metadata.
+The runtime is split deliberately. The browser owns the resilient field experience with a PWA shell, IndexedDB, local mutation queues, local attachment storage, and route caches. The Next.js API layer handles authentication, tenant boundaries, sync orchestration, workflow publication, AI drafting, DynamoDB writes, and S3 presigned upload URLs. DynamoDB stores the operational backbone: records, workflows, mutations, conflicts, inventory, audit events, and demo sandbox metadata. Amazon S3 stores compressed private photo evidence under org-scoped object keys.
 
 ### System Context
 
@@ -107,6 +108,7 @@ The demo payload measured during local verification was about 31 KB raw and 3 KB
 | Local data | IndexedDB via `idb`, Zustand stores |
 | PWA | `next-pwa`, Workbox route caching, generated service worker |
 | Primary backend | Amazon DynamoDB |
+| Evidence storage | Amazon S3 private bucket, presigned PUT uploads, local WebP compression |
 | Auth | Amazon Cognito, Google OAuth, signed session cookies |
 | AI workflow drafting | DeepSeek-compatible API endpoint |
 | Deployment | Vercel |
@@ -142,6 +144,8 @@ NEXT_PUBLIC_SITE_URL=https://fieldflow-tau.vercel.app
 AWS_REGION=us-east-1
 DYNAMODB_TABLE=FieldFlowRecords
 DYNAMODB_SORT_KEY_ENABLED=false
+AWS_S3_BUCKET=fieldflow-attachments-890608336900-us-east-1
+S3_REGION=us-east-1
 COGNITO_POOL_ID=...
 COGNITO_CLIENT_ID=...
 GOOGLE_CLIENT_ID=...
@@ -179,9 +183,11 @@ src/
   lib/
     api/               DynamoDB and in-memory store adapters
     auth/              Cognito/session/demo auth helpers
+    attachments/       Offline-first S3 attachment upload queue
     db/                IndexedDB adapter
     demo/              Demo sandbox seed and offline hydration
     i18n/              EN/FR translation bundle
+    media/             Browser-side image compression
     sync/              Sync client, retry, and background sync runner
   stores/              Zustand auth/sync/workflow stores
   types/               Domain, auth, workflow, sync, and record types
@@ -189,6 +195,8 @@ diagrams/              Devpost architecture diagrams
 screenshots/           Playwright submission screenshots
 public/brand/          Logo, OG, and social preview assets
 ```
+
+The Mermaid architecture sources live in `docs/docs/diagrams/mermaid/`. Diagrams `01`, `02`, `03`, `04`, `05`, `06`, and `09` describe the current S3 attachment, workflow sync, and runtime IAM architecture. Diagrams `07` and `08` remain current for auth refresh and inventory transactions.
 
 ## License
 

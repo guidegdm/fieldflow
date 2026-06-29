@@ -1,140 +1,205 @@
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="">
-  <img alt="FieldFlow" src="">
-</picture>
+<p align="center">
+  <img src="./public/brand/fieldflow-logo.png" alt="FieldFlow logo" width="132" />
+</p>
 
-# FieldFlow
+<h1 align="center">FieldFlow</h1>
 
-**Offline-first humanitarian workflow platform for eastern DRC.**
+<p align="center">
+  Offline-first field operations for teams that cannot stop when the network disappears.
+</p>
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?logo=vercel)](https://fieldflow-tau.vercel.app)
-[![Stack: Next.js](https://img.shields.io/badge/Stack-Next.js%2016%20%7C%20React%2019%20%7C%20AWS-000?logo=next.js)](https://nextjs.org)
+<p align="center">
+  <a href="https://fieldflow-tau.vercel.app">Live app</a>
+  ·
+  <a href="./video-script.md">Demo script</a>
+</p>
 
-[🌐 Live Demo](https://fieldflow-tau.vercel.app) · [📖 Full Documentation](./docs) · [🎥 Demo Video](https://youtu.be)
+<p align="center">
+  <img alt="Next.js" src="https://img.shields.io/badge/Next.js-16-black?logo=next.js" />
+  <img alt="React" src="https://img.shields.io/badge/React-19-149ECA?logo=react&logoColor=white" />
+  <img alt="DynamoDB" src="https://img.shields.io/badge/Amazon%20DynamoDB-primary%20backend-4053D6?logo=amazondynamodb&logoColor=white" />
+  <img alt="Vercel" src="https://img.shields.io/badge/Deployed%20on-Vercel-black?logo=vercel" />
+</p>
 
----
+<p align="center">
+  <img src="./screenshots/devpost-live-2026-06-28T18-25-00-769Z/01-desktop-public-landing.png" alt="FieldFlow landing page" width="920" />
+</p>
 
-## Problem
+## What FieldFlow Solves
 
-The eastern Democratic Republic of Congo is home to **7.3 million internally displaced persons (IDPs)**. Humanitarian organisations operating there face extreme operational challenges:
+FieldFlow is built for field teams working in limited-connectivity environments: humanitarian response, rural health, logistics, agriculture, construction, and community programs. These teams still need to register people, collect evidence, review cases, reserve inventory, and preserve an audit trail when internet access is unstable or unavailable.
 
-- **17–25% internet penetration** — cloud-dependent field tools are unusable
-- **Shared 5" phones** on solar/diesel charging — devices are low-resource, not smartphones
-- **65% adult literacy** — interfaces must be icon-driven and Swahili-friendly
-- **Multiple disconnected systems** — paper forms, Excel sheets, siloed NGO databases
+FieldFlow turns operational workflows into installable Progressive Web Apps. Workers save records locally in IndexedDB, keep moving offline, and synchronize through a DynamoDB-backed operation log when connectivity returns.
 
-Field workers register families, distribute aid, and manage inventory in areas where connectivity is measured in hours per day, not always-on. Existing tools (ODK, KoBoToolbox, CommCare) are either cloud-only, lack conflict-aware merge, or cannot operate on shared budget devices.
+## Current Product
 
-## Solution
+- Offline-first PWA shell with service worker route warmup.
+- DynamoDB-backed org, workflow, record, mutation, conflict, inventory, audit, and demo sandbox storage.
+- Demo sandbox authentication for visitors who do not want to create an account.
+- Per-browser demo install isolation with DynamoDB TTL cleanup metadata.
+- Local demo data hydration so demo users can explore records and workflows offline after the first online load.
+- Field-worker registration with local-first save and automatic background sync when online.
+- Supervisor review, conflict review, inventory reservation, and settings flows.
+- Admin dashboard, workflow builder, users, settings, and AI-assisted workflow drafting.
+- Cognito-backed real authentication with access, refresh, and session cookies.
+- Google OAuth entry point and setup flow for workspace creation.
+- English/French i18n loaded into the client bundle for offline language switching.
+- Mobile shell with bottom navigation plus account drawer for organization switching and logout.
 
-FieldFlow is a **hybrid offline-first PWA** architected for the connectivity and device constraints of eastern DRC.
+## Screenshots
 
-### Architecture
+| Landing | Demo sandbox | Admin dashboard |
+| --- | --- | --- |
+| ![Landing](./screenshots/devpost-live-2026-06-28T18-25-00-769Z/01-desktop-public-landing.png) | ![Demo](./screenshots/devpost-live-2026-06-28T18-25-00-769Z/02-desktop-public-demo.png) | ![Admin dashboard](./screenshots/devpost-live-2026-06-28T18-25-00-769Z/09-desktop-admin-dashboard.png) |
 
-```
-┌─────────────────────────────────────────────────────┐
-│                     PWA (Vercel)                     │
-│  ┌──────────┐  ┌──────────┐  ┌───────────────────┐  │
-│  │ Next.js  │  │  Zustand │  │   IndexedDB       │  │
-│  │ App      │  │  Stores  │  │   (Offline Queue) │  │
-│  │ Router   │  │          │  │                   │  │
-│  └────┬─────┘  └──────────┘  └────────┬──────────┘  │
-│       │                                │             │
-│  ┌────▼────────────────────────────────▼──────────┐  │
-│  │            Sync Protocol (idempotent)          │  │
-│  │  ┌──────────┐   conflict-aware   ┌──────────┐  │  │
-│  │  │  Push    │ ◄─────────────────► │  Pull    │  │  │
-│  │  └──────────┘                     └──────────┘  │  │
-│  └───────────────────────┬─────────────────────────┘  │
-└──────────────────────────┼───────────────────────────┘
-                           │
-┌──────────────────────────▼───────────────────────────┐
-│              AWS Backend                              │
-│  ┌──────────────┐  ┌──────────────┐  ┌────────────┐  │
-│  │   DynamoDB   │  │    Cognito   │  │  Aurora    │  │
-│  │  (Operational)│  │   (Auth)    │  │ DSQL (Crit)│  │
-│  └──────────────┘  └──────────────┘  └────────────┘  │
-│  ┌────────────────────────────────────────────────┐   │
-│  │  Workflow Compiler  │  Conflict Resolution     │   │
-│  └────────────────────────────────────────────────┘   │
-└───────────────────────────────────────────────────────┘
-```
+| Workflow builder | Worker registration | Sync status |
+| --- | --- | --- |
+| ![Workflow builder](./screenshots/devpost-live-2026-06-28T18-25-00-769Z/11-desktop-admin-workflow-builder-fields.png) | ![Worker registration](./screenshots/devpost-live-2026-06-28T18-25-00-769Z/20-desktop-worker-register-filled.png) | ![Sync status](./screenshots/devpost-live-2026-06-28T18-25-00-769Z/22-desktop-worker-sync-status.png) |
 
-**Key design decisions:**
-- **Offline-first:** IndexedDB local store with operation-based sync queue
-- **Conflict-aware merge:** Per-field resolution strategies with human escalation
-- **Hybrid consistency:** DynamoDB for operational data, Aurora DSQL for critical inventory operations
-- **Workflow compiler:** Multi-step state machine with role-based transitions, not just forms
-- **RBAC:** Three tiers — `field_worker`, `supervisor`, `org_admin`
+| Mobile landing | Mobile demo | Mobile signup |
+| --- | --- | --- |
+| ![Mobile landing](./screenshots/devpost-live-2026-06-28T18-25-00-769Z/05-mobile-public-landing.png) | ![Mobile demo](./screenshots/devpost-live-2026-06-28T18-25-00-769Z/06-mobile-public-demo.png) | ![Mobile signup](./screenshots/devpost-live-2026-06-28T18-25-00-769Z/08-mobile-auth-signup.png) |
 
-### Screenshots
+## Architecture
 
-<!-- TODO: Replace with actual screenshots -->
+<p align="center">
+  <img src="./diagrams/02-runtime-architecture.png" alt="FieldFlow runtime architecture" width="920" />
+</p>
 
-| Field Worker Registration | Workflow Builder | Conflict Resolution |
-|--------------------------|------------------|-------------------|
-| ![Screenshot 1]()        | ![Screenshot 2]() | ![Screenshot 3]() |
+FieldFlow uses a single-table-style DynamoDB access model through a Next.js API layer. The browser owns the local-first experience; the server owns authentication, tenant isolation, idempotency, sync ordering, conflict creation, and transactional inventory reservations.
 
-| Admin Dashboard | Inventory Management | Sync Status |
-|-----------------|---------------------|-------------|
-| ![Screenshot 4]() | ![Screenshot 5]()   | ![Screenshot 6]() |
+### Key Diagrams
 
-### Tech Stack
+| System context | DynamoDB access model |
+| --- | --- |
+| ![System context](./diagrams/01-system-context.png) | ![DynamoDB access model](./diagrams/03-dynamodb-access-model.png) |
 
-| Layer | Technology | Version |
-|-------|-----------|---------|
-| Framework | Next.js | 16 |
-| UI | React | 19 |
-| Styling | Tailwind CSS | 4 |
-| State | Zustand | 5 |
-| i18n | react-i18next | — |
-| Database (local) | IndexedDB (idb) | — |
-| Database (cloud) | AWS DynamoDB | — |
-| Auth | AWS Cognito | — |
-| Critical Ops | Aurora DSQL | — |
-| Deployment | Vercel | — |
+| Offline sync | Conflict resolution |
+| --- | --- |
+| ![Offline sync protocol](./diagrams/04-offline-sync-protocol.png) | ![Conflict resolution](./diagrams/05-conflict-resolution.png) |
 
-## Setup
+| Demo isolation | Auth cookies |
+| --- | --- |
+| ![Demo isolation and TTL](./diagrams/06-demo-isolation-ttl.png) | ![Auth cookie refresh](./diagrams/07-auth-cookie-refresh.png) |
+
+## Sync Model
+
+FieldFlow treats edits as mutations, not blind record replacements.
+
+Each mutation carries:
+
+- `client_id` for idempotency.
+- `device_id` and `client_timestamp`.
+- `base_version` and `base_fields` for 3-way merge.
+- `payload` with the intended record change.
+- status fields for retry, poison, conflict, and acknowledgement handling.
+
+The server compares local values, server values, and base values. Non-overlapping edits can apply cleanly. Same-field conflicts in manual workflows escalate to conflict records instead of silently overwriting data.
+
+## Demo Sandbox
+
+The demo is not static mock data. When a visitor enters the demo:
+
+- FieldFlow creates or reopens a per-browser demo install.
+- It seeds isolated demo organizations, users, workflows, records, devices, inventory, metrics, and audit entries.
+- The browser receives a signed demo session and local offline workspace data.
+- The service worker warms app routes such as `/field-worker/register`, `/admin/dashboard`, and `/supervisor/inventory`.
+- DynamoDB TTL metadata is attached so demo workspaces can be cleaned up later.
+
+The demo payload measured during local verification was about 31 KB raw and 3 KB gzipped for three workspaces, three workflows, nine records, six inventory items, and ten demo account memberships.
+
+## Tech Stack
+
+| Layer | Technology |
+| --- | --- |
+| Frontend | Next.js App Router, React, TypeScript |
+| Styling | Tailwind CSS, Radix UI primitives, lucide-react |
+| Local data | IndexedDB via `idb`, Zustand stores |
+| PWA | `next-pwa`, Workbox route caching, generated service worker |
+| Primary backend | Amazon DynamoDB |
+| Auth | Amazon Cognito, Google OAuth, signed session cookies |
+| AI workflow drafting | DeepSeek-compatible API endpoint |
+| Deployment | Vercel |
+| Testing and screenshots | Playwright |
+
+## Local Setup
 
 ```bash
-git clone https://github.com/your-org/fieldflow.git
-cd fieldflow
 npm install
-cp .env.example .env.local  # fill in your credentials
+cp .env.example .env
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Demo login credentials:
+The development script runs Next.js with webpack:
 
-| Email | Password | Role |
-|-------|----------|------|
-| jean-pierre@demo.org | — | field_worker |
-| fatima@demo.org | — | field_worker |
-| amara@demo.org | — | supervisor |
-| celine@demo.org | — | org_admin |
-
-## Project Structure
-
+```bash
+npm run dev
 ```
+
+For a production build:
+
+```bash
+npm run build
+npm run start
+```
+
+## Environment
+
+Important environment variables:
+
+```bash
+NEXT_PUBLIC_SITE_URL=https://fieldflow-tau.vercel.app
+AWS_REGION=us-east-1
+DYNAMODB_TABLE=FieldFlowRecords
+DYNAMODB_SORT_KEY_ENABLED=false
+COGNITO_POOL_ID=...
+COGNITO_CLIENT_ID=...
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+DEEPSEEK_API_KEY=...
+SESSION_SECRET=...
+```
+
+For local DynamoDB-backed demo testing with an AWS profile:
+
+```bash
+$env:AWS_PROFILE="agent-workload"
+$env:AWS_SDK_LOAD_CONFIG="1"
+npm run build
+npm run start -- -p 3063
+```
+
+## Verified Behaviors
+
+- Production build completes with `npm run build`.
+- Demo login succeeds with the `agent-workload` AWS profile.
+- Service worker route warmup creates `fieldflow-pages` cache entries for protected app routes.
+- After demo login, `/field-worker/register` loads offline on mobile.
+- Mobile app shell exposes an account drawer for navigation, organization context, and logout.
+- Online field-worker save writes locally first, then automatically drains the mutation queue through `/api/sync/batch`.
+- Language resources are bundled and preloaded for offline EN/FR switching when the cached app shell is available.
+
+## Repository Map
+
+```text
 src/
-├── app/              # Next.js App Router (public + routes + API)
-├── components/       # React components (builder, conflicts, layout, ui)
-├── hooks/            # Custom hooks (useSync, useNetwork, etc.)
-├── lib/              # Core logic (api, auth, db, i18n, sync)
-├── stores/           # Zustand stores (auth, sync, workflow)
-├── styles/           # Tailwind globals
-└── types/            # TypeScript interfaces
+  app/                 Next.js pages, layouts, and API routes
+  components/          Builder, sync, conflict, layout, public, and UI components
+  hooks/               Network, session, and sync hooks
+  lib/
+    api/               DynamoDB and in-memory store adapters
+    auth/              Cognito/session/demo auth helpers
+    db/                IndexedDB adapter
+    demo/              Demo sandbox seed and offline hydration
+    i18n/              EN/FR translation bundle
+    sync/              Sync client, retry, and background sync runner
+  stores/              Zustand auth/sync/workflow stores
+  types/               Domain, auth, workflow, sync, and record types
+diagrams/              Devpost architecture diagrams
+screenshots/           Playwright submission screenshots
+public/brand/          Logo, OG, and social preview assets
 ```
-
-## Team
-
-| Name | Role |
-|------|------|
-| **Céline M.** | Product & Design |
-| **Dr. Amara** | Domain Expert — Humanitarian Operations |
-| _Your name here_ | Engineering |
 
 ## License
 
-[MIT](LICENSE)
+MIT

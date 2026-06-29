@@ -51,41 +51,46 @@ export async function POST(request: NextRequest) {
   const name = parsed.data.name?.trim() || email.split("@")[0]
   const now = Date.now()
   const store = getStore()
-  const cognito = getCognitoClient()
-  let delivery: "linked" | "invite_email_sent" | "profile_only" = "profile_only"
+  const demoInvite = user.orgId.startsWith("demo-") || email.endsWith("@demo.ff")
+  const cognito = demoInvite ? null : getCognitoClient()
+  let delivery: "linked" | "invite_email_sent" | "profile_only" | "demo_profile_only" = demoInvite ? "demo_profile_only" : "profile_only"
+  let deliveryWarning: string | undefined
 
-  try {
+  if (cognito) {
     try {
-      await cognito.send(new AdminGetUserCommand({ UserPoolId: POOL_ID, Username: email }))
-      await cognito.send(new AdminUpdateUserAttributesCommand({
-        UserPoolId: POOL_ID,
-        Username: email,
-        UserAttributes: [
-          { Name: "name", Value: name },
-          { Name: "custom:orgId", Value: user.orgId },
-          { Name: "custom:role", Value: role },
-        ],
-      }))
-      delivery = "linked"
+      try {
+        await cognito.send(new AdminGetUserCommand({ UserPoolId: POOL_ID, Username: email }))
+        await cognito.send(new AdminUpdateUserAttributesCommand({
+          UserPoolId: POOL_ID,
+          Username: email,
+          UserAttributes: [
+            { Name: "name", Value: name },
+            { Name: "custom:orgId", Value: user.orgId },
+            { Name: "custom:role", Value: role },
+          ],
+        }))
+        delivery = "linked"
+      } catch (error) {
+        if (!(error instanceof Error) || error.name !== "UserNotFoundException") throw error
+        await cognito.send(new AdminCreateUserCommand({
+          UserPoolId: POOL_ID,
+          Username: email,
+          DesiredDeliveryMediums: ["EMAIL"],
+          UserAttributes: [
+            { Name: "email", Value: email },
+            { Name: "email_verified", Value: "true" },
+            { Name: "name", Value: name },
+            { Name: "custom:orgId", Value: user.orgId },
+            { Name: "custom:role", Value: role },
+          ],
+        }))
+        delivery = "invite_email_sent"
+      }
     } catch (error) {
-      if (!(error instanceof Error) || error.name !== "UserNotFoundException") throw error
-      await cognito.send(new AdminCreateUserCommand({
-        UserPoolId: POOL_ID,
-        Username: email,
-        DesiredDeliveryMediums: ["EMAIL"],
-        UserAttributes: [
-          { Name: "email", Value: email },
-          { Name: "email_verified", Value: "true" },
-          { Name: "name", Value: name },
-          { Name: "custom:orgId", Value: user.orgId },
-          { Name: "custom:role", Value: role },
-        ],
-      }))
-      delivery = "invite_email_sent"
+      const errorName = error instanceof Error ? error.name : "UnknownError"
+      deliveryWarning = errorName
+      console.warn("[admin/users] Cognito invite delivery skipped; workspace profile will still be linked", errorName)
     }
-  } catch (error) {
-    console.error("[admin/users] cognito invite failed", error)
-    return NextResponse.json({ error: "Invitation Cognito impossible" }, { status: 502 })
   }
 
   const row = {
@@ -99,6 +104,7 @@ export async function POST(request: NextRequest) {
     invited: true,
     invitedBy: user.email,
     delivery,
+    deliveryWarning,
     createdAt: now,
   }
 

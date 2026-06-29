@@ -423,7 +423,8 @@
     "conflict": "Conflit détecté",
     "resolved": "Conflit résolu",
     "edit": "Modifier",
-    "saveFailed": "Impossible d'enregistrer les modifications localement."
+    "saveFailed": "Impossible d'enregistrer les modifications localement.",
+    "workflowVersionMismatch": "Cette fiche a été créée avec une ancienne version du workflow. Vérifiez-la avant l'approbation finale."
   },
   "landing": {
     "hero": "Des outils humanitaires qui fonctionnent sans Internet.",

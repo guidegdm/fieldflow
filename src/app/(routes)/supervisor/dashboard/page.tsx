@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import type { RecordData } from "@/types/record"
 import { useWorkflowContext } from "@/hooks/useWorkflowContext"
 import { recordTitle, workflowLabel } from "@/lib/workflows/runtime"
+import type { WorkflowDefinition } from "@/types/workflow"
 
 const statusConfig: Record<string, { variant: "warning" | "success" | "danger" | "info"; label: string }> = {
   pending_sync: { variant: "warning", label: "dashboard.pending" },
@@ -21,23 +22,30 @@ const statusConfig: Record<string, { variant: "warning" | "success" | "danger" |
 
 export default function SupervisorDashboard() {
   const { t, i18n } = useTranslation()
-  const { activeWorkflow, activeWorkflowId } = useWorkflowContext()
+  const { activeWorkflow, activeWorkflowId, workflows } = useWorkflowContext()
   const [filter, setFilter] = useState("all")
+  const [scope, setScope] = useState<"current" | "all">("current")
   const [records, setRecords] = useState<RecordData[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!activeWorkflowId) {
+    if (!activeWorkflowId && scope === "current") {
       setLoading(false)
       return
     }
     setLoading(true)
-    fetch(`/api/workflows/${activeWorkflowId}/records`, { credentials: "include" })
-      .then(res => res.json())
-      .then(data => setRecords(Array.isArray(data) ? data.filter((record: RecordData) => record.workflowId === activeWorkflowId) : []))
+    const workflowIds = scope === "all" ? workflows.map((workflow) => workflow.id) : activeWorkflowId ? [activeWorkflowId] : []
+    Promise.all(workflowIds.map(async (workflowId) => {
+      const res = await fetch(`/api/workflows/${workflowId}/records`, { credentials: "include" })
+      const data = res.ok ? await res.json() : []
+      return Array.isArray(data) ? data.filter((record: RecordData) => record.workflowId === workflowId) : []
+    }))
+      .then(groups => setRecords(groups.flat()))
       .catch(() => setRecords([]))
       .finally(() => setLoading(false))
-  }, [activeWorkflowId])
+  }, [activeWorkflowId, scope, workflows])
+
+  const workflowsById = new Map<string, WorkflowDefinition>(workflows.map((workflow) => [workflow.id, workflow]))
 
   const stats = [
     { label: t("dashboard.pending"), count: records.filter(r => r.syncStatus === "pending").length, icon: Clock, color: "text-warning-500", bg: "bg-warning-500/10" },
@@ -55,8 +63,24 @@ export default function SupervisorDashboard() {
   return (
     <div className="space-y-6 sm:p-6">
       <div className="mb-8 flex items-center justify-between">
-        <h1 className="font-display text-2xl font-bold text-ink-black">{t("nav.dashboard")}</h1>
-        {activeWorkflow && <p className="mt-0.5 text-xs text-pencil">{workflowLabel(activeWorkflow, i18n.language)}</p>}
+        <div>
+          <h1 className="font-display text-2xl font-bold text-ink-black">{t("nav.dashboard")}</h1>
+          {activeWorkflow && <p className="mt-0.5 text-xs text-pencil">{workflowLabel(activeWorkflow, i18n.language)}</p>}
+        </div>
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {(["current", "all"] as const).map((key) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setScope(key)}
+              className={`min-h-9 shrink-0 rounded-full px-3 text-xs font-medium transition-colors ${
+                scope === key ? "bg-ink-blue text-white" : "border border-grid-line bg-white text-pencil hover:bg-graph-paper"
+              }`}
+            >
+              {key === "current" ? t("home.currentWorkflow", "Current workflow") : t("home.allWorkflows", "All workflows")}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:mb-8 sm:grid-cols-4 sm:gap-4">
@@ -100,13 +124,17 @@ export default function SupervisorDashboard() {
             <div className="divide-y divide-graph-line">
               {filtered.map((r) => {
                 const cfg = statusConfig[r.syncStatus] || statusConfig.pending_sync
+                const rowWorkflow = scope === "all" ? workflowsById.get(r.workflowId) ?? activeWorkflow : activeWorkflow
                 return (
                   <div key={r.id} className="flex flex-col gap-3 px-4 py-4 hover:bg-graph-paper sm:flex-row sm:items-center sm:justify-between sm:px-6">
                     <div className="flex min-w-0 items-start gap-3 sm:items-center sm:gap-4">
                       <span className={`h-2 w-2 rounded-full ${cfg.variant === "warning" ? "bg-warning-500" : cfg.variant === "success" ? "bg-antiseptic-green" : cfg.variant === "danger" ? "bg-danger-500" : "bg-scrub-blue"}`} />
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-ink-black">{recordTitle(r, activeWorkflow)}</p>
-                        <p className="text-xs text-pencil">{t("dashboard.submitter")} {r.createdBy} · {new Date(r.updatedAt).toLocaleTimeString(i18n.language?.startsWith("en") ? "en-US" : "fr-FR", { hour: "2-digit", minute: "2-digit" })}</p>
+                        <p className="text-sm font-medium text-ink-black">{recordTitle(r, rowWorkflow)}</p>
+                        <p className="text-xs text-pencil">
+                          {scope === "all" && rowWorkflow ? `${workflowLabel(rowWorkflow, i18n.language)} · ` : ""}
+                          {t("dashboard.submitter")} {r.createdBy} · {new Date(r.updatedAt).toLocaleTimeString(i18n.language?.startsWith("en") ? "en-US" : "fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-center justify-between gap-3 pl-5 sm:justify-end sm:pl-0">

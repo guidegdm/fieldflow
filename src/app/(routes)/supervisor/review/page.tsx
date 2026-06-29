@@ -195,6 +195,11 @@ export default function SupervisorReview() {
 
       <Card className="border-graph-line">
         <CardContent className="p-5 space-y-3">
+          {record.workflowVersionMismatch && (
+            <div className="rounded-md border border-warning-500/30 bg-warning-500/10 px-3 py-2 text-sm leading-6 text-warning-600">
+              {t("record.workflowVersionMismatch", "This record was created on an older workflow version. Review before final approval.")}
+            </div>
+          )}
           {sections.length > 0 ? sections.map(({ section, fields }) => (
             <section key={section} className="space-y-2">
               <h2 className="text-xs font-semibold uppercase tracking-wider text-chart-gray">{sectionLabel(section)}</h2>

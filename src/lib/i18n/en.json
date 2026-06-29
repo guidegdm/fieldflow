@@ -423,7 +423,8 @@
     "conflict": "Conflict detected",
     "resolved": "Conflict resolved",
     "edit": "Edit",
-    "saveFailed": "Could not save changes locally."
+    "saveFailed": "Could not save changes locally.",
+    "workflowVersionMismatch": "This record was created on an older workflow version. Review before final approval."
   },
   "landing": {
     "hero": "Humanitarian tools that work without the Internet.",

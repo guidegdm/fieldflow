@@ -269,6 +269,11 @@ export default function RecordDetailPage() {
 
       <h1 className="mb-4 font-display text-2xl font-semibold text-ink-black">{recordTitle(record, workflow)}</h1>
       {saveError && <div className="mb-4 rounded-md border border-danger-500/30 bg-danger-500/10 px-3 py-2 text-sm text-danger-500">{saveError}</div>}
+      {record.workflowVersionMismatch && (
+        <div className="mb-4 rounded-md border border-warning-500/30 bg-warning-500/10 px-3 py-2 text-sm leading-6 text-warning-600">
+          {t("record.workflowVersionMismatch", "This record was created on an older workflow version. Review before final approval.")}
+        </div>
+      )}
 
       <div className="space-y-4 mb-8">
         {sections.length > 0 ? sections.map(({ section, fields }) => (

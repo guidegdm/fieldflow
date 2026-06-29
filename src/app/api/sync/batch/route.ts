@@ -165,7 +165,7 @@ export async function POST(request: NextRequest) {
         await store.putRecordForOrg(record)
         await store.storeMutationForOrg({ ...op, payload: record }, user.orgId)
         acked.push(op.client_id)
-      } else if (op.operation === "update") {
+      } else if (op.operation === "update" || op.operation === "attach_evidence") {
         const existing = await store.getRecordForOrg(op.record_id!, user.orgId)
         if (!existing) {
           failed.push({ client_id: op.client_id, reason: "RECORD_NOT_FOUND" })
@@ -214,7 +214,7 @@ export async function POST(request: NextRequest) {
               strategy = "manual"
               autoResolved = false
               resolvedValue = serverValue
-            } else if (fieldType === "multi_select" && Array.isArray(localValue) && Array.isArray(serverValue)) {
+            } else if ((fieldType === "multi_select" || fieldType === "multi-select") && Array.isArray(localValue) && Array.isArray(serverValue)) {
               strategy = "set_union"
               resolvedValue = uniqueValues([...serverValue, ...localValue])
               autoResolved = true

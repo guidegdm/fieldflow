@@ -31,6 +31,7 @@ export default function RegisterPage() {
   const { activeWorkflow, activeWorkflowId, loading, workflows } = useWorkflowContext()
   const [values, setValues] = useState<FormValues>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [recordId, setRecordId] = useState(() => generateId())
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [saveError, setSaveError] = useState("")
@@ -78,7 +79,7 @@ export default function RegisterPage() {
     if (!validate()) return
 
     setSaving(true)
-    const id = generateId()
+    const id = recordId
     const now = Date.now()
     const deviceId = user.deviceId || "web"
     const state = initialStateId(activeWorkflow)
@@ -123,6 +124,7 @@ export default function RegisterPage() {
       useSyncStore.getState().setPendingCount((await db.getPendingMutations()).length)
       void runBackgroundSync(user)
       setSaved(true)
+      setRecordId(generateId())
     } catch {
       setSaveError(t("register.saveFailed"))
     } finally {
@@ -210,6 +212,7 @@ export default function RegisterPage() {
                   value={values[field.key]}
                   error={errors[field.key]}
                   language={i18n.language}
+                  attachmentContext={{ orgId: user?.orgId, workflowId: activeWorkflow.id, recordId: recordId }}
                   onChange={(value) => setFieldValue(field.key, value)}
                 />
               ))}

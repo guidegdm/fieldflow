@@ -2,11 +2,13 @@ import { openDB, type IDBPDatabase } from "idb"
 import type { MutationEntry, MutationStatus, DeviceState, ConflictRecord } from "@/types/sync"
 import type { RecordData, RecordStatus, SyncStatus } from "@/types/record"
 import type { WorkflowDefinition } from "@/types/workflow"
+import type { LocalAttachment } from "@/types/attachment"
 
 interface FieldFlowTypes {
   mutations: MutationEntry
   records: RecordData
   workflows: WorkflowDefinition
+  attachments: LocalAttachment
   device_state: DeviceState
   conflicts: ConflictRecord
 }
@@ -30,11 +32,12 @@ function defaultDeviceState(): DeviceState {
 
 async function getDB(): Promise<IDBPDatabase<FieldFlowTypes>> {
   if (instance) return instance
-  instancePromise ??= openDB<FieldFlowTypes>("fieldflow", 1, {
+  instancePromise ??= openDB<FieldFlowTypes>("fieldflow", 2, {
       upgrade(db) {
         if (!db.objectStoreNames.contains("mutations")) db.createObjectStore("mutations", { keyPath: "client_id" })
         if (!db.objectStoreNames.contains("records")) db.createObjectStore("records", { keyPath: "id" })
         if (!db.objectStoreNames.contains("workflows")) db.createObjectStore("workflows", { keyPath: "id" })
+        if (!db.objectStoreNames.contains("attachments")) db.createObjectStore("attachments", { keyPath: "id" })
         if (!db.objectStoreNames.contains("device_state")) db.createObjectStore("device_state", { keyPath: "key" })
         if (!db.objectStoreNames.contains("conflicts")) db.createObjectStore("conflicts", { keyPath: "id" })
       },
@@ -77,6 +80,11 @@ export const db = {
   async deleteMutation(clientId: string) {
     const d = await getDB()
     await d.delete("mutations", clientId)
+  },
+
+  async putMutation(m: MutationEntry) {
+    const d = await getDB()
+    await d.put("mutations", m)
   },
 
   async markMutationFailed(clientId: string, reason: string, maxRetries = 10, cooldownMs = 30 * 60 * 1000) {
@@ -170,6 +178,29 @@ export const db = {
     await Promise.all(existing.filter((workflow) => workflow.orgId === orgId).map((workflow) => tx.store.delete(workflow.id)))
     await Promise.all(workflows.map((workflow) => tx.store.put(workflow)))
     await tx.done
+  },
+
+  async putAttachment(attachment: LocalAttachment) {
+    const d = await getDB()
+    await d.put("attachments", attachment)
+  },
+
+  async getAttachment(id: string): Promise<LocalAttachment | undefined> {
+    const d = await getDB()
+    return d.get("attachments", id)
+  },
+
+  async getPendingAttachments(): Promise<LocalAttachment[]> {
+    const d = await getDB()
+    const all = await d.getAll("attachments")
+    return all.filter((attachment) => attachment.status === "local" || attachment.status === "failed")
+  },
+
+  async updateAttachment(id: string, updates: Partial<LocalAttachment>) {
+    const d = await getDB()
+    const existing = await d.get("attachments", id)
+    if (!existing) return
+    await d.put("attachments", { ...existing, ...updates, updatedAt: Date.now() })
   },
 
   async getDeviceState(): Promise<DeviceState> {

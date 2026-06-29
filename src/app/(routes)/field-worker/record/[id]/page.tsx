@@ -287,6 +287,7 @@ export default function RecordDetailPage() {
                 error={errors[field.key]}
                 readOnly={!editing}
                 language={i18n.language}
+                attachmentContext={{ orgId: user?.orgId, workflowId: record.workflowId, recordId: record.id }}
                 onChange={(value) => setFieldValue(field.key, value)}
               />
             ))}

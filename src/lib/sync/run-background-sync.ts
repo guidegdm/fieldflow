@@ -3,6 +3,7 @@ import { getCurrentMode } from "@/lib/network-simulator"
 import { retryWithBackoff } from "@/lib/sync/backoff"
 import { fullSync } from "@/lib/sync/sync-client"
 import { useSyncStore } from "@/stores/syncStore"
+import { syncPendingAttachments } from "@/lib/attachments/sync-pending"
 import type { DemoUser } from "@/types/auth"
 
 let activeSync: Promise<unknown> | null = null
@@ -30,6 +31,7 @@ async function performSync(user?: DemoUser | null, options: { retry?: boolean } 
   const syncStore = useSyncStore.getState()
   syncStore.setSyncing(true)
   try {
+    await syncPendingAttachments(user)
     const pendingMutations = await db.getPendingMutations()
     if (user?.deviceId) {
       const deviceState = await db.getDeviceState()

@@ -15,6 +15,7 @@ import { FieldRenderer } from "@/components/fields/FieldRenderer"
 import { groupFieldsBySection, recordTitle, sectionLabel } from "@/lib/workflows/runtime"
 import { useAuthStore } from "@/stores/authStore"
 import { hasAnyRoleAccess } from "@/lib/auth/roles"
+import { db } from "@/lib/db/indexeddb"
 
 type TimelineStatus = "success" | "default" | "warning" | "danger"
 
@@ -66,15 +67,25 @@ export default function SupervisorReview() {
       return
     }
     setWorkflow(activeWorkflow)
-    fetch(`/api/workflows/${activeWorkflowId}/records`, { credentials: "include" })
-      .then((res) => res.ok ? res.json() : [])
+    async function load() {
+      try {
+        const res = await fetch(`/api/workflows/${activeWorkflowId}/records`, { credentials: "include" })
+        return res.ok ? await res.json() : []
+      } catch {
+        return (await db.getAllRecords()).filter((candidate) => candidate.workflowId === activeWorkflowId)
+      }
+    }
+    load()
       .then((data) => {
         const records = Array.isArray(data) ? data as RecordData[] : []
-        setRecord(id ? records.find((r) => r.id === id) ?? null : records[0] ?? null)
+        const role = user?.role || "supervisor"
+        const requested = id ? records.find((r) => r.id === id) ?? null : null
+        const nextRecord = requested ?? records.find((candidate) => activeWorkflow && reviewableTransitions(activeWorkflow, candidate, role).length > 0) ?? null
+        setRecord(nextRecord)
       })
       .catch(() => setRecord(null))
       .finally(() => setLoading(false))
-  }, [activeWorkflow, activeWorkflowId, searchParams])
+  }, [activeWorkflow, activeWorkflowId, searchParams, user?.role])
 
   const timeline = useMemo(() => record ? buildTimeline(record) : [], [record])
   const availableTransitions = useMemo(() => {
@@ -306,4 +317,12 @@ function statusForTransition(transition: WorkflowTransition) {
   if (text.includes("reject")) return "rejected"
   if (text.includes("approve") || text.includes("verified") || text.includes("confirm") || text.includes("close")) return "approved"
   return "pending"
+}
+
+function reviewableTransitions(workflow: WorkflowDefinition, record: RecordData, role: string) {
+  const current = normalizeStateId(workflow, record.state)
+  return workflow.transitions.filter((transition) => {
+    const from = normalizeStateId(workflow, transition.fromState)
+    return from === current && hasAnyRoleAccess(role, transition.requiredRoles ?? [])
+  })
 }

@@ -21,6 +21,8 @@ import type { MutationEntry } from "@/types/sync"
 const statusConfig: Record<string, { label: string; color: string; border: string; bg: string; icon: typeof AlertTriangle }> = {
   draft: { label: "Brouillon", color: "text-pencil", border: "border-pencil", bg: "bg-pencil/5", icon: Clock },
   pending_sync: { label: "En attente", color: "text-warning-500", border: "border-warning-500", bg: "bg-warning-500/5", icon: Clock },
+  submitted: { label: "Soumis", color: "text-warning-500", border: "border-warning-500", bg: "bg-warning-500/5", icon: Clock },
+  pending: { label: "En revue", color: "text-warning-500", border: "border-warning-500", bg: "bg-warning-500/5", icon: Clock },
   synced: { label: "Synchronisé", color: "text-success-500", border: "border-success-500", bg: "bg-success-500/5", icon: CheckCircle },
   approved: { label: "Approuvé", color: "text-success-500", border: "border-success-500", bg: "bg-success-500/5", icon: ShieldCheck },
   rejected: { label: "Rejeté", color: "text-danger-500", border: "border-danger-500", bg: "bg-danger-500/5", icon: XCircle },
@@ -39,7 +41,7 @@ interface AuditEvent {
 
 function buildAuditTimeline(record: RecordData): AuditEvent[] {
   const events: AuditEvent[] = [{ id: "e1", type: "created", timestamp: record.createdAt }]
-  if (record.status === "pending_sync" || (record.syncStatus === "pending")) {
+  if (record.status === "pending_sync" || record.status === "submitted" || record.status === "pending" || (record.syncStatus === "pending")) {
     events.push({ id: "e2", type: "submitted", timestamp: record.updatedAt })
   }
   if (record.syncedAt) {

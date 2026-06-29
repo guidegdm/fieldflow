@@ -1,6 +1,7 @@
 import type { TFunction } from "i18next"
 import type { RecordData } from "@/types/record"
 import type { WorkflowDefinition, WorkflowField } from "@/types/workflow"
+import { hasAnyRoleAccess } from "@/lib/auth/roles"
 
 export function workflowLabel(workflow: WorkflowDefinition | null | undefined, language?: string) {
   if (!workflow) return ""
@@ -24,6 +25,18 @@ export function displayFieldKey(workflow: WorkflowDefinition | null | undefined)
 
 export function initialStateId(workflow: WorkflowDefinition | null | undefined) {
   return workflow?.states.find((state) => state.isInitial)?.id || workflow?.states[0]?.id || "s-draft"
+}
+
+export function submittedStateId(workflow: WorkflowDefinition | null | undefined, role = "field_worker") {
+  const initial = initialStateId(workflow)
+  const transition = workflow?.transitions.find((candidate) => {
+    const key = `${candidate.key} ${candidate.label} ${candidate.labelEn}`.toLowerCase()
+    return candidate.fromState === initial && key.includes("submit") && hasAnyRoleAccess(role, candidate.requiredRoles ?? [])
+  }) || workflow?.transitions.find((candidate) =>
+    candidate.fromState === initial && hasAnyRoleAccess(role, candidate.requiredRoles ?? [])
+  )
+
+  return transition?.toState || initial
 }
 
 export function formatFieldValue(value: unknown, field?: WorkflowField, t?: TFunction) {

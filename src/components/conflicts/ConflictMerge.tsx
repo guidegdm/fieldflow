@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 
 export type ConflictField = {
+  id?: string
   key: string
   label: string
   base?: string

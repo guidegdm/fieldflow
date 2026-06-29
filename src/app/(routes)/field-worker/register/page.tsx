@@ -10,7 +10,7 @@ import { useWorkflowContext } from "@/hooks/useWorkflowContext"
 import { generateId } from "@/lib/utils"
 import { db } from "@/lib/db/indexeddb"
 import { runBackgroundSync } from "@/lib/sync/run-background-sync"
-import { groupFieldsBySection, initialStateId, sectionLabel, workflowLabel } from "@/lib/workflows/runtime"
+import { groupFieldsBySection, sectionLabel, submittedStateId, workflowLabel } from "@/lib/workflows/runtime"
 import { useAuthStore } from "@/stores/authStore"
 import { useSyncStore } from "@/stores/syncStore"
 import type { MutationEntry } from "@/types/sync"
@@ -82,13 +82,13 @@ export default function RegisterPage() {
     const id = recordId
     const now = Date.now()
     const deviceId = user.deviceId || "web"
-    const state = initialStateId(activeWorkflow)
+    const state = submittedStateId(activeWorkflow, user.role)
     const record: RecordData = {
       id,
       workflowId: activeWorkflow.id,
       workflowVersion: activeWorkflow.version,
       entityKey: activeWorkflow.entity.key,
-      status: "pending_sync",
+      status: "submitted",
       syncStatus: "local",
       state,
       fields: { ...values },
@@ -122,7 +122,11 @@ export default function RegisterPage() {
       await db.putRecord(record)
       await db.enqueueMutation(mutation)
       useSyncStore.getState().setPendingCount((await db.getPendingMutations()).length)
-      void runBackgroundSync(user)
+      if (typeof navigator !== "undefined" && navigator.onLine) {
+        await runBackgroundSync(user)
+      } else {
+        void runBackgroundSync(user)
+      }
       setSaved(true)
       setRecordId(generateId())
     } catch {

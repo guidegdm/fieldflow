@@ -44,6 +44,7 @@ export default function SupervisorConflicts() {
       if (open.length > 0) {
         setRecordId(open[0].record_id)
         setConflictFields(open.map(c => ({
+          id: c.id,
           key: c.field,
           label: c.field.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase()),
           local: String(c.value_a ?? ""),
@@ -61,13 +62,41 @@ export default function SupervisorConflicts() {
   }, [activeWorkflowId, user?.orgId])
 
   const handleResolve = useCallback(async (resolutions: Record<string, { choice: string; value: string }>, rationale: string) => {
-    await apiPost("/api/sync/conflict", {
-      record_id: recordId,
-      resolutions,
-      rationale,
-      resolved_by: "supervisor",
-    })
-  }, [recordId])
+    try {
+      await apiPost("/api/sync/conflict", {
+        record_id: recordId,
+        resolutions,
+        rationale,
+        resolved_by: "supervisor",
+      })
+      return
+    } catch {
+      if (!recordId) throw new Error("offline_conflict_resolution_failed")
+      const { db } = await import("@/lib/db/indexeddb")
+      const record = await db.getRecord(recordId)
+      if (record) {
+        record.fields = { ...record.fields }
+        for (const [field, resolution] of Object.entries(resolutions)) {
+          record.fields[field] = resolution.value
+        }
+        record.status = record.status === "in_conflict" ? "conflict_resolved" : record.status
+        record.syncStatus = "local"
+        record.updatedAt = Date.now()
+        record.version += 1
+        await db.putRecord(record)
+      }
+      for (const field of conflictFields) {
+        if (!field.id) continue
+        const resolution = resolutions[field.key]
+        await db.resolveConflict(
+          field.id,
+          resolution?.choice === "remote" ? "accept_b" : resolution?.choice === "manual" ? "manual" : "accept_a",
+          resolution?.choice === "manual" ? resolution.value : undefined,
+          rationale,
+        )
+      }
+    }
+  }, [conflictFields, recordId])
 
   if (loading) {
     return (

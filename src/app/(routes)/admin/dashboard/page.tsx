@@ -5,6 +5,9 @@ import { useTranslation } from "react-i18next"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import type { UserRole } from "@/types/auth"
+import { db } from "@/lib/db/indexeddb"
+import { loadOfflineDemoSandbox } from "@/lib/demo/offline-demo-cache"
+import { useAuthStore } from "@/stores/authStore"
 
 interface UserRow {
   id: string
@@ -23,6 +26,7 @@ interface WorkflowRow {
 
 export default function AdminDashboard() {
   const { t } = useTranslation()
+  const user = useAuthStore((state) => state.user)
   const [data, setData] = useState({ workflows: 1, records: 0, users: 4, conflicts: 0 })
   const [workflows, setWorkflows] = useState<WorkflowRow[]>([])
   const [users, setUsers] = useState<UserRow[]>([])
@@ -46,13 +50,39 @@ export default function AdminDashboard() {
           count: wf.recordCount ?? 0,
         })))
       } catch {
-        setWorkflows([])
-        setUsers([])
+        const orgId = user?.orgId
+        const [localWorkflows, localRecords, localConflicts] = await Promise.all([
+          orgId ? db.getAllWorkflowsForOrg(orgId).catch(() => []) : Promise.resolve([]),
+          orgId ? db.getAllRecordsForOrg(orgId).catch(() => []) : Promise.resolve([]),
+          db.getConflicts().catch(() => []),
+        ])
+        const offlineAccounts = loadOfflineDemoSandbox()?.accounts
+          .filter((account) => account.org.id === orgId)
+          .map((account) => ({
+            id: account.user.id,
+            name: account.user.name,
+            email: account.user.email,
+            role: account.user.role,
+          })) ?? []
+        setWorkflows(localWorkflows.map((wf) => ({
+          id: wf.id,
+          name: wf.name,
+          version: wf.version,
+          status: wf.status,
+          count: localRecords.filter((record) => record.workflowId === wf.id).length,
+        })))
+        setUsers(offlineAccounts)
+        setData({
+          workflows: localWorkflows.length,
+          records: localRecords.length,
+          users: offlineAccounts.length,
+          conflicts: localConflicts.filter((conflict) => conflict.status === "OPEN").length,
+        })
       }
       setLoading(false)
     }
     load()
-  }, [])
+  }, [user?.orgId])
 
   return (
     <div className="p-6 max-w-6xl">

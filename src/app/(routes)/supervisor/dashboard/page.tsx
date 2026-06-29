@@ -11,13 +11,16 @@ import type { RecordData } from "@/types/record"
 import { useWorkflowContext } from "@/hooks/useWorkflowContext"
 import { recordTitle, workflowLabel } from "@/lib/workflows/runtime"
 import type { WorkflowDefinition } from "@/types/workflow"
+import { db } from "@/lib/db/indexeddb"
 
 const statusConfig: Record<string, { variant: "warning" | "success" | "danger" | "info"; label: string }> = {
   pending_sync: { variant: "warning", label: "dashboard.pending" },
+  submitted: { variant: "warning", label: "dashboard.pending" },
+  pending: { variant: "warning", label: "dashboard.pending" },
   approved: { variant: "success", label: "dashboard.approvedToday" },
   rejected: { variant: "danger", label: "dashboard.rejected" },
   in_conflict: { variant: "info", label: "dashboard.conflicts" },
-  synced: { variant: "success", label: "dashboard.approvedToday" },
+  synced: { variant: "warning", label: "dashboard.pending" },
 }
 
 export default function SupervisorDashboard() {
@@ -36,19 +39,27 @@ export default function SupervisorDashboard() {
     setLoading(true)
     const workflowIds = scope === "all" ? workflows.map((workflow) => workflow.id) : activeWorkflowId ? [activeWorkflowId] : []
     Promise.all(workflowIds.map(async (workflowId) => {
-      const res = await fetch(`/api/workflows/${workflowId}/records`, { credentials: "include" })
-      const data = res.ok ? await res.json() : []
-      return Array.isArray(data) ? data.filter((record: RecordData) => record.workflowId === workflowId) : []
+      try {
+        const res = await fetch(`/api/workflows/${workflowId}/records`, { credentials: "include" })
+        const data = res.ok ? await res.json() : []
+        return Array.isArray(data) ? data.filter((record: RecordData) => record.workflowId === workflowId) : []
+      } catch {
+        const local = await db.getAllRecords()
+        return local.filter((record) => record.workflowId === workflowId)
+      }
     }))
       .then(groups => setRecords(groups.flat()))
-      .catch(() => setRecords([]))
+      .catch(async () => {
+        const local = await db.getAllRecords().catch(() => [])
+        setRecords(scope === "all" ? local : local.filter((record) => record.workflowId === activeWorkflowId))
+      })
       .finally(() => setLoading(false))
   }, [activeWorkflowId, scope, workflows])
 
   const workflowsById = new Map<string, WorkflowDefinition>(workflows.map((workflow) => [workflow.id, workflow]))
 
   const stats = [
-    { label: t("dashboard.pending"), count: records.filter(r => r.syncStatus === "pending").length, icon: Clock, color: "text-warning-500", bg: "bg-warning-500/10" },
+    { label: t("dashboard.pending"), count: records.filter(r => r.status === "submitted" || r.status === "pending" || r.status === "pending_sync").length, icon: Clock, color: "text-warning-500", bg: "bg-warning-500/10" },
     { label: t("dashboard.approvedToday"), count: records.filter(r => r.status === "approved").length, icon: CheckCircle2, color: "text-antiseptic-green", bg: "bg-antiseptic-green/10" },
     { label: t("dashboard.rejected"), count: records.filter(r => r.status === "rejected").length, icon: XCircle, color: "text-danger-500", bg: "bg-danger-500/10" },
     { label: t("dashboard.conflicts"), count: records.filter(r => r.syncStatus === "conflict").length, icon: AlertTriangle, color: "text-scrub-blue", bg: "bg-scrub-blue/10" },
@@ -123,7 +134,7 @@ export default function SupervisorDashboard() {
           ) : (
             <div className="divide-y divide-graph-line">
               {filtered.map((r) => {
-                const cfg = statusConfig[r.syncStatus] || statusConfig.pending_sync
+                const cfg = statusConfig[r.status] || statusConfig[r.syncStatus] || statusConfig.pending_sync
                 const rowWorkflow = scope === "all" ? workflowsById.get(r.workflowId) ?? activeWorkflow : activeWorkflow
                 return (
                   <div key={r.id} className="flex flex-col gap-3 px-4 py-4 hover:bg-graph-paper sm:flex-row sm:items-center sm:justify-between sm:px-6">

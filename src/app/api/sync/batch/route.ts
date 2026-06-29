@@ -146,6 +146,9 @@ export async function POST(request: NextRequest) {
         const payloadStatus = typeof payloadObject.status === "string" ? payloadObject.status : "pending"
         const payloadState = normalizeStateId(workflow, payloadObject.state)
         const clientWorkflowVersion = typeof payloadObject.workflowVersion === "number" ? payloadObject.workflowVersion : workflow.version
+        const createdAt = typeof payloadObject.createdAt === "number" ? payloadObject.createdAt : operationServerTs
+        const createdBy = typeof payloadObject.createdBy === "string" ? payloadObject.createdBy : user.id
+        const deviceId = typeof payloadObject.deviceId === "string" ? payloadObject.deviceId : body.device_id
         const record: RecordData = {
           id: op.record_id || crypto.randomUUID(),
           workflowId: op.workflow_id,
@@ -156,10 +159,10 @@ export async function POST(request: NextRequest) {
           syncStatus: "synced",
           state: payloadState,
           fields: payload as Record<string, unknown>,
-          createdAt: operationServerTs,
+          createdAt,
           updatedAt: operationServerTs,
-          createdBy: body.device_id,
-          deviceId: body.device_id,
+          createdBy,
+          deviceId,
           version: 1,
           orgId: user.orgId,
         }

@@ -80,7 +80,7 @@ export default function RecordDetailPage() {
   useEffect(() => {
     async function load() {
       let loadedLocal = false
-      let workflowId = "wf-1"
+      let workflowId = ""
       try {
         const { db } = await import("@/lib/db/indexeddb")
         const found = await db.getRecord(id)
@@ -94,9 +94,15 @@ export default function RecordDetailPage() {
         }
       } catch { /* IndexedDB not ready */ }
       try {
-        const res = await fetch(`/api/workflows/${workflowId}/records`, { credentials: "include" })
-        const records = res.ok ? await res.json() : []
-        if (Array.isArray(records)) {
+        const workflowIds = workflowId
+          ? [workflowId]
+          : await fetch("/api/workflows", { credentials: "include" })
+            .then((res) => res.ok ? res.json() : [])
+            .then((workflows) => Array.isArray(workflows) ? workflows.map((workflow: { id?: string }) => workflow.id).filter(Boolean) : [])
+        for (const candidateWorkflowId of workflowIds) {
+          const res = await fetch(`/api/workflows/${candidateWorkflowId}/records`, { credentials: "include" })
+          const records = res.ok ? await res.json() : []
+          if (!Array.isArray(records)) continue
           const fresh = records.find((r: RecordData) => r.id === id) ?? null
           if (fresh) {
             setRecord(fresh)
@@ -104,10 +110,10 @@ export default function RecordDetailPage() {
             await db.putRecord(fresh)
             const definition = await db.getWorkflow(fresh.workflowId)
             if (definition) setWorkflow(definition)
-          } else if (!loadedLocal) {
-            setRecord(null)
+            break
           }
         }
+        if (!loadedLocal) setRecord((current) => current)
       } catch {
         setRecord((current) => current)
       }

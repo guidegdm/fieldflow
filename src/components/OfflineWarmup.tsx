@@ -23,7 +23,6 @@ const APP_ROUTES_TO_CACHE = [
   "/admin/dashboard",
   "/admin/workflows",
   "/admin/workflows/new",
-  "/admin/workflows/wf-1",
   "/admin/users",
   "/admin/settings",
   "/field-worker/home",

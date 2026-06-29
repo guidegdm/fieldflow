@@ -111,7 +111,8 @@ class Store {
   async getServerSinceForOrg(orgId: string, seq: number) {
     if (DYNAMODB_ENABLED) return (await getDynamo())?.getServerSince(orgId, seq) ?? []
     return this.getServerSince(seq).filter((m) => {
-      const payload = m.payload as { id?: unknown }
+      const payload = m.payload as { id?: unknown; orgId?: unknown }
+      if (payload?.orgId === orgId && m.operation === "workflow_definition") return true
       const id = typeof payload?.id === "string" ? payload.id : null
       return id ? this.records.get(scopedKey(orgId, id))?.orgId === orgId : false
     })

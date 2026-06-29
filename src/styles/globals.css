@@ -21,4 +21,28 @@
     width: min(100%, 80rem);
     margin-inline: auto;
   }
+
+  .ai-progress-bar {
+    background:
+      linear-gradient(90deg, #1D4ED8 0%, #14B8A6 46%, #22C55E 100%),
+      linear-gradient(90deg, transparent, rgba(255,255,255,0.72), transparent);
+    background-size: 100% 100%, 48px 100%;
+    background-position: 0 0, -48px 0;
+    animation: ai-progress-shimmer 1.6s ease-in-out infinite;
+  }
+
+  .ai-pulse-ring {
+    animation: ai-pulse-ring 1.9s ease-out infinite;
+  }
+}
+
+@keyframes ai-progress-shimmer {
+  0% { background-position: 0 0, -48px 0; }
+  100% { background-position: 0 0, calc(100% + 48px) 0; }
+}
+
+@keyframes ai-pulse-ring {
+  0% { transform: scale(0.86); opacity: 0.42; }
+  65% { transform: scale(1.65); opacity: 0; }
+  100% { transform: scale(1.65); opacity: 0; }
 }

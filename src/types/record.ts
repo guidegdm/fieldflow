@@ -5,6 +5,7 @@ export interface RecordData {
   id: string
   workflowId: string
   workflowVersion: number
+  workflowVersionMismatch?: boolean
   entityKey: string
   deviceId: string
   operator?: string

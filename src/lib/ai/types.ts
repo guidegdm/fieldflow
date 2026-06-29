@@ -90,6 +90,8 @@ export interface ProposedTransition {
 }
 
 export interface WorkflowProposal {
+  name?: string
+  nameEn?: string
   fields: ProposedField[]
   states: ProposedState[]
   transitions: ProposedTransition[]

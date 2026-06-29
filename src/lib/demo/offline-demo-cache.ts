@@ -89,7 +89,7 @@ async function writeWorkspace(user: DemoUser | null, workspace: DemoOfflineWorks
       device_id: user.deviceId,
       user_id: user.id,
       orgId: user.orgId,
-      workflow_id: workspace.workflows[0]?.id || "wf-1",
+      workflow_id: workspace.workflows[0]?.id || "",
       workflow_version: workspace.workflows[0]?.version || 1,
       version: workspace.workflows[0]?.version || 1,
       last_seq: 0,

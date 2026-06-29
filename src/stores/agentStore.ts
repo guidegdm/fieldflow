@@ -178,6 +178,8 @@ export const useAgentStore = create<AgentStore>()((set, get) => ({
     }
 
     const nextProposals = {
+      name: proposals.name,
+      nameEn: proposals.nameEn,
       fields: proposals.fields.filter((f) => f.id !== id),
       states: proposals.states.filter((s) => s.id !== id),
       transitions: proposals.transitions.filter((t) => t.id !== id),
@@ -190,6 +192,15 @@ export const useAgentStore = create<AgentStore>()((set, get) => ({
       nextProposals.states.length === 0 &&
       nextProposals.transitions.length === 0
     ) {
+      if (nextProposals.name || nextProposals.nameEn) {
+        const workflow = useWorkflowStore.getState().workflow
+        if (workflow) {
+          useWorkflowStore.getState().updateWorkflow({
+            name: nextProposals.name || workflow.name,
+            nameEn: nextProposals.nameEn || nextProposals.name || workflow.nameEn,
+          })
+        }
+      }
       set({ phase: "idle", proposals: null, status: "", warnings: [] })
     }
   },
@@ -208,6 +219,8 @@ export const useAgentStore = create<AgentStore>()((set, get) => ({
     }
 
     const nextProposals = {
+      name: proposals.name,
+      nameEn: proposals.nameEn,
       fields: proposals.fields.filter((f) => !dismissed.has(f.id)),
       states: proposals.states.filter((s) => !dismissed.has(s.id)),
       transitions: proposals.transitions.filter((t) => !dismissed.has(t.id)),
@@ -227,9 +240,21 @@ export const useAgentStore = create<AgentStore>()((set, get) => ({
   applyAllProposals: () => {
     const { proposals } = get()
     if (!proposals) return
+    if (proposals.name || proposals.nameEn) {
+      const workflow = useWorkflowStore.getState().workflow
+      if (workflow) {
+        useWorkflowStore.getState().updateWorkflow({
+          name: proposals.name || workflow.name,
+          nameEn: proposals.nameEn || proposals.name || workflow.nameEn,
+        })
+      }
+    }
     for (const f of [...proposals.fields]) get().applyProposal("field", f.id)
     for (const s of [...proposals.states]) get().applyProposal("state", s.id)
     for (const t of [...proposals.transitions]) get().applyProposal("transition", t.id)
+    if (proposals.fields.length + proposals.states.length + proposals.transitions.length === 0) {
+      set({ phase: "idle", proposals: null, status: "", warnings: [] })
+    }
   },
 
   dismissAllProposals: () => {

@@ -105,6 +105,8 @@ function buildProposalFromToolData(
   )
 
   return {
+    name: data.name as string | undefined,
+    nameEn: data.nameEn as string | undefined,
     fields,
     states,
     transitions,
@@ -113,7 +115,7 @@ function buildProposalFromToolData(
 }
 
 function isEmptyProposal(proposal: WorkflowProposal): boolean {
-  return proposal.fields.length + proposal.states.length + proposal.transitions.length === 0
+  return proposal.fields.length + proposal.states.length + proposal.transitions.length === 0 && !proposal.name && !proposal.nameEn
 }
 
 export async function agentLoop(

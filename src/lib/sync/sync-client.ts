@@ -3,6 +3,7 @@ import { apiGet, apiPost } from "@/lib/api/client"
 import { generateId } from "@/lib/utils"
 import type { SyncBatchRequest, SyncBatchResponse, ConflictRecord } from "@/types/sync"
 import type { RecordData } from "@/types/record"
+import type { WorkflowDefinition } from "@/types/workflow"
 
 export async function pushBatch(): Promise<SyncBatchResponse> {
   const [deviceState, pending] = await Promise.all([db.getDeviceState(), db.getPendingMutations()])
@@ -18,7 +19,9 @@ export async function pushBatch(): Promise<SyncBatchResponse> {
 
 async function applyServerChanges(changes: SyncBatchResponse["server_changes"]) {
   for (const change of changes) {
-    if (change.operation === "create" || change.operation === "update") {
+    if (change.operation === "workflow_definition") {
+      await db.saveWorkflow(change.payload as WorkflowDefinition)
+    } else if (change.operation === "create" || change.operation === "update") {
       await db.putRecord(change.payload as RecordData)
     } else if (change.operation === "delete") {
       const payload = change.payload as { id?: string }

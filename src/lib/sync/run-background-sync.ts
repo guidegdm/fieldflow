@@ -30,6 +30,7 @@ async function performSync(user?: DemoUser | null, options: { retry?: boolean } 
   const syncStore = useSyncStore.getState()
   syncStore.setSyncing(true)
   try {
+    const pendingMutations = await db.getPendingMutations()
     if (user?.deviceId) {
       const deviceState = await db.getDeviceState()
       if (!deviceState.device_id) {
@@ -37,14 +38,14 @@ async function performSync(user?: DemoUser | null, options: { retry?: boolean } 
           device_id: user.deviceId,
           user_id: user.id,
           orgId: user.orgId,
-          workflow_id: deviceState.workflow_id || "wf-1",
+          workflow_id: deviceState.workflow_id || pendingMutations[0]?.workflow_id || "",
           workflow_version: deviceState.workflow_version || 1,
           version: deviceState.version || 1,
         })
       }
     }
 
-    syncStore.setPendingCount((await db.getPendingMutations()).length)
+    syncStore.setPendingCount(pendingMutations.length)
     const result = options.retry
       ? await retryWithBackoff(() => fullSync(), 2, 600, 2500)
       : await fullSync()

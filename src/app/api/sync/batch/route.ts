@@ -5,12 +5,12 @@ import { getAuthUser } from "@/lib/auth/middleware"
 import type { SyncBatchRequest, SyncBatchResponse, ConflictEntry } from "@/types/sync"
 import type { ConflictRecord } from "@/types/sync"
 import type { RecordData } from "@/types/record"
-import type { WorkflowField } from "@/types/workflow"
+import type { WorkflowDefinition, WorkflowField } from "@/types/workflow"
 
 const mutationSchema = z.object({
   client_id: z.string().min(1),
   device_id: z.string().min(1),
-  operation: z.enum(["create", "update", "delete", "attach_evidence"]),
+  operation: z.enum(["create", "update", "delete", "attach_evidence", "workflow_definition"]),
   resource: z.string().min(1),
   workflow_id: z.string().min(1),
   record_id: z.string().min(1).nullable(),
@@ -78,6 +78,24 @@ function uniqueValues(values: unknown[]): unknown[] {
   return result
 }
 
+function normalizeStateId(workflow: WorkflowDefinition, state: unknown) {
+  if (typeof state !== "string" || !state) return workflow.states.find((candidate) => candidate.isInitial)?.id || workflow.states[0]?.id || "s-draft"
+  return workflow.states.find((candidate) => candidate.id === state)?.id
+    || workflow.states.find((candidate) => candidate.key === state)?.id
+    || state
+}
+
+function isValidTransition(workflow: WorkflowDefinition, fromState: string | undefined, toState: string, role: string) {
+  const normalizedFrom = normalizeStateId(workflow, fromState)
+  const normalizedTo = normalizeStateId(workflow, toState)
+  if (normalizedFrom === normalizedTo) return true
+  return workflow.transitions.some((transition) =>
+    transition.fromState === normalizedFrom &&
+    transition.toState === normalizedTo &&
+    (transition.requiredRoles.length === 0 || transition.requiredRoles.includes(role)),
+  )
+}
+
 export async function POST(request: NextRequest) {
   const user = await getAuthUser(request)
   if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 })
@@ -103,6 +121,18 @@ export async function POST(request: NextRequest) {
 
     try {
       const operationServerTs = Date.now()
+      if (op.operation === "workflow_definition") {
+        const workflowPayload = asRecord(op.payload)
+        if (workflowPayload.orgId !== user.orgId || workflowPayload.id !== op.workflow_id) {
+          failed.push({ client_id: op.client_id, reason: "INVALID_WORKFLOW_DEFINITION" })
+          continue
+        }
+        await store.putWorkflowForOrg(op.payload as WorkflowDefinition)
+        await store.storeMutationForOrg(op, user.orgId)
+        acked.push(op.client_id)
+        continue
+      }
+
       const workflow = await store.getWorkflowForOrgAsync(op.workflow_id, user.orgId)
       if (!workflow) {
         failed.push({ client_id: op.client_id, reason: "WORKFLOW_NOT_FOUND" })
@@ -113,11 +143,13 @@ export async function POST(request: NextRequest) {
         const payloadObject = asRecord(op.payload)
         const payload = asRecord(payloadObject.fields ?? op.payload)
         const payloadStatus = typeof payloadObject.status === "string" ? payloadObject.status : "pending"
-        const payloadState = typeof payloadObject.state === "string" ? payloadObject.state : "draft"
+        const payloadState = normalizeStateId(workflow, payloadObject.state)
+        const clientWorkflowVersion = typeof payloadObject.workflowVersion === "number" ? payloadObject.workflowVersion : workflow.version
         const record: RecordData = {
           id: op.record_id || crypto.randomUUID(),
           workflowId: op.workflow_id,
-          workflowVersion: workflow.version,
+          workflowVersion: clientWorkflowVersion,
+          workflowVersionMismatch: clientWorkflowVersion !== workflow.version,
           entityKey: workflow.entity.key,
           status: payloadStatus as RecordData["status"],
           syncStatus: "synced",
@@ -251,7 +283,14 @@ export async function POST(request: NextRequest) {
 
         existing.fields = { ...existing.fields, ...mergedFields }
         if (typeof payloadObject.status === "string") existing.status = payloadObject.status
-        if (typeof payloadObject.state === "string") existing.state = payloadObject.state
+        if (typeof payloadObject.state === "string") {
+          const nextState = normalizeStateId(workflow, payloadObject.state)
+          if (!isValidTransition(workflow, existing.state, nextState, user.role)) {
+            failed.push({ client_id: op.client_id, reason: "INVALID_STATE_TRANSITION" })
+            continue
+          }
+          existing.state = nextState
+        }
         if (typeof payloadObject.syncStatus === "string") existing.syncStatus = payloadObject.syncStatus
         existing.version += 1
         existing.updatedAt = operationServerTs
@@ -304,6 +343,7 @@ export async function POST(request: NextRequest) {
   let serverChanges = await store.getServerSinceForOrg(user.orgId, body.device_seq)
   serverChanges = serverChanges.filter((m) => {
     const payload = asRecord(m.payload)
+    if (m.operation === "workflow_definition") return payload.orgId === user.orgId
     const recordId = typeof payload.id === "string" ? payload.id : null
     const rec = recordId ? (m.payload as { orgId?: string }) : null
     return rec?.orgId === user.orgId
@@ -317,7 +357,7 @@ export async function POST(request: NextRequest) {
     device_id: body.device_id,
     user_id: user.sub,
     orgId: user.orgId,
-    workflow_id: deviceState?.workflow_id || body.operations[0]?.workflow_id || "wf-1",
+    workflow_id: deviceState?.workflow_id || body.operations.find((operation) => operation.workflow_id)?.workflow_id || "",
     workflow_version: deviceState?.workflow_version || 1,
     version: deviceState?.version || 1,
     last_seq: lastSeq,

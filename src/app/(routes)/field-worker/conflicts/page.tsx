@@ -10,10 +10,12 @@ import { ConflictMerge, type ConflictField } from "@/components/conflicts/Confli
 import type { ConflictRecord } from "@/types/sync"
 import Link from "next/link"
 import { useAuthStore } from "@/stores/authStore"
+import { useWorkflowContext } from "@/hooks/useWorkflowContext"
 
 export default function FieldWorkerConflicts() {
   const { t } = useTranslation()
   const user = useAuthStore((s) => s.user)
+  const { activeWorkflowId } = useWorkflowContext()
   const [conflictFields, setConflictFields] = useState<ConflictField[]>([])
   const [loading, setLoading] = useState(true)
   const [recordId, setRecordId] = useState<string | null>(null)
@@ -29,7 +31,7 @@ export default function FieldWorkerConflicts() {
           user?.orgId ? db.getAllRecordsForOrg(user.orgId) : db.getAllRecords(),
         ])
         if (cancelled) return
-        const recordIds = new Set(records.map((record) => record.id))
+        const recordIds = new Set(records.filter((record) => !activeWorkflowId || record.workflowId === activeWorkflowId).map((record) => record.id))
         const open: ConflictRecord[] = conflicts.filter(c => c.status === "OPEN" && recordIds.has(c.record_id))
         if (open.length > 0) {
           setRecordId(open[0].record_id)
@@ -49,7 +51,7 @@ export default function FieldWorkerConflicts() {
     }
     load()
     return () => { cancelled = true }
-  }, [user?.orgId])
+  }, [activeWorkflowId, user?.orgId])
 
   const handleResolve = useCallback(async (resolutions: Record<string, { choice: string; value: string }>, rationale: string) => {
     try {

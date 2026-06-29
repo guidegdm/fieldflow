@@ -2,6 +2,7 @@
 
 import type { WorkflowField } from "@/types/workflow"
 import { formatFieldValue, fieldLabel } from "@/lib/workflows/runtime"
+import { useTranslation } from "react-i18next"
 
 type Props = {
   field: WorkflowField
@@ -13,7 +14,9 @@ type Props = {
 }
 
 export function FieldRenderer({ field, value, onChange, error, language, readOnly }: Props) {
+  const { t } = useTranslation()
   const label = fieldLabel(field, language)
+  const fieldType = field.type.replace("_", "-")
   if (readOnly) {
     return (
       <div className="grid gap-1 rounded-md border border-graph-line bg-white px-3 py-2 sm:grid-cols-[12rem_1fr] sm:items-baseline">
@@ -51,7 +54,7 @@ export function FieldRenderer({ field, value, onChange, error, language, readOnl
             <option key={option.value} value={option.value}>{option.label}</option>
           ))}
         </select>
-      ) : field.type === "multi-select" ? (
+      ) : fieldType === "multi-select" ? (
         <div className="grid gap-2 sm:grid-cols-2">
           {(field.options ?? []).map((option) => {
             const selected = Array.isArray(value) && value.includes(option.value)
@@ -89,7 +92,7 @@ export function FieldRenderer({ field, value, onChange, error, language, readOnl
       ) : field.type === "gps" || field.type === "photo" ? (
         <input
           {...common}
-          value="Coming soon"
+          value={t("workflow.unsupportedField", "Temporarily unavailable")}
           disabled
           className={`${common.className} bg-graph-paper text-pencil`}
         />

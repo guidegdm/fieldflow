@@ -13,8 +13,8 @@ import type { WorkflowDefinition, WorkflowTransition } from "@/types/workflow"
 import { useWorkflowContext } from "@/hooks/useWorkflowContext"
 import { FieldRenderer } from "@/components/fields/FieldRenderer"
 import { groupFieldsBySection, recordTitle, sectionLabel } from "@/lib/workflows/runtime"
+import { useAuthStore } from "@/stores/authStore"
 
-type ReviewAction = "approve" | "reject" | "changes"
 type TimelineStatus = "success" | "default" | "warning" | "danger"
 
 function fieldValue(record: RecordData | null, keys: string[], fallback = "-") {
@@ -49,11 +49,12 @@ export default function SupervisorReview() {
   const { t, i18n } = useTranslation()
   const router = useRouter()
   const searchParams = useSearchParams()
+  const user = useAuthStore((s) => s.user)
   const { activeWorkflow, activeWorkflowId } = useWorkflowContext()
   const [record, setRecord] = useState<RecordData | null>(null)
   const [workflow, setWorkflow] = useState<WorkflowDefinition | null>(null)
   const [loading, setLoading] = useState(true)
-  const [action, setAction] = useState<ReviewAction | null>(null)
+  const [selectedTransitionId, setSelectedTransitionId] = useState<string | null>(null)
   const [reason, setReason] = useState("")
   const [submitting, setSubmitting] = useState(false)
 
@@ -75,15 +76,25 @@ export default function SupervisorReview() {
   }, [activeWorkflow, activeWorkflowId, searchParams])
 
   const timeline = useMemo(() => record ? buildTimeline(record) : [], [record])
+  const availableTransitions = useMemo(() => {
+    if (!record || !workflow) return []
+    const current = normalizeStateId(workflow, record.state)
+    const role = user?.role || "supervisor"
+    return workflow.transitions.filter((transition) => {
+      const from = normalizeStateId(workflow, transition.fromState)
+      const roles = transition.requiredRoles ?? []
+      return from === current && (roles.length === 0 || roles.includes(role) || roles.includes("supervisor"))
+    })
+  }, [record, user?.role, workflow])
 
-  const handleSubmit = async () => {
-    if (!record || !action) return
-    if ((action === "reject" || action === "changes") && !reason.trim()) return
+  const handleSubmit = async (transition: WorkflowTransition) => {
+    if (!record || !workflow) return
+    const destructive = isRejectTransition(transition)
+    if (destructive && !reason.trim()) return
 
     const now = Date.now()
-    const transition = transitionForAction(action, record, workflow)
-    const status = action === "approve" ? "approved" : action === "reject" ? "rejected" : "pending"
-    const state = transition?.toState ?? record.state ?? workflow?.states.find((candidate) => candidate.isInitial)?.id ?? "s-draft"
+    const status = statusForTransition(transition)
+    const state = normalizeStateId(workflow, transition.toState)
     const reviewFields = {
       supervisor_review_action: status,
       supervisor_review_reason: reason.trim(),
@@ -198,58 +209,55 @@ export default function SupervisorReview() {
       </Card>
 
       <div className="flex flex-wrap items-center gap-3">
-        <Button
-          variant="primary"
-          className={`${action === "approve" ? "ring-2 ring-antiseptic-green" : ""} bg-antiseptic-green hover:bg-antiseptic-green/90`}
-          onClick={() => setAction(action === "approve" ? null : "approve")}
-        >
-          <ShieldCheck size={16} />
-          {t("supervisor.approve")}
-        </Button>
-        <Button
-          variant="danger"
-          className={`${action === "reject" ? "ring-2 ring-danger-500" : ""}`}
-          onClick={() => setAction(action === "reject" ? null : "reject")}
-        >
-          <ShieldX size={16} />
-          {t("supervisor.reject")}
-        </Button>
-        <Button
-          variant="secondary"
-          className={`border-warning-500 text-warning-500 hover:bg-warning-500/5 ${action === "changes" ? "ring-2 ring-warning-500" : ""}`}
-          onClick={() => setAction(action === "changes" ? null : "changes")}
-        >
-          <AlertTriangle size={16} />
-          {t("supervisor.requestChanges")}
-        </Button>
+        {availableTransitions.length === 0 ? (
+          <p className="rounded-md border border-graph-line bg-graph-paper px-3 py-2 text-sm text-pencil">
+            {t("supervisor.noAvailableTransitions", "No review actions are available for this state.")}
+          </p>
+        ) : availableTransitions.map((transition) => {
+          const danger = isRejectTransition(transition)
+          const warning = isReturnTransition(transition)
+          return (
+            <Button
+              key={transition.id}
+              variant={danger ? "danger" : warning ? "secondary" : "primary"}
+              className={`${selectedTransitionId === transition.id ? "ring-2 ring-ink-blue" : ""} ${!danger && !warning ? "bg-antiseptic-green hover:bg-antiseptic-green/90" : ""}`}
+              onClick={() => {
+                setReason("")
+                setSelectedTransitionId(selectedTransitionId === transition.id ? null : transition.id)
+              }}
+            >
+              {danger ? <ShieldX size={16} /> : warning ? <AlertTriangle size={16} /> : <ShieldCheck size={16} />}
+              {i18n.language?.startsWith("en") ? transition.labelEn || transition.label : transition.label || transition.labelEn}
+            </Button>
+          )
+        })}
       </div>
 
-      {(action === "reject" || action === "changes") && (
-        <div className={`space-y-3 p-4 rounded-md border ${action === "reject" ? "border-danger-500/30 bg-danger-500/5" : "border-warning-500/30 bg-warning-500/5"}`}>
+      {selectedTransitionId && (() => {
+        const transition = availableTransitions.find((candidate) => candidate.id === selectedTransitionId)
+        if (!transition) return null
+        const danger = isRejectTransition(transition)
+        const warning = isReturnTransition(transition)
+        return (
+        <div className={`space-y-3 p-4 rounded-md border ${danger ? "border-danger-500/30 bg-danger-500/5" : warning ? "border-warning-500/30 bg-warning-500/5" : "border-antiseptic-green/30 bg-antiseptic-green/5"}`}>
+          {(danger || warning) && (
           <Textarea
             label={t("supervisor.rejectionReason")}
-            placeholder={action === "reject" ? t("supervisor.rejectionReasonRequired") : t("supervisor.requestChanges")}
+            placeholder={danger ? t("supervisor.rejectionReasonRequired") : t("supervisor.requestChanges")}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            error={submitting && !reason.trim() ? t("supervisor.rejectionReasonRequired") : undefined}
+            error={submitting && danger && !reason.trim() ? t("supervisor.rejectionReasonRequired") : undefined}
           />
+          )}
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" size="sm" onClick={() => { setAction(null); setReason("") }}>{t("common.cancel")}</Button>
-            <Button variant={action === "reject" ? "danger" : "secondary"} size="sm" loading={submitting} onClick={handleSubmit}>
-              {action === "reject" ? t("supervisor.confirmRejection") : t("supervisor.requestChanges")}
+            <Button variant="ghost" size="sm" onClick={() => { setSelectedTransitionId(null); setReason("") }}>{t("common.cancel")}</Button>
+            <Button variant={danger ? "danger" : warning ? "secondary" : "primary"} size="sm" loading={submitting} onClick={() => handleSubmit(transition)}>
+              {i18n.language?.startsWith("en") ? transition.labelEn || transition.label : transition.label || transition.labelEn}
             </Button>
           </div>
         </div>
-      )}
-
-      {action === "approve" && (
-        <div className="flex justify-end gap-2 p-4 rounded-md border border-antiseptic-green/30 bg-antiseptic-green/5">
-          <Button variant="ghost" size="sm" onClick={() => setAction(null)}>{t("common.cancel")}</Button>
-          <Button className="bg-antiseptic-green hover:bg-antiseptic-green/90" size="sm" loading={submitting} onClick={handleSubmit}>
-            {t("supervisor.confirmApproval")}
-          </Button>
-        </div>
-      )}
+        )
+      })()}
 
       <div>
         <h2 className="font-display text-lg text-iodine-brown mb-3">{t("supervisor.statusTimeline")}</h2>
@@ -273,17 +281,23 @@ export default function SupervisorReview() {
   )
 }
 
-function transitionForAction(action: ReviewAction, record: RecordData, workflow: WorkflowDefinition | null): WorkflowTransition | null {
-  if (!workflow) return null
-  const currentState = record.state || workflow.states.find((state) => state.isInitial)?.id || workflow.states[0]?.id
-  const candidates = workflow.transitions.filter((transition) => transition.fromState === currentState)
-  const actionHints: Record<ReviewAction, string[]> = {
-    approve: ["approve", "verify", "approved", "verified"],
-    reject: ["reject", "blocked"],
-    changes: ["submit", "return", "changes", "draft"],
-  }
-  const hints = actionHints[action]
-  return candidates.find((transition) =>
-    hints.some((hint) => `${transition.key} ${transition.label} ${transition.labelEn} ${transition.toState}`.toLowerCase().includes(hint)),
-  ) ?? candidates[0] ?? null
+function normalizeStateId(workflow: WorkflowDefinition, state?: string) {
+  if (!state) return workflow.states.find((candidate) => candidate.isInitial)?.id ?? workflow.states[0]?.id ?? "s-draft"
+  return workflow.states.find((candidate) => candidate.id === state || candidate.key === state)?.id ?? state
+}
+
+function isRejectTransition(transition: WorkflowTransition) {
+  return `${transition.key} ${transition.label} ${transition.labelEn} ${transition.toState}`.toLowerCase().includes("reject")
+}
+
+function isReturnTransition(transition: WorkflowTransition) {
+  const text = `${transition.key} ${transition.label} ${transition.labelEn} ${transition.toState}`.toLowerCase()
+  return text.includes("return") || text.includes("changes") || text.includes("draft")
+}
+
+function statusForTransition(transition: WorkflowTransition) {
+  const text = `${transition.key} ${transition.label} ${transition.labelEn} ${transition.toState}`.toLowerCase()
+  if (text.includes("reject")) return "rejected"
+  if (text.includes("approve") || text.includes("verified") || text.includes("confirm") || text.includes("close")) return "approved"
+  return "pending"
 }

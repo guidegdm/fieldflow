@@ -141,6 +141,7 @@
     "aiGenerateFields": "AI: generate fields...",
     "aiConnectionError": "Could not connect to the assistant.",
     "aiNetworkError": "Network error.",
+    "unsupportedField": "Temporarily unavailable",
     "noFields": "No fields",
     "clickPalette": "Choose a field type from the palette on the left",
     "addField": "Add field",
@@ -318,6 +319,7 @@
     "reserve": "Reserve",
     "review": "Review",
     "reviewQueue": "Review Queue",
+    "noAvailableTransitions": "No review actions are available for this state.",
     "acceptedA": "Version A accepted",
     "acceptedB": "Version B accepted",
     "resolved": "Resolved"

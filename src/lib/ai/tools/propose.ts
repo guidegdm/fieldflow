@@ -37,6 +37,8 @@ const proposedTransitionSchema = z.object({
 })
 
 const proposeChangesSchema = z.object({
+  name: z.string().min(1).max(128).optional(),
+  nameEn: z.string().min(1).max(128).optional(),
   fields: z.array(proposedFieldSchema).optional().default([]),
   states: z.array(proposedStateSchema).optional().default([]),
   transitions: z.array(proposedTransitionSchema).optional().default([]),
@@ -50,6 +52,14 @@ export const proposeChangesTool: ToolDef = {
   parameters: {
     type: "object",
     properties: {
+      name: {
+        type: "string",
+        description: "Short French workflow name",
+      },
+      nameEn: {
+        type: "string",
+        description: "Short English workflow name",
+      },
       fields: {
         type: "array",
         description: "New field definitions to add to the workflow",
@@ -124,6 +134,7 @@ export const proposeChangesTool: ToolDef = {
       data: parsed.data,
       text: [
         parsed.data.message ? `Message: ${parsed.data.message}` : "",
+        parsed.data.name ? `Workflow name: ${parsed.data.name}` : "",
         parsed.data.fields.length ? `Fields to add: ${parsed.data.fields.length}` : "",
         parsed.data.states.length ? `States to add: ${parsed.data.states.length}` : "",
         parsed.data.transitions.length ? `Transitions to add: ${parsed.data.transitions.length}` : "",

@@ -1,4 +1,4 @@
-export type OperationType = "create" | "update" | "delete" | "attach_evidence"
+export type OperationType = "create" | "update" | "delete" | "attach_evidence" | "workflow_definition"
 export type MutationStatus = "PENDING" | "SENDING" | "ACKED" | "FAILED" | "CONFLICT" | "POISON"
 
 export interface MutationEntry {

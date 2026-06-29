@@ -37,6 +37,7 @@ function demoWorkflow(orgId: string, orgKey: DemoOrgKey, expiresAt: number): Wor
       key: "household",
       label: "Menage",
       labelEn: "Household",
+      displayField: "household_name",
       fields: [
         { id: "f-1", key: "household_name", label: "Nom du menage", labelEn: "Household name", type: "text", required: true, order: 1, section: "Identification" },
         { id: "f-2", key: "head_of_household", label: "Chef de menage", labelEn: "Head of household", type: "text", required: true, order: 2, section: "Identification" },
@@ -89,6 +90,120 @@ function demoWorkflow(orgId: string, orgKey: DemoOrgKey, expiresAt: number): Wor
   }
 }
 
+function secondaryDemoWorkflows(orgId: string, orgKey: DemoOrgKey, expiresAt: number): WorkflowDefinition[] {
+  const now = nowIso()
+  const org = DEMO_ORGS[orgKey]
+  return [
+    {
+      id: "wf-community-intake",
+      orgId,
+      version: 1,
+      name: `${org.name} Community Intake`,
+      nameEn: `${org.name} Community Intake`,
+      description: "Rapid community requests, triage, and field follow-up.",
+      descriptionEn: "Rapid community requests, triage, and field follow-up.",
+      entity: {
+        id: "entity-request",
+        key: "request",
+        label: "Demande communautaire",
+        labelEn: "Community request",
+        displayField: "request_title",
+        fields: [
+          { id: "req-1", key: "request_title", label: "Titre de la demande", labelEn: "Request title", type: "text", required: true, order: 1, section: "Intake" },
+          { id: "req-2", key: "location", label: "Lieu", labelEn: "Location", type: "text", required: true, order: 2, section: "Intake" },
+          { id: "req-3", key: "severity", label: "Gravite", labelEn: "Severity", type: "number", required: true, validation: { min: 1, max: 5 }, order: 3, section: "Triage" },
+          { id: "req-4", key: "category", label: "Categorie", labelEn: "Category", type: "select", required: true, options: [{ label: "Eau", value: "water" }, { label: "Sante", value: "health" }, { label: "Protection", value: "protection" }], order: 4, section: "Triage" },
+          { id: "req-5", key: "notes", label: "Notes", labelEn: "Notes", type: "textarea", required: false, order: 5, section: "Triage" },
+        ],
+      },
+      states: [
+        { id: "s-draft", key: "draft", label: "Brouillon", labelEn: "Draft", color: "#6B7280", isInitial: true, isTerminal: false, x: 140, y: 80 },
+        { id: "s-submitted", key: "submitted", label: "Soumis", labelEn: "Submitted", color: "#2563EB", isInitial: false, isTerminal: false, x: 360, y: 80 },
+        { id: "s-prioritized", key: "prioritized", label: "Priorise", labelEn: "Prioritized", color: "#D97706", isInitial: false, isTerminal: false, x: 580, y: 80 },
+        { id: "s-closed", key: "closed", label: "Cloture", labelEn: "Closed", color: "#059669", isInitial: false, isTerminal: true, x: 800, y: 80 },
+      ],
+      transitions: [
+        { id: "req-t-1", key: "submit", label: "Soumettre", labelEn: "Submit", fromState: "s-draft", toState: "s-submitted", requiredRoles: ["field_worker"] },
+        { id: "req-t-2", key: "prioritize", label: "Prioriser", labelEn: "Prioritize", fromState: "s-submitted", toState: "s-prioritized", requiredRoles: ["supervisor"] },
+        { id: "req-t-3", key: "close", label: "Cloturer", labelEn: "Close", fromState: "s-prioritized", toState: "s-closed", requiredRoles: ["supervisor"] },
+      ],
+      roles: [
+        { id: "req-r-1", key: "field_worker", label: "Agent terrain", labelEn: "Field Agent", permissions: ["record:create", "record:read_own", "record:update_own", "sync:push", "sync:pull"] },
+        { id: "req-r-2", key: "supervisor", label: "Superviseur", labelEn: "Supervisor", permissions: ["record:read_team", "record:verify", "record:approve", "sync:pull"] },
+        { id: "req-r-3", key: "org_admin", label: "Administrateur", labelEn: "Administrator", permissions: ["workflow:publish", "admin:manage_users", "audit:view"] },
+      ],
+      offlinePolicy: {
+        maxOfflineHours: 72,
+        allowedOperations: { create: true, update: true, delete: false, evidence: false },
+        conflictStrategy: "manual",
+        manualResolutionFields: ["severity", "category"],
+        autoResolutionNumeric: "max",
+        maxAttachmentSizeMb: 5,
+        allowedAttachmentTypes: ["image/jpeg", "image/png"],
+        attachmentSyncPriority: "normal",
+      },
+      status: "published",
+      createdAt: now,
+      updatedAt: now,
+      publishedAt: now,
+      author: "demo-seed",
+      expiresAt,
+    },
+    {
+      id: "wf-stock-check",
+      orgId,
+      version: 1,
+      name: `${org.name} Stock Check`,
+      nameEn: `${org.name} Stock Check`,
+      description: "Offline stock counts with supervisor confirmation.",
+      descriptionEn: "Offline stock counts with supervisor confirmation.",
+      entity: {
+        id: "entity-stock-count",
+        key: "stock_count",
+        label: "Controle stock",
+        labelEn: "Stock count",
+        displayField: "item_name",
+        fields: [
+          { id: "stk-1", key: "item_name", label: "Article", labelEn: "Item", type: "text", required: true, order: 1, section: "Stock" },
+          { id: "stk-2", key: "location", label: "Depot", labelEn: "Warehouse", type: "text", required: true, order: 2, section: "Stock" },
+          { id: "stk-3", key: "counted_units", label: "Unites comptees", labelEn: "Counted units", type: "number", required: true, validation: { min: 0, max: 500 }, order: 3, section: "Stock" },
+          { id: "stk-4", key: "condition", label: "Etat", labelEn: "Condition", type: "select", required: true, options: [{ label: "Bon", value: "good" }, { label: "Endommage", value: "damaged" }, { label: "Perime", value: "expired" }], order: 4, section: "Stock" },
+        ],
+      },
+      states: [
+        { id: "s-draft", key: "draft", label: "Brouillon", labelEn: "Draft", color: "#6B7280", isInitial: true, isTerminal: false, x: 140, y: 80 },
+        { id: "s-submitted", key: "submitted", label: "Soumis", labelEn: "Submitted", color: "#2563EB", isInitial: false, isTerminal: false, x: 360, y: 80 },
+        { id: "s-confirmed", key: "confirmed", label: "Confirme", labelEn: "Confirmed", color: "#059669", isInitial: false, isTerminal: true, x: 580, y: 80 },
+      ],
+      transitions: [
+        { id: "stk-t-1", key: "submit", label: "Soumettre", labelEn: "Submit", fromState: "s-draft", toState: "s-submitted", requiredRoles: ["field_worker"] },
+        { id: "stk-t-2", key: "confirm", label: "Confirmer", labelEn: "Confirm", fromState: "s-submitted", toState: "s-confirmed", requiredRoles: ["supervisor"] },
+      ],
+      roles: [
+        { id: "stk-r-1", key: "field_worker", label: "Agent terrain", labelEn: "Field Agent", permissions: ["record:create", "record:read_own", "record:update_own", "sync:push", "sync:pull"] },
+        { id: "stk-r-2", key: "supervisor", label: "Superviseur", labelEn: "Supervisor", permissions: ["record:read_team", "record:verify", "sync:pull"] },
+        { id: "stk-r-3", key: "org_admin", label: "Administrateur", labelEn: "Administrator", permissions: ["workflow:publish", "admin:manage_users", "audit:view"] },
+      ],
+      offlinePolicy: {
+        maxOfflineHours: 48,
+        allowedOperations: { create: true, update: true, delete: false, evidence: false },
+        conflictStrategy: "manual",
+        manualResolutionFields: ["counted_units", "condition"],
+        autoResolutionNumeric: "max",
+        maxAttachmentSizeMb: 5,
+        allowedAttachmentTypes: ["image/jpeg", "image/png"],
+        attachmentSyncPriority: "normal",
+      },
+      status: "published",
+      createdAt: now,
+      updatedAt: now,
+      publishedAt: now,
+      author: "demo-seed",
+      expiresAt,
+    },
+  ]
+}
+
 function demoRecords(orgId: string, orgKey: DemoOrgKey, deviceId: string, expiresAt: number): RecordData[] {
   const now = Date.now()
   const prefix = orgKey.toLowerCase()
@@ -126,6 +241,49 @@ function demoRecords(orgId: string, orgKey: DemoOrgKey, deviceId: string, expire
       createdAt: now - 259200000,
       updatedAt: now - 10800000,
       syncedAt: now - 10800000,
+      createdBy: "demo",
+    },
+  ]
+}
+
+function secondaryDemoRecords(orgId: string, orgKey: DemoOrgKey, deviceId: string, expiresAt: number): RecordData[] {
+  const now = Date.now()
+  const prefix = orgKey.toLowerCase()
+  return [
+    {
+      workflowId: "wf-community-intake",
+      workflowVersion: 1,
+      entityKey: "request",
+      syncStatus: "synced",
+      deviceId,
+      version: 1,
+      orgId,
+      expiresAt,
+      id: `${prefix}-req-water-point`,
+      status: "pending",
+      state: "s-submitted",
+      fields: { request_title: "Water point repair", location: "Kanyaruchinya", severity: 4, category: "water", notes: "Pump has been offline for two days." },
+      createdAt: now - 43200000,
+      updatedAt: now - 39000000,
+      syncedAt: now - 39000000,
+      createdBy: "demo",
+    },
+    {
+      workflowId: "wf-stock-check",
+      workflowVersion: 1,
+      entityKey: "stock_count",
+      syncStatus: "synced",
+      deviceId,
+      version: 1,
+      orgId,
+      expiresAt,
+      id: `${prefix}-stock-nfi-kit`,
+      status: "pending",
+      state: "s-submitted",
+      fields: { item_name: "NFI Kit A", location: "Goma depot", counted_units: 3, condition: "good" },
+      createdAt: now - 28800000,
+      updatedAt: now - 25200000,
+      syncedAt: now - 25200000,
       createdBy: "demo",
     },
   ]
@@ -169,8 +327,15 @@ export async function seedIsolatedDemoOrg(
     const existingWorkflow = await store.getWorkflowForOrgAsync("wf-1", org.id)
     if (!existingWorkflow) {
       seeded = true
+      const deviceId = `device-a-${suffix}-${scenarioOrgKey.toLowerCase()}`
       await store.putWorkflowForOrg(demoWorkflow(org.id, scenarioOrgKey, expiresAt))
-      for (const record of demoRecords(org.id, scenarioOrgKey, `device-a-${suffix}-${scenarioOrgKey.toLowerCase()}`, expiresAt)) {
+      for (const workflow of secondaryDemoWorkflows(org.id, scenarioOrgKey, expiresAt)) {
+        await store.putWorkflowForOrg(workflow)
+      }
+      for (const record of [
+        ...demoRecords(org.id, scenarioOrgKey, deviceId, expiresAt),
+        ...secondaryDemoRecords(org.id, scenarioOrgKey, deviceId, expiresAt),
+      ]) {
         await store.putRecordForOrg(record)
       }
       await store.putInventoryItemForOrg({ id: `${scenarioOrgKey.toLowerCase()}-inv-nfi-kit`, name: "NFI Kit A", total: 3, reserved: 0, orgId: org.id, expiresAt })

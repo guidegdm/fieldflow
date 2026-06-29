@@ -141,6 +141,7 @@
     "aiGenerateFields": "IA : générer des champs...",
     "aiConnectionError": "Impossible de joindre l'assistant.",
     "aiNetworkError": "Erreur réseau.",
+    "unsupportedField": "Temporairement indisponible",
     "noFields": "Aucun champ",
     "clickPalette": "Choisissez un type de champ dans la palette à gauche",
     "addField": "Ajouter un champ",
@@ -318,6 +319,7 @@
     "reserve": "Réserver",
     "review": "Examiner",
     "reviewQueue": "File d'examen",
+    "noAvailableTransitions": "Aucune action d'examen n'est disponible pour cet état.",
     "acceptedA": "Version A acceptée",
     "acceptedB": "Version B acceptée",
     "resolved": "Résolu"

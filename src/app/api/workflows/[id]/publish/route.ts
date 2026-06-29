@@ -20,6 +20,22 @@ export async function POST(
   workflow.updatedAt = new Date().toISOString()
   workflow.publishedAt = new Date().toISOString()
   await store.putWorkflowForOrg(workflow)
+  await store.storeMutationForOrg({
+    client_id: `workflow-definition-${workflow.id}-${workflow.version}-${Date.now()}`,
+    device_id: "workflow-publisher",
+    operation: "workflow_definition",
+    resource: "workflow",
+    workflow_id: workflow.id,
+    record_id: null,
+    payload: workflow,
+    client_timestamp: Date.now(),
+    base_version: workflow.version - 1,
+    base_fields: {},
+    status: "ACKED",
+    retry_count: 0,
+    last_error: null,
+    enqueued_at: Date.now(),
+  }, user.orgId)
 
   return NextResponse.json(workflow)
 }

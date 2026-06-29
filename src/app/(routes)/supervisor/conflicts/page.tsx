@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useTranslation } from "react-i18next"
 import { AlertTriangle } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -8,17 +8,20 @@ import { Card } from "@/components/ui/card"
 import { apiGet, apiPost } from "@/lib/api/client"
 import { ConflictMerge, type ConflictField } from "@/components/conflicts/ConflictMerge"
 import type { ConflictRecord } from "@/types/sync"
+import { useAuthStore } from "@/stores/authStore"
+import { useWorkflowContext } from "@/hooks/useWorkflowContext"
 
 export default function SupervisorConflicts() {
   const { t } = useTranslation()
+  const user = useAuthStore((s) => s.user)
+  const { activeWorkflowId } = useWorkflowContext()
   const [conflictFields, setConflictFields] = useState<ConflictField[]>([])
   const [loading, setLoading] = useState(true)
   const [recordId, setRecordId] = useState<string | null>(null)
-  const loaded = useRef(false)
 
   useEffect(() => {
-    if (loaded.current) return
-    loaded.current = true
+    let cancelled = false
+    setLoading(true)
     async function load() {
       let records: ConflictRecord[] = []
       try {
@@ -30,7 +33,14 @@ export default function SupervisorConflicts() {
           records = await db.getConflicts()
         } catch { /* DB not ready */ }
       }
-      const open = records.filter(c => c.status === "OPEN")
+      let scopedRecordIds: Set<string> | null = null
+      try {
+        const { db } = await import("@/lib/db/indexeddb")
+        const localRecords = user?.orgId ? await db.getAllRecordsForOrg(user.orgId) : await db.getAllRecords()
+        scopedRecordIds = new Set(localRecords.filter((record) => !activeWorkflowId || record.workflowId === activeWorkflowId).map((record) => record.id))
+      } catch { /* DB not ready */ }
+      const open = records.filter(c => c.status === "OPEN" && (!scopedRecordIds || scopedRecordIds.has(c.record_id)))
+      if (cancelled) return
       if (open.length > 0) {
         setRecordId(open[0].record_id)
         setConflictFields(open.map(c => ({
@@ -40,11 +50,15 @@ export default function SupervisorConflicts() {
           remote: String(c.value_b ?? ""),
           autoResolved: false,
         })))
+      } else {
+        setRecordId(null)
+        setConflictFields([])
       }
       setLoading(false)
     }
     load()
-  }, [])
+    return () => { cancelled = true }
+  }, [activeWorkflowId, user?.orgId])
 
   const handleResolve = useCallback(async (resolutions: Record<string, { choice: string; value: string }>, rationale: string) => {
     await apiPost("/api/sync/conflict", {

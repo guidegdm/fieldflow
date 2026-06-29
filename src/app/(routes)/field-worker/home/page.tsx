@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useTranslation } from "react-i18next"
+import { useRouter } from "next/navigation"
 import { useSyncStore } from "@/stores/syncStore"
 import { SyncButton } from "@/components/sync/SyncButton"
 import { ChevronRight, AlertTriangle, Clock, MapPin } from "lucide-react"
@@ -9,6 +10,8 @@ import Link from "next/link"
 import type { RecordData } from "@/types/record"
 import type { ConflictRecord } from "@/types/sync"
 import { useAuthStore } from "@/stores/authStore"
+import { useWorkflowContext } from "@/hooks/useWorkflowContext"
+import { recordSubtitle, recordTitle, workflowLabel } from "@/lib/workflows/runtime"
 
 const statusDot: Record<string, string> = {
   draft: "bg-pencil",
@@ -23,8 +26,10 @@ const statusDot: Record<string, string> = {
 }
 
 export default function FieldWorkerHome() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const router = useRouter()
   const user = useAuthStore((s) => s.user)
+  const { activeWorkflow, activeWorkflowId, workflows, loading: workflowsLoading } = useWorkflowContext()
   const { pendingCount } = useSyncStore()
   const [records, setRecords] = useState<RecordData[]>([])
   const [loading, setLoading] = useState(true)
@@ -32,18 +37,24 @@ export default function FieldWorkerHome() {
 
   useEffect(() => {
     let cancelled = false
+    if (!user?.orgId || !activeWorkflowId) {
+      if (!workflowsLoading && workflows.length > 1) router.replace("/field-worker/pick-workflow")
+      setLoading(false)
+      return
+    }
     setLoading(true)
     async function load() {
       try {
         const { db } = await import("@/lib/db/indexeddb")
         let all = user?.orgId ? await db.getAllRecordsForOrg(user.orgId) : await db.getAllRecords()
+        all = all.filter((record) => record.workflowId === activeWorkflowId)
         if (all.length === 0) {
           try {
-            const response = await fetch("/api/workflows/wf-1/records", { credentials: "include" })
+            const response = await fetch(`/api/workflows/${activeWorkflowId}/records`, { credentials: "include" })
             const server = response.ok ? await response.json() : []
             if (Array.isArray(server)) {
-              all = server
-              if (user?.orgId) await db.replaceRecordsForOrg(user.orgId, server)
+              all = server.filter((record: RecordData) => record.workflowId === activeWorkflowId)
+              await Promise.all(all.map((record) => db.putRecord(record)))
             }
           } catch {
             // Keep the local empty state when the device is offline.
@@ -59,7 +70,7 @@ export default function FieldWorkerHome() {
     }
     load()
     return () => { cancelled = true }
-  }, [user?.orgId])
+  }, [activeWorkflowId, router, user?.orgId, workflows.length, workflowsLoading])
 
   const urgent = records.filter((r) => r.status === "in_conflict" || r.status === "rejected" || r.status === "blocked")
   const pending = records.filter((r) => r.syncStatus === "pending" || r.syncStatus === "local")
@@ -77,8 +88,8 @@ export default function FieldWorkerHome() {
       >
         <span className={`w-2 h-2 rounded-full shrink-0 ${statusDot[r.status] || "bg-pencil"}`} />
         <span className="flex-1 min-w-0">
-          <span className="text-sm font-medium text-ink-black truncate block">{r.fields.household_name as string}</span>
-          <span className="text-xs text-pencil">{r.fields.household_size as string} pers. · {r.fields.shelter_type as string}</span>
+          <span className="text-sm font-medium text-ink-black truncate block">{recordTitle(r, activeWorkflow)}</span>
+          <span className="text-xs text-pencil">{recordSubtitle(r, activeWorkflow, i18n.language)}</span>
         </span>
         <ChevronRight size={16} className="text-pencil shrink-0" />
       </Link>
@@ -99,7 +110,10 @@ export default function FieldWorkerHome() {
       )}
 
       <div className="flex items-center justify-between">
-        <h1 className="font-display text-2xl font-bold text-ink-black tracking-tight">{t("dashboard.fieldWorker")}</h1>
+        <div>
+          <h1 className="font-display text-2xl font-bold text-ink-black tracking-tight">{t("dashboard.fieldWorker")}</h1>
+          {activeWorkflow && <p className="mt-0.5 text-xs text-pencil">{workflowLabel(activeWorkflow, i18n.language)}</p>}
+        </div>
         <SyncButton />
       </div>
 

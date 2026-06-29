@@ -46,7 +46,9 @@
     "noData": "No data",
     "required": "Required",
     "close": "Close",
-    "or": "or"
+    "or": "or",
+    "yes": "Yes",
+    "no": "No"
   },
   "auth": {
     "login": "Login",
@@ -114,6 +116,17 @@
     "key": "Key",
     "initial": "Initial",
     "terminal": "Terminal",
+    "current": "Workflow",
+    "select": "Select workflow",
+    "none": "No published workflows",
+    "noneBody": "Ask an administrator to publish a workflow before creating records.",
+    "chooseLabel": "Workflow",
+    "chooseTitle": "What are you working on today?",
+    "chooseBody": "Choose the published workflow this device should use for new records. It stays available offline after loading.",
+    "chooseAction": "Choose workflow",
+    "search": "Search workflows",
+    "loadFailed": "Workflows could not be loaded. Reconnect and try again.",
+    "selectRequired": "Select a workflow before creating records.",
     "newDefaultName": "New workflow",
     "defaultEntity": "Record",
     "stateDraft": "Draft",

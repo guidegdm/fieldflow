@@ -32,6 +32,39 @@ export interface DemoOfflineSandbox {
   accounts: DemoOfflineAccount[]
 }
 
+export async function cacheOfflineRecordRoutes(workspaces?: DemoOfflineWorkspace[]) {
+  if (typeof window === "undefined" || !("serviceWorker" in navigator) || !workspaces?.length) return
+
+  const urls = Array.from(new Set(
+    workspaces.flatMap((workspace) =>
+      workspace.records.map((record) => new URL(`/field-worker/record/${record.id}`, window.location.origin).href),
+    ),
+  ))
+  if (!urls.length) return
+
+  const registration = await navigator.serviceWorker.ready.catch(() => null)
+  const worker = registration?.active || registration?.waiting || registration?.installing
+  if (!worker) return
+
+  await new Promise<void>((resolve) => {
+    const channel = new MessageChannel()
+    const timeout = window.setTimeout(resolve, 12000)
+    channel.port1.onmessage = () => {
+      window.clearTimeout(timeout)
+      resolve()
+    }
+    worker.postMessage(
+      {
+        type: "CACHE_URLS",
+        payload: {
+          urlsToCache: urls.map((url) => [url, { credentials: "include" }]),
+        },
+      },
+      [channel.port2],
+    )
+  })
+}
+
 async function getJson<T>(url: string): Promise<T | null> {
   const controller = new AbortController()
   const timeout = window.setTimeout(() => controller.abort(), 8000)

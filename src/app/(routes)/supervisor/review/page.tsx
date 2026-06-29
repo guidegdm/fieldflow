@@ -9,6 +9,10 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import type { RecordData } from "@/types/record"
+import type { WorkflowDefinition, WorkflowTransition } from "@/types/workflow"
+import { useWorkflowContext } from "@/hooks/useWorkflowContext"
+import { FieldRenderer } from "@/components/fields/FieldRenderer"
+import { groupFieldsBySection, recordTitle, sectionLabel } from "@/lib/workflows/runtime"
 
 type ReviewAction = "approve" | "reject" | "changes"
 type TimelineStatus = "success" | "default" | "warning" | "danger"
@@ -42,10 +46,12 @@ function buildTimeline(record: RecordData): Array<{ label: string; timestamp: nu
 }
 
 export default function SupervisorReview() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { activeWorkflow, activeWorkflowId } = useWorkflowContext()
   const [record, setRecord] = useState<RecordData | null>(null)
+  const [workflow, setWorkflow] = useState<WorkflowDefinition | null>(null)
   const [loading, setLoading] = useState(true)
   const [action, setAction] = useState<ReviewAction | null>(null)
   const [reason, setReason] = useState("")
@@ -53,7 +59,12 @@ export default function SupervisorReview() {
 
   useEffect(() => {
     const id = searchParams.get("id")
-    fetch("/api/workflows/wf-1/records", { credentials: "include" })
+    if (!activeWorkflowId) {
+      setLoading(false)
+      return
+    }
+    setWorkflow(activeWorkflow)
+    fetch(`/api/workflows/${activeWorkflowId}/records`, { credentials: "include" })
       .then((res) => res.ok ? res.json() : [])
       .then((data) => {
         const records = Array.isArray(data) ? data as RecordData[] : []
@@ -61,7 +72,7 @@ export default function SupervisorReview() {
       })
       .catch(() => setRecord(null))
       .finally(() => setLoading(false))
-  }, [searchParams])
+  }, [activeWorkflow, activeWorkflowId, searchParams])
 
   const timeline = useMemo(() => record ? buildTimeline(record) : [], [record])
 
@@ -70,8 +81,9 @@ export default function SupervisorReview() {
     if ((action === "reject" || action === "changes") && !reason.trim()) return
 
     const now = Date.now()
-    const status = action === "approve" ? "approved" : action === "reject" ? "rejected" : "changes_requested"
-    const state = action === "approve" ? "s-approved" : action === "reject" ? "s-rejected" : "s-submitted"
+    const transition = transitionForAction(action, record, workflow)
+    const status = action === "approve" ? "approved" : action === "reject" ? "rejected" : "pending"
+    const state = transition?.toState ?? record.state ?? workflow?.states.find((candidate) => candidate.isInitial)?.id ?? "s-draft"
     const reviewFields = {
       supervisor_review_action: status,
       supervisor_review_reason: reason.trim(),
@@ -149,8 +161,7 @@ export default function SupervisorReview() {
   }
 
   const head = fieldValue(record, ["head_of_household", "head_name", "household_name"], record.id)
-  const members = fieldValue(record, ["household_size", "size"])
-  const village = fieldValue(record, ["village"])
+  const sections = workflow?.entity.fields.length ? groupFieldsBySection(workflow.entity.fields) : []
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -161,7 +172,7 @@ export default function SupervisorReview() {
 
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl text-iodine-brown tracking-tight">{head}</h1>
+          <h1 className="font-display text-3xl text-iodine-brown tracking-tight">{recordTitle(record, workflow) || head}</h1>
           <p className="text-sm text-chart-gray mt-1">
             {t("dashboard.submitter")} {record.createdBy || record.operator || "-"} · {record.deviceId}
           </p>
@@ -173,17 +184,16 @@ export default function SupervisorReview() {
 
       <Card className="border-graph-line">
         <CardContent className="p-5 space-y-3">
-          {[
-            { label: t("records.headOfHousehold"), value: head },
-            { label: t("records.householdSize"), value: members },
-            { label: t("records.village"), value: village },
-          ].map((f) => (
-            <div key={f.label} className="flex items-baseline gap-4 text-sm">
-              <span className="text-chart-gray min-w-[10rem] text-right uppercase tracking-wider text-[11px]">{f.label}</span>
-              <span className="border-b border-dotted border-graph-line flex-1" />
-              <span className="text-iodine-brown font-medium">{f.value}</span>
-            </div>
-          ))}
+          {sections.length > 0 ? sections.map(({ section, fields }) => (
+            <section key={section} className="space-y-2">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-chart-gray">{sectionLabel(section)}</h2>
+              {fields.map((field) => (
+                <FieldRenderer key={field.id || field.key} field={field} value={record.fields[field.key]} readOnly language={i18n.language} />
+              ))}
+            </section>
+          )) : (
+            <div className="text-sm text-chart-gray">{head}</div>
+          )}
         </CardContent>
       </Card>
 
@@ -261,4 +271,19 @@ export default function SupervisorReview() {
       </div>
     </div>
   )
+}
+
+function transitionForAction(action: ReviewAction, record: RecordData, workflow: WorkflowDefinition | null): WorkflowTransition | null {
+  if (!workflow) return null
+  const currentState = record.state || workflow.states.find((state) => state.isInitial)?.id || workflow.states[0]?.id
+  const candidates = workflow.transitions.filter((transition) => transition.fromState === currentState)
+  const actionHints: Record<ReviewAction, string[]> = {
+    approve: ["approve", "verify", "approved", "verified"],
+    reject: ["reject", "blocked"],
+    changes: ["submit", "return", "changes", "draft"],
+  }
+  const hints = actionHints[action]
+  return candidates.find((transition) =>
+    hints.some((hint) => `${transition.key} ${transition.label} ${transition.labelEn} ${transition.toState}`.toLowerCase().includes(hint)),
+  ) ?? candidates[0] ?? null
 }

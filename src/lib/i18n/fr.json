@@ -46,7 +46,9 @@
     "noData": "Aucune donnée",
     "required": "Obligatoire",
     "close": "Fermer",
-    "or": "ou"
+    "or": "ou",
+    "yes": "Oui",
+    "no": "Non"
   },
   "auth": {
     "login": "Connexion",
@@ -114,6 +116,17 @@
     "key": "Clé",
     "initial": "Initial",
     "terminal": "Terminal",
+    "current": "Workflow",
+    "select": "Sélectionner un workflow",
+    "none": "Aucun workflow publié",
+    "noneBody": "Demandez à un administrateur de publier un workflow avant de créer des fiches.",
+    "chooseLabel": "Workflow",
+    "chooseTitle": "Sur quoi travaillez-vous aujourd'hui ?",
+    "chooseBody": "Choisissez le workflow publié que cet appareil doit utiliser pour les nouvelles fiches. Il restera disponible hors ligne après chargement.",
+    "chooseAction": "Choisir un workflow",
+    "search": "Rechercher un workflow",
+    "loadFailed": "Les workflows n'ont pas pu être chargés. Reconnectez-vous et réessayez.",
+    "selectRequired": "Sélectionnez un workflow avant de créer des fiches.",
     "newDefaultName": "Nouveau workflow",
     "defaultEntity": "Fiche",
     "stateDraft": "Brouillon",

@@ -6,6 +6,8 @@ import { ChevronRight, Search as SearchIcon } from "lucide-react"
 import Link from "next/link"
 import type { RecordData } from "@/types/record"
 import { useAuthStore } from "@/stores/authStore"
+import { useWorkflowContext } from "@/hooks/useWorkflowContext"
+import { recordSubtitle, recordTitle } from "@/lib/workflows/runtime"
 
 type FilterKey = "all" | "pending" | "verified" | "synced"
 
@@ -29,34 +31,38 @@ const statusDot: Record<string, string> = {
 }
 
 export default function SearchPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const user = useAuthStore((s) => s.user)
+  const { activeWorkflow, activeWorkflowId } = useWorkflowContext()
   const [query, setQuery] = useState("")
   const [activeFilter, setActiveFilter] = useState<FilterKey>("all")
   const [records, setRecords] = useState<RecordData[]>([])
 
   useEffect(() => {
     async function load() {
+      if (!activeWorkflowId) return
       try {
         const { db } = await import("@/lib/db/indexeddb")
-        const local = user?.orgId ? await db.getAllRecordsForOrg(user.orgId) : await db.getAllRecords()
+        const local = (user?.orgId ? await db.getAllRecordsForOrg(user.orgId) : await db.getAllRecords())
+          .filter((record) => record.workflowId === activeWorkflowId)
         if (local.length > 0) setRecords(local)
       } catch { /* IndexedDB can be unavailable */ }
 
       try {
-        const res = await fetch("/api/workflows/wf-1/records", { credentials: "include" })
+        const res = await fetch(`/api/workflows/${activeWorkflowId}/records`, { credentials: "include" })
         const server = res.ok ? await res.json() : []
         if (Array.isArray(server)) {
-          setRecords(server)
+          const scoped = server.filter((record: RecordData) => record.workflowId === activeWorkflowId)
+          setRecords(scoped)
           if (user?.orgId) {
             const { db } = await import("@/lib/db/indexeddb")
-            await db.replaceRecordsForOrg(user.orgId, server)
+            await Promise.all(scoped.map((record: RecordData) => db.putRecord(record)))
           }
         }
       } catch { /* keep local records */ }
     }
     load()
-  }, [user?.orgId])
+  }, [activeWorkflowId, user?.orgId])
 
   const filtered = useMemo(() => {
     let results = records
@@ -71,12 +77,9 @@ export default function SearchPage() {
 
     if (query.trim()) {
       const q = query.toLowerCase()
-      results = results.filter((r) => {
-        const name = (r.fields.household_name as string)?.toLowerCase() || ""
-        const village = (r.fields.village as string)?.toLowerCase() || ""
-        const head = (r.fields.head_of_household as string)?.toLowerCase() || ""
-        return name.includes(q) || village.includes(q) || head.includes(q) || r.id.includes(q)
-      })
+      results = results.filter((r) =>
+        Object.values(r.fields ?? {}).some((value) => String(value ?? "").toLowerCase().includes(q)) || r.id.includes(q),
+      )
     }
 
     return results
@@ -127,8 +130,8 @@ export default function SearchPage() {
             >
               <span className={`w-2 h-2 rounded-full shrink-0 ${statusDot[r.status] || "bg-pencil"}`} />
               <span className="flex-1 min-w-0">
-                <span className="text-sm font-medium text-ink-black truncate block">{r.fields.household_name as string}</span>
-                <span className="text-xs text-pencil">{r.fields.household_size as string} pers. · {r.fields.shelter_type as string}</span>
+                <span className="text-sm font-medium text-ink-black truncate block">{recordTitle(r, activeWorkflow)}</span>
+                <span className="text-xs text-pencil">{recordSubtitle(r, activeWorkflow, i18n.language)}</span>
               </span>
               <ChevronRight size={16} className="text-pencil shrink-0" />
             </Link>

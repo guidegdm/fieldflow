@@ -9,6 +9,9 @@ import { ArrowLeft, CheckCircle, Clock, AlertTriangle, XCircle, ShieldCheck, Git
 import type { RecordData } from "@/types/record"
 import { formatDate } from "@/lib/utils"
 import { useAuthStore } from "@/stores/authStore"
+import type { WorkflowDefinition } from "@/types/workflow"
+import { FieldRenderer } from "@/components/fields/FieldRenderer"
+import { groupFieldsBySection, recordTitle, sectionLabel } from "@/lib/workflows/runtime"
 
 const statusConfig: Record<string, { label: string; color: string; border: string; bg: string; icon: typeof AlertTriangle }> = {
   draft: { label: "Brouillon", color: "text-pencil", border: "border-pencil", bg: "bg-pencil/5", icon: Clock },
@@ -64,11 +67,12 @@ const eventColors: Record<string, string> = {
 }
 
 export default function RecordDetailPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const params = useParams()
   const router = useRouter()
   const user = useAuthStore((s) => s.user)
   const [record, setRecord] = useState<RecordData | null>(null)
+  const [workflow, setWorkflow] = useState<WorkflowDefinition | null>(null)
   const [loading, setLoading] = useState(true)
 
   const id = params.id as string
@@ -76,17 +80,21 @@ export default function RecordDetailPage() {
   useEffect(() => {
     async function load() {
       let loadedLocal = false
+      let workflowId = "wf-1"
       try {
         const { db } = await import("@/lib/db/indexeddb")
         const found = await db.getRecord(id)
         if (found && (!user?.orgId || found.orgId === user.orgId)) {
           setRecord(found)
+          workflowId = found.workflowId || workflowId
+          const workflow = await db.getWorkflow(found.workflowId)
+          if (workflow) setWorkflow(workflow)
           loadedLocal = true
           setLoading(false)
         }
       } catch { /* IndexedDB not ready */ }
       try {
-        const res = await fetch("/api/workflows/wf-1/records", { credentials: "include" })
+        const res = await fetch(`/api/workflows/${workflowId}/records`, { credentials: "include" })
         const records = res.ok ? await res.json() : []
         if (Array.isArray(records)) {
           const fresh = records.find((r: RecordData) => r.id === id) ?? null
@@ -94,6 +102,8 @@ export default function RecordDetailPage() {
             setRecord(fresh)
             const { db } = await import("@/lib/db/indexeddb")
             await db.putRecord(fresh)
+            const definition = await db.getWorkflow(fresh.workflowId)
+            if (definition) setWorkflow(definition)
           } else if (!loadedLocal) {
             setRecord(null)
           }
@@ -129,16 +139,7 @@ export default function RecordDetailPage() {
   const StatusIcon = statusCfg.icon
   const timeline = buildAuditTimeline(record)
 
-  const fields = [
-    { label: t("records.householdName"), value: record.fields.household_name as string },
-    { label: t("records.headOfHousehold"), value: record.fields.head_of_household as string },
-    { label: t("records.householdSize"), value: record.fields.household_size as string },
-    { label: t("records.shelterType"), value: record.fields.shelter_type ? t(`register.shelter_${record.fields.shelter_type as string}`) : "—" },
-    { label: t("records.village"), value: record.fields.village as string },
-    { label: t("records.gpsCoordinates"), value: record.fields.latitude || record.fields.longitude ? `${record.fields.latitude ?? "—"} / ${record.fields.longitude ?? "—"}` : "—" },
-    { label: t("records.vulnerabilityScore"), value: record.fields.vulnerability_score ? `${record.fields.vulnerability_score}/5` : "—" },
-    { label: t("records.needs"), value: Array.isArray(record.fields.needs) ? (record.fields.needs as string[]).map((n: string) => t(`register.need_${n}`)).join(", ") : "—" },
-  ]
+  const sections = workflow?.entity.fields.length ? groupFieldsBySection(workflow.entity.fields) : []
 
   return (
     <div className="py-4">
@@ -155,12 +156,20 @@ export default function RecordDetailPage() {
         <span className="text-xs font-mono text-pencil">{record.id.slice(0, 8)}</span>
       </div>
 
-      <div className="space-y-3 mb-8">
-        {fields.map((f) => (
-          <div key={f.label} className="flex items-baseline gap-2">
-            <span className="text-[11px] uppercase text-pencil font-medium min-w-[7rem] text-right shrink-0">{f.label}</span>
-            <span className="flex-1 border-b border-dotted border-grid-line min-w-0" />
-            <span className="flex-1 text-sm text-ink-black">{f.value || "—"}</span>
+      <h1 className="mb-4 font-display text-2xl font-semibold text-ink-black">{recordTitle(record, workflow)}</h1>
+
+      <div className="space-y-4 mb-8">
+        {sections.length > 0 ? sections.map(({ section, fields }) => (
+          <section key={section} className="space-y-2">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-pencil">{sectionLabel(section)}</h2>
+            {fields.map((field) => (
+              <FieldRenderer key={field.id || field.key} field={field} value={record.fields[field.key]} readOnly language={i18n.language} />
+            ))}
+          </section>
+        )) : Object.entries(record.fields ?? {}).map(([key, value]) => (
+          <div key={key} className="grid gap-1 rounded-md border border-graph-line bg-white px-3 py-2 sm:grid-cols-[12rem_1fr]">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-pencil">{key}</span>
+            <span className="text-sm text-ink-black">{String(value ?? "-")}</span>
           </div>
         ))}
       </div>

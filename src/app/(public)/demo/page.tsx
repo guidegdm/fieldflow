@@ -6,7 +6,13 @@ import { useTranslation } from "react-i18next"
 import { Building2, ChevronDown, ChevronRight, Loader2, Shield, User, Users, WifiOff } from "lucide-react"
 
 import { useAuthStore } from "@/stores/authStore"
-import { hydrateDemoWorkspaceOffline, loadOfflineDemoSandbox, persistDemoSandbox, type DemoOfflineWorkspace } from "@/lib/demo/offline-demo-cache"
+import {
+  cacheOfflineRecordRoutes,
+  hydrateDemoWorkspaceOffline,
+  loadOfflineDemoSandbox,
+  persistDemoSandbox,
+  type DemoOfflineWorkspace,
+} from "@/lib/demo/offline-demo-cache"
 import { DEMO_ORGS, DEMO_SCENARIOS, DEMO_USERS, ORG_MEMBERSHIPS, type DemoOrgKey } from "@/types/auth"
 
 const roleIcons = { field_worker: User, supervisor: Shield, org_admin: Users } as const
@@ -61,7 +67,9 @@ export default function DemoPage() {
       const data = await res.json()
       setAuthFromApi(data.user, data.org, data.orgs)
       try {
-        await hydrateDemoWorkspaceOffline(data.user, data.demo?.offlineWorkspaces as DemoOfflineWorkspace[] | undefined)
+        const offlineWorkspaces = data.demo?.offlineWorkspaces as DemoOfflineWorkspace[] | undefined
+        await hydrateDemoWorkspaceOffline(data.user, offlineWorkspaces)
+        await cacheOfflineRecordRoutes(offlineWorkspaces)
         if (data.demo?.expiresAt && data.demo?.offlineWorkspaces?.length && data.demo?.offlineAccounts?.length) {
           persistDemoSandbox({
             expiresAt: data.demo.expiresAt,
@@ -82,6 +90,7 @@ export default function DemoPage() {
       }
       setAuthFromApi(offlineAccount.user, offlineAccount.org, offlineAccount.orgs)
       await hydrateDemoWorkspaceOffline(offlineAccount.user, offlineSandbox.workspaces)
+      await cacheOfflineRecordRoutes(offlineSandbox.workspaces)
       router.push(routeForRole(offlineAccount.user.role))
     } finally {
       setLoadingKey(null)

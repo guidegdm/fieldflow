@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import type { RecordData } from "@/types/record"
+import { useWorkflowContext } from "@/hooks/useWorkflowContext"
+import { recordTitle, workflowLabel } from "@/lib/workflows/runtime"
 
 const statusConfig: Record<string, { variant: "warning" | "success" | "danger" | "info"; label: string }> = {
   pending_sync: { variant: "warning", label: "dashboard.pending" },
@@ -18,18 +20,24 @@ const statusConfig: Record<string, { variant: "warning" | "success" | "danger" |
 }
 
 export default function SupervisorDashboard() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const { activeWorkflow, activeWorkflowId } = useWorkflowContext()
   const [filter, setFilter] = useState("all")
   const [records, setRecords] = useState<RecordData[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch("/api/workflows/wf-1/records", { credentials: "include" })
+    if (!activeWorkflowId) {
+      setLoading(false)
+      return
+    }
+    setLoading(true)
+    fetch(`/api/workflows/${activeWorkflowId}/records`, { credentials: "include" })
       .then(res => res.json())
-      .then(data => setRecords(Array.isArray(data) ? data : []))
+      .then(data => setRecords(Array.isArray(data) ? data.filter((record: RecordData) => record.workflowId === activeWorkflowId) : []))
       .catch(() => setRecords([]))
       .finally(() => setLoading(false))
-  }, [])
+  }, [activeWorkflowId])
 
   const stats = [
     { label: t("dashboard.pending"), count: records.filter(r => r.syncStatus === "pending").length, icon: Clock, color: "text-warning-500", bg: "bg-warning-500/10" },
@@ -47,7 +55,8 @@ export default function SupervisorDashboard() {
   return (
     <div className="space-y-6 sm:p-6">
       <div className="mb-8 flex items-center justify-between">
-        <h1 className="font-display text-2xl font-bold text-ink-black">{t("supervisor.title", "Tableau de bord")}</h1>
+        <h1 className="font-display text-2xl font-bold text-ink-black">{t("nav.dashboard")}</h1>
+        {activeWorkflow && <p className="mt-0.5 text-xs text-pencil">{workflowLabel(activeWorkflow, i18n.language)}</p>}
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:mb-8 sm:grid-cols-4 sm:gap-4">
@@ -92,18 +101,18 @@ export default function SupervisorDashboard() {
               {filtered.map((r) => {
                 const cfg = statusConfig[r.syncStatus] || statusConfig.pending_sync
                 return (
-                  <div key={r.id} className="flex items-center justify-between px-6 py-4 hover:bg-graph-paper">
-                    <div className="flex items-center gap-4">
+                  <div key={r.id} className="flex flex-col gap-3 px-4 py-4 hover:bg-graph-paper sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                    <div className="flex min-w-0 items-start gap-3 sm:items-center sm:gap-4">
                       <span className={`h-2 w-2 rounded-full ${cfg.variant === "warning" ? "bg-warning-500" : cfg.variant === "success" ? "bg-antiseptic-green" : cfg.variant === "danger" ? "bg-danger-500" : "bg-scrub-blue"}`} />
-                      <div>
-                        <p className="text-sm font-medium text-ink-black">{String(r.fields?.household_name || r.id)}</p>
-                        <p className="text-xs text-pencil">{t("supervisor.submittedBy", "Soumis par")} {r.createdBy} · {new Date(r.updatedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</p>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-ink-black">{recordTitle(r, activeWorkflow)}</p>
+                        <p className="text-xs text-pencil">{t("dashboard.submitter")} {r.createdBy} · {new Date(r.updatedAt).toLocaleTimeString(i18n.language?.startsWith("en") ? "en-US" : "fr-FR", { hour: "2-digit", minute: "2-digit" })}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-between gap-3 pl-5 sm:justify-end sm:pl-0">
                       <Badge variant={cfg.variant}>{t(cfg.label)}</Badge>
                       <Link href={`/supervisor/review?id=${r.id}`}>
-                        <Button variant="secondary" size="sm">{t("supervisor.examine", "Examiner")}</Button>
+                        <Button variant="secondary" size="sm">{t("supervisor.review")}</Button>
                       </Link>
                     </div>
                   </div>

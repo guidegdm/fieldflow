@@ -2,6 +2,7 @@
 
 import { useAuthStore } from "@/stores/authStore"
 import { OrgSwitcher } from "@/components/layout/OrgSwitcher"
+import { WorkflowSwitcher } from "@/components/layout/WorkflowSwitcher"
 import { cn } from "@/lib/utils"
 import { usePathname, useRouter } from "next/navigation"
 import { useTranslation } from "react-i18next"
@@ -67,6 +68,12 @@ export function Drawer({ role, open, onToggle }: DrawerProps) {
       <div className="px-4 pb-3">
         <OrgSwitcher />
       </div>
+
+      {(role === "field_worker" || role === "supervisor") && (
+        <div className="px-4 pb-3">
+          <WorkflowSwitcher />
+        </div>
+      )}
 
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 pb-3">
         {items.map((item) => {

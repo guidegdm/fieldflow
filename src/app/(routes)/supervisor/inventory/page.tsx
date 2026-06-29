@@ -83,25 +83,25 @@ export default function SupervisorInventory() {
       )}
 
       {pageLoading ? (
-        <div className="grid grid-cols-2 gap-4 animate-pulse">
+        <div className="grid gap-4 animate-pulse sm:grid-cols-2">
           {[1, 2].map(i => (
             <div key={i} className="h-52 bg-graph-line rounded-lg" />
           ))}
         </div>
       ) : (
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid gap-4 sm:grid-cols-2">
         {items.map((item) => {
           const pct = item.total > 0 ? Math.round((item.available / item.total) * 100) : 0
           const isLow = item.available < 2
           return (
-            <Card key={item.itemId} className={`border-graph-line ${isLow ? "border-danger-500/30" : ""}`}>
-              <CardContent className="p-5 space-y-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
+            <Card key={item.itemId} className={`min-w-0 border-graph-line ${isLow ? "border-danger-500/30" : ""}`}>
+              <CardContent className="space-y-4 p-4 sm:p-5">
+                <div className="flex min-w-0 items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
                     <div className={`w-10 h-10 rounded-md flex items-center justify-center ${isLow ? "bg-danger-500/10" : "bg-scrub-blue/10"}`}>
                       <Package size={20} className={isLow ? "text-danger-500" : "text-scrub-blue"} />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-sm font-medium text-iodine-brown">{item.label}</p>
                       <p className="text-xs text-chart-gray">
                         {t("inventory.available")}: {item.available} / {t("inventory.total")}: {item.total}

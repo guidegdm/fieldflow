@@ -21,6 +21,7 @@ import {
   X,
 } from "lucide-react"
 import { OrgSwitcher } from "@/components/layout/OrgSwitcher"
+import { WorkflowSwitcher } from "@/components/layout/WorkflowSwitcher"
 import { useAuthStore } from "@/stores/authStore"
 import { cn } from "@/lib/utils"
 
@@ -107,6 +108,11 @@ export function MobileAccountMenu({ role }: { role: AppRole }) {
 
             <div className="border-b border-graph-line px-4 py-4">
               <OrgSwitcher />
+              {(role === "field_worker" || role === "supervisor") && (
+                <div className="mt-3">
+                  <WorkflowSwitcher compact />
+                </div>
+              )}
             </div>
 
             <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-3">

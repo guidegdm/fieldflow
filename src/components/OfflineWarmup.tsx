@@ -3,6 +3,7 @@
 import { useEffect } from "react"
 import { usePathname } from "next/navigation"
 import {
+  cacheOfflineRecordRoutes,
   hydrateDemoSandboxOffline,
   loadOfflineDemoSandbox,
   persistDemoSandbox,
@@ -87,7 +88,10 @@ async function cacheAppRoutes() {
 
 async function warmDemoSandbox() {
   const existing = loadOfflineDemoSandbox()
-  if (existing && existing.savedAt > Date.now() - 6 * 60 * 60 * 1000) return
+  if (existing && existing.savedAt > Date.now() - 6 * 60 * 60 * 1000) {
+    await cacheOfflineRecordRoutes(existing.workspaces)
+    return
+  }
 
   const response = await fetch("/api/demo/offline", {
     credentials: "include",
@@ -99,6 +103,7 @@ async function warmDemoSandbox() {
   if (!data.expiresAt || !data.offlineWorkspaces?.length || !data.offlineAccounts?.length) return
 
   await hydrateDemoSandboxOffline(data.offlineWorkspaces)
+  await cacheOfflineRecordRoutes(data.offlineWorkspaces)
   persistDemoSandbox({
     expiresAt: data.expiresAt,
     workspaces: data.offlineWorkspaces,

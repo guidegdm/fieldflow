@@ -24,6 +24,7 @@ export interface WorkflowEntity {
   key: string
   label: string
   labelEn: string
+  displayField?: string
   fields: WorkflowField[]
 }
 

@@ -9,10 +9,12 @@ import { useWorkflowListStore } from "@/stores/workflowListStore"
 import { workflowLabel } from "@/lib/workflows/runtime"
 import { cn } from "@/lib/utils"
 
+const EMPTY_WORKFLOWS = [] as const
+
 export function WorkflowSwitcher({ compact = false }: { compact?: boolean }) {
   const { t, i18n } = useTranslation()
   const orgId = useAuthStore((state) => state.user?.orgId)
-  const workflows = useWorkflowListStore((state) => orgId ? state.byOrgId[orgId] ?? [] : [])
+  const workflows = useWorkflowListStore((state) => orgId ? state.byOrgId[orgId] ?? EMPTY_WORKFLOWS : EMPTY_WORKFLOWS)
   const loading = useWorkflowListStore((state) => orgId ? state.loadingByOrgId[orgId] : false)
   const loadForOrg = useWorkflowListStore((state) => state.loadForOrg)
   const activeWorkflowId = useActiveWorkflowStore((state) => orgId ? state.byOrgId[orgId]?.workflowId ?? "" : "")

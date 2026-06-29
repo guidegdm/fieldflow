@@ -202,7 +202,7 @@ export default function RegisterPage() {
         {sections.map(({ section, fields }) => (
           <section key={section} className="rounded-lg border border-graph-line bg-white p-4 shadow-sm sm:p-5">
             <div className="mb-4 border-b border-graph-line pb-3">
-              <h2 className="font-display text-lg font-semibold tracking-tight text-ink-black">{sectionLabel(section)}</h2>
+              <h2 className="font-display text-lg font-semibold tracking-tight text-ink-black">{sectionLabel(section, i18n.language)}</h2>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               {fields.map((field) => (
@@ -221,7 +221,7 @@ export default function RegisterPage() {
         ))}
       </form>
 
-      <div className="sticky bottom-24 z-10 mt-4 rounded-lg border border-graph-line bg-white/95 px-4 py-3 shadow-sm backdrop-blur lg:bottom-4">
+      <div className="sticky bottom-24 z-10 mt-4 rounded-lg border border-graph-line bg-white/95 px-4 py-3 shadow-sm backdrop-blur lg:static lg:bottom-auto">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs leading-5 text-pencil">{t("register.saveHint")}</p>
           <Button type="submit" form="field-register-form" variant="primary" size="lg" className="w-full shrink-0 sm:w-auto" loading={saving} disabled={!user?.orgId || fields.length === 0}>

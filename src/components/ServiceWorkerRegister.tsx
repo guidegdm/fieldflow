@@ -5,6 +5,7 @@ import { useEffect } from "react"
 export function ServiceWorkerRegister() {
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return
+    if (process.env.NODE_ENV !== "production") return
 
     let refreshing = false
     let registrationRef: ServiceWorkerRegistration | null = null
@@ -19,11 +20,13 @@ export function ServiceWorkerRegister() {
 
     navigator.serviceWorker.addEventListener("controllerchange", handleControllerChange)
 
-    navigator.serviceWorker.register("/sw.js").then((registration) => {
-      registrationRef = registration
-      if (navigator.onLine) void registration.update()
-      window.addEventListener("online", handleOnline)
-    })
+    navigator.serviceWorker.register("/sw.js")
+      .then((registration) => {
+        registrationRef = registration
+        if (navigator.onLine) void registration.update().catch(() => {})
+        window.addEventListener("online", handleOnline)
+      })
+      .catch(() => {})
 
     return () => {
       navigator.serviceWorker.removeEventListener("controllerchange", handleControllerChange)

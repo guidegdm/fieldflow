@@ -42,8 +42,29 @@ export function formatFieldValue(value: unknown, field?: WorkflowField, t?: TFun
   return String(value)
 }
 
-export function optionLabel(field: WorkflowField | undefined, value: string) {
-  return field?.options?.find((option) => option.value === value)?.label
+function humanizeOptionValue(value: string) {
+  const known: Record<string, string> = {
+    tent: "Tent",
+    temporary: "Temporary shelter",
+    hosted: "Hosted",
+    food: "Food",
+    water: "Drinking water",
+    shelter: "Shelter",
+    medicine: "Medicine",
+    good: "Good",
+    damaged: "Damaged",
+    expired: "Expired",
+    health: "Health",
+    protection: "Protection",
+  }
+  return known[value] || value.replace(/[_-]+/g, " ").replace(/\b\w/g, (char) => char.toUpperCase())
+}
+
+export function optionLabel(field: WorkflowField | undefined, value: string, language?: string) {
+  const option = field?.options?.find((candidate) => candidate.value === value)
+  if (!option) return undefined
+  if (language?.startsWith("en")) return option.labelEn || humanizeOptionValue(option.value)
+  return option.label || option.labelEn || humanizeOptionValue(option.value)
 }
 
 export function recordTitle(record: RecordData, workflow?: WorkflowDefinition | null) {
@@ -76,7 +97,19 @@ export function groupFieldsBySection(fields: WorkflowField[]) {
   return Array.from(groups.entries()).map(([section, sectionFields]) => ({ section, fields: sectionFields }))
 }
 
-export function sectionLabel(section: string) {
+export function sectionLabel(section: string, language?: string) {
+  const normalized = section.trim().toLowerCase()
+  const labels: Record<string, { en: string; fr: string }> = {
+    "identification": { en: "Identification", fr: "Identification" },
+    "conditions de vie": { en: "Living conditions", fr: "Conditions de vie" },
+    "besoins": { en: "Priority needs", fr: "Besoins" },
+    "stock": { en: "Stock", fr: "Stock" },
+    "intake": { en: "Intake", fr: "Collecte" },
+    "triage": { en: "Triage", fr: "Triage" },
+    "details": { en: "Details", fr: "Details" },
+  }
+  const mapped = labels[normalized]
+  if (mapped) return language?.startsWith("en") ? mapped.en : mapped.fr
   return section
     .replace(/[_-]+/g, " ")
     .replace(/\s+/g, " ")

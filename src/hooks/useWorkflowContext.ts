@@ -6,10 +6,12 @@ import { useAuthStore } from "@/stores/authStore"
 import { useActiveWorkflowStore } from "@/stores/activeWorkflowStore"
 import { useWorkflowListStore } from "@/stores/workflowListStore"
 
+const EMPTY_WORKFLOWS = [] as const
+
 export function useWorkflowContext() {
   const searchParams = useSearchParams()
   const orgId = useAuthStore((state) => state.user?.orgId)
-  const workflows = useWorkflowListStore((state) => orgId ? state.byOrgId[orgId] ?? [] : [])
+  const workflows = useWorkflowListStore((state) => orgId ? state.byOrgId[orgId] ?? EMPTY_WORKFLOWS : EMPTY_WORKFLOWS)
   const loading = useWorkflowListStore((state) => orgId ? Boolean(state.loadingByOrgId[orgId]) : false)
   const error = useWorkflowListStore((state) => orgId ? state.errorByOrgId[orgId] ?? null : null)
   const loadForOrg = useWorkflowListStore((state) => state.loadForOrg)

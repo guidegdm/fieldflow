@@ -47,6 +47,7 @@ function demoWorkflow(orgId: string, orgKey: DemoOrgKey, expiresAt: number): Wor
         { id: "f-6", key: "gps", label: "Coordonnees GPS", labelEn: "GPS Coordinates", type: "gps", required: false, order: 6, section: "Conditions de vie" },
         { id: "f-7", key: "vulnerability_score", label: "Score de vulnerabilite", labelEn: "Vulnerability score", type: "number", required: true, validation: { min: 1, max: 5 }, order: 7, section: "Conditions de vie" },
         { id: "f-8", key: "needs", label: "Besoins prioritaires", labelEn: "Priority needs", type: "multi_select", required: true, options: [{ label: "Nourriture", value: "food" }, { label: "Eau potable", value: "water" }, { label: "Materiel d'abri", value: "shelter" }, { label: "Medicaments", value: "medicine" }], order: 8, section: "Besoins" },
+        { id: "f-9", key: "evidence_photo", label: "Photo preuve", labelEn: "Evidence photo", type: "photo", required: false, order: 9, section: "Besoins" },
       ],
     },
     states: [
@@ -324,14 +325,15 @@ export async function seedIsolatedDemoOrg(
       expiresAt,
     })
 
-    const existingWorkflow = await store.getWorkflowForOrgAsync("wf-1", org.id)
-    if (!existingWorkflow) {
+    await store.putWorkflowForOrg(demoWorkflow(org.id, scenarioOrgKey, expiresAt))
+    for (const workflow of secondaryDemoWorkflows(org.id, scenarioOrgKey, expiresAt)) {
+      await store.putWorkflowForOrg(workflow)
+    }
+
+    const existingRecords = await store.getRecordsByWorkflowForOrg("wf-1", org.id)
+    if (existingRecords.length === 0) {
       seeded = true
       const deviceId = `device-a-${suffix}-${scenarioOrgKey.toLowerCase()}`
-      await store.putWorkflowForOrg(demoWorkflow(org.id, scenarioOrgKey, expiresAt))
-      for (const workflow of secondaryDemoWorkflows(org.id, scenarioOrgKey, expiresAt)) {
-        await store.putWorkflowForOrg(workflow)
-      }
       for (const record of [
         ...demoRecords(org.id, scenarioOrgKey, deviceId, expiresAt),
         ...secondaryDemoRecords(org.id, scenarioOrgKey, deviceId, expiresAt),

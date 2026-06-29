@@ -6,6 +6,7 @@ import {
   GetCommand,
   DeleteCommand,
   ScanCommand,
+  type ScanCommandInput,
   TransactWriteCommand,
 } from "@aws-sdk/lib-dynamodb"
 import type { RecordData } from "@/types/record"
@@ -120,16 +121,13 @@ async function sendGet(pk: string, sk: string, projectionExpression?: string) {
     }
 
     try {
-      const result = await client.send(
-        new ScanCommand({
-          TableName: TABLE,
-          FilterExpression: "pk = :pk AND sk = :sk",
-          ExpressionAttributeValues: { ":pk": pk, ":sk": sk },
-          ProjectionExpression: projectionExpression,
-          Limit: 1,
-        })
-      )
-      return { Item: result.Items?.[0] }
+      const items = await scanAll({
+        FilterExpression: "pk = :pk AND sk = :sk",
+        ExpressionAttributeValues: { ":pk": pk, ":sk": sk },
+        ProjectionExpression: projectionExpression,
+        Limit: 1,
+      })
+      return { Item: items[0] }
     } catch (scanError) {
       throw scanError
     }
@@ -157,6 +155,24 @@ async function sendDelete(pk: string, sk: string) {
       })
     )
   }
+}
+
+async function scanAll(input: Omit<ScanCommandInput, "TableName">) {
+  const items: Record<string, unknown>[] = []
+  let ExclusiveStartKey = input.ExclusiveStartKey
+  do {
+    const result = await client.send(
+      new ScanCommand({
+        ...input,
+        TableName: TABLE,
+        ExclusiveStartKey,
+      })
+    )
+    items.push(...((result.Items || []) as Record<string, unknown>[]))
+    ExclusiveStartKey = result.LastEvaluatedKey
+  } while (ExclusiveStartKey && (!input.Limit || items.length < input.Limit))
+
+  return input.Limit ? items.slice(0, input.Limit) : items
 }
 
 function stripKeys<T>(item: (T & Record<string, unknown>) | undefined): T | undefined {
@@ -228,25 +244,19 @@ export const dynamoStore = {
   },
 
   async getRecordsByWorkflow(workflowId: string, orgId: string): Promise<RecordData[]> {
-    const result = await client.send(
-      new ScanCommand({
-        TableName: TABLE,
-        FilterExpression: "entityType = :type AND orgId = :orgId AND workflowId = :workflowId",
-        ExpressionAttributeValues: { ":type": "record", ":orgId": orgId, ":workflowId": workflowId },
-      })
-    )
-    return (result.Items || []).map((item) => stripKeys<RecordData>(item as RecordData & Record<string, unknown>)!)
+    const items = await scanAll({
+      FilterExpression: "entityType = :type AND orgId = :orgId AND workflowId = :workflowId",
+      ExpressionAttributeValues: { ":type": "record", ":orgId": orgId, ":workflowId": workflowId },
+    })
+    return items.map((item) => stripKeys<RecordData>(item as RecordData & Record<string, unknown>)!)
   },
 
   async listRecords(orgId: string): Promise<RecordData[]> {
-    const result = await client.send(
-      new ScanCommand({
-        TableName: TABLE,
-        FilterExpression: "entityType = :type AND orgId = :orgId",
-        ExpressionAttributeValues: { ":type": "record", ":orgId": orgId },
-      })
-    )
-    return (result.Items || []).map((item) => stripKeys<RecordData>(item as RecordData & Record<string, unknown>)!)
+    const items = await scanAll({
+      FilterExpression: "entityType = :type AND orgId = :orgId",
+      ExpressionAttributeValues: { ":type": "record", ":orgId": orgId },
+    })
+    return items.map((item) => stripKeys<RecordData>(item as RecordData & Record<string, unknown>)!)
   },
 
   async putWorkflow(workflow: WorkflowDefinition) {
@@ -266,14 +276,11 @@ export const dynamoStore = {
   },
 
   async listWorkflows(orgId: string): Promise<WorkflowDefinition[]> {
-    const result = await client.send(
-      new ScanCommand({
-        TableName: TABLE,
-        FilterExpression: "entityType = :type AND orgId = :orgId",
-        ExpressionAttributeValues: { ":type": "workflow", ":orgId": orgId },
-      })
-    )
-    return (result.Items || []).map((item) => stripKeys<WorkflowDefinition>(item as WorkflowDefinition & Record<string, unknown>)!)
+    const items = await scanAll({
+      FilterExpression: "entityType = :type AND orgId = :orgId",
+      ExpressionAttributeValues: { ":type": "workflow", ":orgId": orgId },
+    })
+    return items.map((item) => stripKeys<WorkflowDefinition>(item as WorkflowDefinition & Record<string, unknown>)!)
   },
 
   async putDevice(device: DeviceState) {
@@ -292,14 +299,11 @@ export const dynamoStore = {
   },
 
   async listDevices(orgId: string): Promise<DeviceState[]> {
-    const result = await client.send(
-      new ScanCommand({
-        TableName: TABLE,
-        FilterExpression: "entityType = :type AND orgId = :orgId",
-        ExpressionAttributeValues: { ":type": "device", ":orgId": orgId },
-      })
-    )
-    return (result.Items || []).map((item) => stripKeys<DeviceState>(item as DeviceState & Record<string, unknown>)!)
+    const items = await scanAll({
+      FilterExpression: "entityType = :type AND orgId = :orgId",
+      ExpressionAttributeValues: { ":type": "device", ":orgId": orgId },
+    })
+    return items.map((item) => stripKeys<DeviceState>(item as DeviceState & Record<string, unknown>)!)
   },
 
   async putConflict(conflict: ConflictRecord, orgId: string) {
@@ -317,15 +321,12 @@ export const dynamoStore = {
   },
 
   async listOpenConflicts(orgId: string): Promise<ConflictRecord[]> {
-    const result = await client.send(
-      new ScanCommand({
-        TableName: TABLE,
-        FilterExpression: "entityType = :type AND orgId = :orgId AND #status = :status",
-        ExpressionAttributeNames: { "#status": "status" },
-        ExpressionAttributeValues: { ":type": "conflict", ":orgId": orgId, ":status": "OPEN" },
-      })
-    )
-    return (result.Items || []).map((item) => stripKeys<ConflictRecord>(item as ConflictRecord & Record<string, unknown>)!)
+    const items = await scanAll({
+      FilterExpression: "entityType = :type AND orgId = :orgId AND #status = :status",
+      ExpressionAttributeNames: { "#status": "status" },
+      ExpressionAttributeValues: { ":type": "conflict", ":orgId": orgId, ":status": "OPEN" },
+    })
+    return items.map((item) => stripKeys<ConflictRecord>(item as ConflictRecord & Record<string, unknown>)!)
   },
 
   async putInventoryItem(item: InventoryItem) {
@@ -343,14 +344,11 @@ export const dynamoStore = {
   },
 
   async listInventoryItems(orgId: string): Promise<InventoryItem[]> {
-    const result = await client.send(
-      new ScanCommand({
-        TableName: TABLE,
-        FilterExpression: "entityType = :type AND orgId = :orgId",
-        ExpressionAttributeValues: { ":type": "inventory", ":orgId": orgId },
-      })
-    )
-    return (result.Items || []).map((item) => stripKeys<InventoryItem>(item as InventoryItem & Record<string, unknown>)!)
+    const items = await scanAll({
+      FilterExpression: "entityType = :type AND orgId = :orgId",
+      ExpressionAttributeValues: { ":type": "inventory", ":orgId": orgId },
+    })
+    return items.map((item) => stripKeys<InventoryItem>(item as InventoryItem & Record<string, unknown>)!)
   },
 
   async reserveInventory(
@@ -527,14 +525,11 @@ export const dynamoStore = {
   },
 
   async listInventoryLedger(orgId: string): Promise<InventoryLedgerEntry[]> {
-    const result = await client.send(
-      new ScanCommand({
-        TableName: TABLE,
-        FilterExpression: "entityType = :type AND orgId = :orgId",
-        ExpressionAttributeValues: { ":type": "inventory_ledger", ":orgId": orgId },
-      })
-    )
-    return (result.Items || []).map((item) => stripKeys<InventoryLedgerEntry>(item as InventoryLedgerEntry & Record<string, unknown>)!)
+    const items = await scanAll({
+      FilterExpression: "entityType = :type AND orgId = :orgId",
+      ExpressionAttributeValues: { ":type": "inventory_ledger", ":orgId": orgId },
+    })
+    return items.map((item) => stripKeys<InventoryLedgerEntry>(item as InventoryLedgerEntry & Record<string, unknown>)!)
   },
 
   async putMutation(mutation: MutationEntry, orgId: string, serverSeq: number) {
@@ -552,26 +547,20 @@ export const dynamoStore = {
   },
 
   async getServerSince(orgId: string, seq: number): Promise<MutationEntry[]> {
-    const result = await client.send(
-      new ScanCommand({
-        TableName: TABLE,
-        FilterExpression: "entityType = :type AND orgId = :orgId AND server_seq > :seq",
-        ExpressionAttributeValues: { ":type": "mutation", ":orgId": orgId, ":seq": seq },
-      })
-    )
-    return (result.Items || []).map((item) => stripKeys<MutationEntry>(item as MutationEntry & Record<string, unknown>)!)
+    const items = await scanAll({
+      FilterExpression: "entityType = :type AND orgId = :orgId AND server_seq > :seq",
+      ExpressionAttributeValues: { ":type": "mutation", ":orgId": orgId, ":seq": seq },
+    })
+    return items.map((item) => stripKeys<MutationEntry>(item as MutationEntry & Record<string, unknown>)!)
   },
 
   async getCurrentSeq(orgId: string): Promise<number> {
-    const result = await client.send(
-      new ScanCommand({
-        TableName: TABLE,
-        FilterExpression: "entityType = :type AND orgId = :orgId",
-        ExpressionAttributeValues: { ":type": "mutation", ":orgId": orgId },
-        ProjectionExpression: "server_seq",
-      })
-    )
-    return Math.max(0, ...(result.Items || []).map((item) => Number(item.server_seq || 0)))
+    const items = await scanAll({
+      FilterExpression: "entityType = :type AND orgId = :orgId",
+      ExpressionAttributeValues: { ":type": "mutation", ":orgId": orgId },
+      ProjectionExpression: "server_seq",
+    })
+    return Math.max(0, ...items.map((item) => Number(item.server_seq || 0)))
   },
 
   async putOrgItem(item: Record<string, unknown>) {
@@ -598,26 +587,20 @@ export const dynamoStore = {
   },
 
   async listUserProfiles(orgId: string) {
-    const result = await client.send(
-      new ScanCommand({
-        TableName: TABLE,
-        FilterExpression: "entityType = :type AND orgId = :orgId",
-        ExpressionAttributeValues: { ":type": "user", ":orgId": orgId },
-      })
-    )
-    return (result.Items || []).map((item) => stripKeys(item))
+    const items = await scanAll({
+      FilterExpression: "entityType = :type AND orgId = :orgId",
+      ExpressionAttributeValues: { ":type": "user", ":orgId": orgId },
+    })
+    return items.map((item) => stripKeys(item))
   },
 
   async getUserProfileByEmail(email: string) {
-    const result = await client.send(
-      new ScanCommand({
-        TableName: TABLE,
-        FilterExpression: "entityType = :type AND email = :email",
-        ExpressionAttributeValues: { ":type": "user", ":email": email },
-        Limit: 1,
-      })
-    )
-    return stripKeys((result.Items || [])[0])
+    const items = await scanAll({
+      FilterExpression: "entityType = :type AND email = :email",
+      ExpressionAttributeValues: { ":type": "user", ":email": email },
+      Limit: 1,
+    })
+    return stripKeys(items[0])
   },
 
   async putAuditEvent(orgId: string, recordId: string, event: Record<string, unknown>) {

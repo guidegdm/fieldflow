@@ -38,7 +38,7 @@ export interface WorkflowField {
   order: number
   section: string
   validation?: { min?: number; max?: number }
-  options?: { label: string; value: string }[]
+  options?: { label: string; labelEn?: string; value: string }[]
 }
 
 export type FieldDefinition = WorkflowField

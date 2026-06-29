@@ -278,7 +278,7 @@ export default function RecordDetailPage() {
       <div className="space-y-4 mb-8">
         {sections.length > 0 ? sections.map(({ section, fields }) => (
           <section key={section} className="space-y-2">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-pencil">{sectionLabel(section)}</h2>
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-pencil">{sectionLabel(section, i18n.language)}</h2>
             {fields.map((field) => (
               <FieldRenderer
                 key={field.id || field.key}

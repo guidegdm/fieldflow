@@ -1,7 +1,7 @@
 "use client"
 
 import type { WorkflowField } from "@/types/workflow"
-import { formatFieldValue, fieldLabel } from "@/lib/workflows/runtime"
+import { formatFieldValue, fieldLabel, optionLabel } from "@/lib/workflows/runtime"
 import { useTranslation } from "react-i18next"
 import { useState } from "react"
 import { Camera, Cloud, HardDrive, Loader2, TriangleAlert } from "lucide-react"
@@ -150,7 +150,7 @@ export function FieldRenderer({ field, value, onChange, error, language, readOnl
         <select {...common} value={String(value ?? "")} onChange={(event) => onChange?.(event.target.value)}>
           <option value="">-</option>
           {(field.options ?? []).map((option) => (
-            <option key={option.value} value={option.value}>{option.label}</option>
+            <option key={option.value} value={option.value}>{optionLabel(field, option.value, language) || option.label}</option>
           ))}
         </select>
       ) : fieldType === "multi-select" ? (
@@ -168,7 +168,7 @@ export function FieldRenderer({ field, value, onChange, error, language, readOnl
                   }}
                   className="h-4 w-4 accent-ink-blue"
                 />
-                <span>{option.label}</span>
+                <span>{optionLabel(field, option.value, language) || option.label}</span>
               </label>
             )
           })}

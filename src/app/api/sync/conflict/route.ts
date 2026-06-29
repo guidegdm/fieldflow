@@ -64,6 +64,7 @@ export async function POST(request: NextRequest) {
   }
 
   const now = Date.now()
+  const baseFields = { ...record.fields }
   for (const conflict of conflicts) {
     const bulk = body.resolutions?.[conflict.field]
     const resolution = bulk ? mapChoice(bulk.choice) : body.resolution
@@ -96,6 +97,7 @@ export async function POST(request: NextRequest) {
     payload: record,
     client_timestamp: now,
     base_version: Math.max(0, record.version - 1),
+    base_fields: baseFields,
     status: "ACKED",
     retry_count: 0,
     last_error: null,

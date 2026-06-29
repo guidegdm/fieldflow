@@ -18,8 +18,10 @@ const APP_ROUTES_TO_CACHE = [
   "/auth/signin",
   "/auth/signup",
   "/auth/setup",
+  "/engineering",
   "/admin/dashboard",
   "/admin/workflows",
+  "/admin/workflows/new",
   "/admin/workflows/wf-1",
   "/admin/users",
   "/admin/settings",
@@ -61,16 +63,26 @@ async function cacheAppRoutes() {
   const worker = registration?.active || registration?.waiting || registration?.installing
   if (!worker) return
 
-  const channel = new MessageChannel()
-  worker.postMessage(
-    {
-      type: "CACHE_URLS",
-      payload: {
-        urlsToCache: APP_ROUTES_TO_CACHE.map((url) => [url, { credentials: "include" }]),
+  await new Promise<void>((resolve) => {
+    const channel = new MessageChannel()
+    const timeout = globalThis.setTimeout(resolve, 10000)
+    channel.port1.onmessage = () => {
+      globalThis.clearTimeout(timeout)
+      resolve()
+    }
+    worker.postMessage(
+      {
+        type: "CACHE_URLS",
+        payload: {
+          urlsToCache: APP_ROUTES_TO_CACHE.map((url) => [
+            new URL(url, window.location.origin).href,
+            { credentials: "include" },
+          ]),
+        },
       },
-    },
-    [channel.port2],
-  )
+      [channel.port2],
+    )
+  })
 }
 
 async function warmDemoSandbox() {

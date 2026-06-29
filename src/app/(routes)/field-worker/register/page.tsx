@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { ArrowLeft, CheckCircle, ClipboardList, MapPin, ShieldCheck } from "lucide-react"
 import { generateId } from "@/lib/utils"
 import { db } from "@/lib/db/indexeddb"
+import { runBackgroundSync } from "@/lib/sync/run-background-sync"
 import type { MutationEntry } from "@/types/sync"
 import type { RecordData } from "@/types/record"
 import { useAuthStore } from "@/stores/authStore"
@@ -106,6 +107,7 @@ export default function RegisterPage() {
       payload: record,
       client_timestamp: now,
       base_version: 0,
+      base_fields: {},
       status: "PENDING",
       retry_count: 0,
       last_error: null,
@@ -117,6 +119,7 @@ export default function RegisterPage() {
       await db.putRecord(record)
       await db.enqueueMutation(mutation)
       useSyncStore.getState().setPendingCount((await db.getPendingMutations()).length)
+      void runBackgroundSync(user)
       setSaved(true)
     } catch {
       setSaveError(t("register.saveFailed"))

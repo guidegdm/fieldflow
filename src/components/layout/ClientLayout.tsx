@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import i18n, { detectLanguage, setAppLanguage } from "@/lib/i18n/i18n"
+import i18n, { detectLanguage, preloadAppLanguages, setAppLanguage } from "@/lib/i18n/i18n"
 import { I18nextProvider } from "react-i18next"
 import { Toaster } from "@/components/layout/Toaster"
 import { AppLoader } from "@/components/layout/AppLoader"
@@ -19,7 +19,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let mounted = true
-    setAppLanguage(detectLanguage()).finally(() => {
+    Promise.all([preloadAppLanguages(), setAppLanguage(detectLanguage())]).finally(() => {
       if (mounted) setLanguageReady(true)
     })
     return () => {

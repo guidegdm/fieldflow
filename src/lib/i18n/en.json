@@ -22,7 +22,8 @@
     "workflows": "Workflows",
     "users": "Users",
     "engineering": "Engineering",
-    "admin": "Admin"
+    "admin": "Admin",
+    "menu": "Menu"
   },
   "common": {
     "save": "Save",
@@ -52,6 +53,7 @@
     "logout": "Logout",
     "email": "Email address",
     "role": "Role",
+    "demoUser": "Demo user",
     "demo_accounts": "Demo accounts",
     "demo_disclaimer": "Hackathon demo — No real data"
   },

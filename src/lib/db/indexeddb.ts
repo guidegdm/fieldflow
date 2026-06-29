@@ -12,6 +12,7 @@ interface FieldFlowTypes {
 }
 
 let instance: IDBPDatabase<FieldFlowTypes> | null = null
+let instancePromise: Promise<IDBPDatabase<FieldFlowTypes>> | null = null
 
 function defaultDeviceState(): DeviceState {
   return {
@@ -29,16 +30,22 @@ function defaultDeviceState(): DeviceState {
 
 async function getDB(): Promise<IDBPDatabase<FieldFlowTypes>> {
   if (instance) return instance
-  instance = await openDB<FieldFlowTypes>("fieldflow", 1, {
-    upgrade(db) {
-      if (!db.objectStoreNames.contains("mutations")) db.createObjectStore("mutations", { keyPath: "client_id" })
-      if (!db.objectStoreNames.contains("records")) db.createObjectStore("records", { keyPath: "id" })
-      if (!db.objectStoreNames.contains("workflows")) db.createObjectStore("workflows", { keyPath: "id" })
-      if (!db.objectStoreNames.contains("device_state")) db.createObjectStore("device_state", { keyPath: "key" })
-      if (!db.objectStoreNames.contains("conflicts")) db.createObjectStore("conflicts", { keyPath: "id" })
-    },
-  })
-  return instance
+  instancePromise ??= openDB<FieldFlowTypes>("fieldflow", 1, {
+      upgrade(db) {
+        if (!db.objectStoreNames.contains("mutations")) db.createObjectStore("mutations", { keyPath: "client_id" })
+        if (!db.objectStoreNames.contains("records")) db.createObjectStore("records", { keyPath: "id" })
+        if (!db.objectStoreNames.contains("workflows")) db.createObjectStore("workflows", { keyPath: "id" })
+        if (!db.objectStoreNames.contains("device_state")) db.createObjectStore("device_state", { keyPath: "key" })
+        if (!db.objectStoreNames.contains("conflicts")) db.createObjectStore("conflicts", { keyPath: "id" })
+      },
+    }).then((db) => {
+      instance = db
+      return db
+    }).catch((error) => {
+      instancePromise = null
+      throw error
+    })
+  return instancePromise
 }
 
 export const db = {
@@ -53,7 +60,9 @@ export const db = {
     const d = await getDB()
     const all = await d.getAll("mutations")
     const now = Date.now()
-    return all.filter(m => m.status === "PENDING" || m.status === "FAILED" || (m.status === "POISON" && (m.poison_until ?? 0) <= now))
+    return all
+      .filter(m => m.status === "PENDING" || m.status === "FAILED" || (m.status === "POISON" && (m.poison_until ?? 0) <= now))
+      .sort((a, b) => a.enqueued_at - b.enqueued_at || a.client_id.localeCompare(b.client_id))
   },
 
   async updateMutationStatus(clientId: string, status: MutationStatus) {

@@ -37,10 +37,20 @@ const withPWA = withPWAInit({
       },
     },
     {
-      urlPattern: ({ request }) => request.destination === "document",
+      urlPattern: ({ request, url }) =>
+        request.mode === "navigate" ||
+        request.destination === "document" ||
+        (
+          request.method === "GET" &&
+          url.origin === self.location.origin &&
+          !url.pathname.startsWith("/api/") &&
+          !url.pathname.startsWith("/_next/") &&
+          !/\.[^/]+$/.test(url.pathname)
+        ),
       handler: "NetworkFirst",
       options: {
         cacheName: "fieldflow-pages",
+        networkTimeoutSeconds: 3,
       },
     },
     {

@@ -22,7 +22,8 @@
     "workflows": "Workflows",
     "users": "Utilisateurs",
     "engineering": "Engineering",
-    "admin": "Admin"
+    "admin": "Admin",
+    "menu": "Menu"
   },
   "common": {
     "save": "Enregistrer",
@@ -52,6 +53,7 @@
     "logout": "Déconnexion",
     "email": "Adresse email",
     "role": "Rôle",
+    "demoUser": "Utilisateur démo",
     "demo_accounts": "Comptes de démonstration",
     "demo_disclaimer": "Démo hackathon — Aucune donnée réelle"
   },

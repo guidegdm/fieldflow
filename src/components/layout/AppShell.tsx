@@ -6,6 +6,7 @@ import { ConnectivityBar } from "@/components/layout/ConnectivityBar"
 import { TabBar } from "@/components/layout/TabBar"
 import { Drawer } from "@/components/layout/Drawer"
 import { LanguageToggle } from "@/components/layout/LanguageToggle"
+import { MobileAccountMenu } from "@/components/layout/MobileAccountMenu"
 import { cn } from "@/lib/utils"
 
 interface AppShellProps {
@@ -83,6 +84,7 @@ export function AppShell({ children, role }: AppShellProps) {
     <div className="min-h-screen bg-white">
       <ConnectivityBar />
       {isDesktop ? <Drawer role={role} open onToggle={() => {}} /> : <TabBar role={role} />}
+      {!isDesktop && <MobileAccountMenu role={role} />}
       <main className={cn("min-h-[calc(100vh-28px)] pb-24 lg:pb-0", isDesktop && "lg:pl-64")}>
         <div className="fixed right-3 top-9 z-30 sm:right-4 lg:right-6">
           <LanguageToggle />

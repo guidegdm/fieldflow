@@ -39,14 +39,14 @@ function asRecord(value: unknown): Record<string, unknown> {
 function buildFieldStrategy(
   strategy: string, field: string, fieldType: string,
   localValue: unknown, serverValue: unknown, resolvedValue: unknown,
-  operationServerTs: number, recordServerTs: number,
+  operationTs: number, recordServerTs: number,
 ): string {
   switch (strategy) {
     case "last_write_wins":
-      if (operationServerTs >= recordServerTs) {
-        return `Auto-resolved via last_write_wins: operation server timestamp ${new Date(operationServerTs).toISOString()} ≥ record timestamp ${new Date(recordServerTs).toISOString()}`
+      if (operationTs >= recordServerTs) {
+        return `Auto-resolved via last_write_wins: operation timestamp ${new Date(operationTs).toISOString()} >= record timestamp ${new Date(recordServerTs).toISOString()}`
       }
-      return `Auto-resolved via last_write_wins: record timestamp ${new Date(recordServerTs).toISOString()} > operation server timestamp ${new Date(operationServerTs).toISOString()}`
+      return `Auto-resolved via last_write_wins: record timestamp ${new Date(recordServerTs).toISOString()} > operation timestamp ${new Date(operationTs).toISOString()}`
     case "server_authoritative":
       return "Server authoritative field — client value discarded in favour of server value"
     case "manual":
@@ -112,14 +112,16 @@ export async function POST(request: NextRequest) {
       if (op.operation === "create") {
         const payloadObject = asRecord(op.payload)
         const payload = asRecord(payloadObject.fields ?? op.payload)
+        const payloadStatus = typeof payloadObject.status === "string" ? payloadObject.status : "pending"
+        const payloadState = typeof payloadObject.state === "string" ? payloadObject.state : "draft"
         const record: RecordData = {
           id: op.record_id || crypto.randomUUID(),
           workflowId: op.workflow_id,
           workflowVersion: workflow.version,
           entityKey: workflow.entity.key,
-          status: "pending_sync",
-          syncStatus: "pending",
-          state: "draft",
+          status: payloadStatus as RecordData["status"],
+          syncStatus: "synced",
+          state: payloadState,
           fields: payload as Record<string, unknown>,
           createdAt: operationServerTs,
           updatedAt: operationServerTs,
@@ -200,15 +202,19 @@ export async function POST(request: NextRequest) {
               strategy = "server_authoritative"
               resolvedValue = serverValue
               autoResolved = true
+            } else if (offlinePolicy?.conflictStrategy === "manual") {
+              strategy = "manual"
+              resolvedValue = serverValue
+              autoResolved = false
             } else {
               strategy = "last_write_wins"
-              resolvedValue = operationServerTs >= existing.updatedAt ? localValue : serverValue
+              resolvedValue = op.client_timestamp >= existing.updatedAt ? localValue : serverValue
               autoResolved = true
             }
 
             const field_strategy = buildFieldStrategy(
               strategy, field, fieldType, localValue, serverValue,
-              resolvedValue, operationServerTs, existing.updatedAt,
+              resolvedValue, strategy === "last_write_wins" ? op.client_timestamp : operationServerTs, existing.updatedAt,
             )
 
             if (autoResolved) mergedFields[field] = resolvedValue

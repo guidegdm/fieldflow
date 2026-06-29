@@ -29,10 +29,15 @@ if (!i18next.isInitialized) {
     lng: "fr",
     fallbackLng: "fr",
     supportedLngs: ["fr", "en"],
+    preload: ["fr", "en"],
     cleanCode: true,
     interpolation: { escapeValue: false },
     react: { useSuspense: false },
   })
+}
+
+export async function preloadAppLanguages() {
+  await i18next.loadLanguages(["fr", "en"])
 }
 
 export async function setAppLanguage(language: AppLanguage) {

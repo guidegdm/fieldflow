@@ -2,15 +2,10 @@ import { useEffect } from "react"
 import { useSyncStore } from "@/stores/syncStore"
 import { useAuthStore } from "@/stores/authStore"
 import { getCurrentMode, simulateNetwork, type NetworkMode } from "@/lib/network-simulator"
-import { db } from "@/lib/db/indexeddb"
-import { fullSync } from "@/lib/sync/sync-client"
+import { runBackgroundSync } from "@/lib/sync/run-background-sync"
 
 export function useNetworkStatus() {
   const setOnline = useSyncStore((s) => s.setOnline)
-  const setSyncing = useSyncStore((s) => s.setSyncing)
-  const setPendingCount = useSyncStore((s) => s.setPendingCount)
-  const setLastSync = useSyncStore((s) => s.setLastSync)
-  const setConflicts = useSyncStore((s) => s.setConflicts)
   const user = useAuthStore((s) => s.user)
 
   useEffect(() => {
@@ -19,30 +14,9 @@ export function useNetworkStatus() {
       if (!user) return
       if (syncInFlight || getCurrentMode() === "offline" || !navigator.onLine) return
       syncInFlight = true
-      setSyncing(true)
       try {
-        const deviceState = await db.getDeviceState()
-        if (!deviceState.device_id && user.deviceId) {
-          await db.updateDeviceState({
-            device_id: user.deviceId,
-            user_id: user.id,
-            orgId: user.orgId,
-            workflow_id: deviceState.workflow_id || "wf-1",
-            workflow_version: deviceState.workflow_version || 1,
-            version: deviceState.version || 1,
-          })
-        }
-        const pending = await db.getPendingMutations()
-        setPendingCount(pending.length)
-        const result = await fullSync()
-        const conflicts = await db.getConflicts()
-        setConflicts(conflicts.filter((conflict) => conflict.status === "OPEN"))
-        setLastSync(Date.now())
-        setPendingCount(Math.max(0, pending.length - result.acked.length))
-      } catch {
-        setPendingCount((await db.getPendingMutations()).length)
+        await runBackgroundSync(user)
       } finally {
-        setSyncing(false)
         syncInFlight = false
       }
     }
@@ -93,5 +67,5 @@ export function useNetworkStatus() {
       }
       window.clearInterval(interval)
     }
-  }, [setConflicts, setLastSync, setOnline, setPendingCount, setSyncing, user])
+  }, [setOnline, user])
 }

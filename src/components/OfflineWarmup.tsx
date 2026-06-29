@@ -4,12 +4,16 @@ import { useEffect } from "react"
 import { usePathname } from "next/navigation"
 import {
   cacheOfflineRecordRoutes,
+  hydrateDemoWorkspaceOffline,
   hydrateDemoSandboxOffline,
   loadOfflineDemoSandbox,
   persistDemoSandbox,
   type DemoOfflineWorkspace,
   type DemoOfflineAccount,
 } from "@/lib/demo/offline-demo-cache"
+import { db } from "@/lib/db/indexeddb"
+import { useAuthStore } from "@/stores/authStore"
+import type { DemoUser } from "@/types/auth"
 
 const WARMUP_STORAGE_KEY = "fieldflow-offline-warmup-v1"
 
@@ -101,6 +105,77 @@ async function cacheAppRoutes() {
   })
 }
 
+async function cacheUrls(urls: string[]) {
+  const unique = Array.from(new Set(urls.filter(Boolean)))
+  if (!unique.length) return
+
+  if ("caches" in window) {
+    const cache = await caches.open("fieldflow-pages")
+    await Promise.all(unique.map(async (url) => {
+      try {
+        const request = new Request(new URL(url, window.location.origin).href, {
+          credentials: "include",
+          cache: "reload",
+        })
+        const response = await fetch(request)
+        if (response.ok) await cache.put(request, response.clone())
+      } catch {}
+    }))
+  }
+
+  if (!("serviceWorker" in navigator)) return
+  const registration = await navigator.serviceWorker.ready.catch(() => null)
+  const worker = registration?.active || registration?.waiting || registration?.installing
+  if (!worker) return
+
+  await new Promise<void>((resolve) => {
+    const channel = new MessageChannel()
+    const timeout = globalThis.setTimeout(resolve, 12000)
+    channel.port1.onmessage = () => {
+      globalThis.clearTimeout(timeout)
+      resolve()
+    }
+    worker.postMessage(
+      {
+        type: "CACHE_URLS",
+        payload: {
+          urlsToCache: unique.map((url) => [
+            new URL(url, window.location.origin).href,
+            { credentials: "include" },
+          ]),
+        },
+      },
+      [channel.port2],
+    )
+  })
+}
+
+async function cacheCurrentWorkspaceRoutes(user?: DemoUser | null) {
+  if (!user?.orgId) return
+
+  const [workflows, records] = await Promise.all([
+    db.getAllWorkflowsForOrg(user.orgId).catch(() => []),
+    db.getAllRecordsForOrg(user.orgId).catch(() => []),
+  ])
+
+  await cacheUrls([
+    ...APP_ROUTES_TO_CACHE,
+    ...workflows.flatMap((workflow) => [
+      `/admin/workflows/${workflow.id}`,
+      `/api/workflows/${workflow.id}/definition`,
+      `/api/workflows/${workflow.id}/records`,
+    ]),
+    ...records.map((record) => `/field-worker/record/${record.id}`),
+    ...records.map((record) => `/supervisor/review?id=${record.id}`),
+  ])
+}
+
+async function warmCurrentUserWorkspace(user?: DemoUser | null) {
+  if (!user?.orgId) return
+  await hydrateDemoWorkspaceOffline(user).catch(() => {})
+  await cacheCurrentWorkspaceRoutes(user)
+}
+
 async function warmDemoSandbox() {
   const existing = loadOfflineDemoSandbox()
   if (existing && existing.savedAt > Date.now() - 6 * 60 * 60 * 1000) {
@@ -148,12 +223,14 @@ async function warmDemoSandbox() {
 
 export function OfflineWarmup() {
   const pathname = usePathname()
+  const user = useAuthStore((state) => state.user)
 
   useEffect(() => {
     if (!navigator.onLine) return
 
     let cancelled = false
     void cacheAppRoutes()
+    void warmCurrentUserWorkspace(user)
     const connection = "connection" in navigator
       ? (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection
       : undefined
@@ -175,7 +252,7 @@ export function OfflineWarmup() {
 
     const cancelIdle = runWhenIdle(() => {
       if (cancelled) return
-      warmDemoSandbox()
+      Promise.all([warmDemoSandbox(), warmCurrentUserWorkspace(user)])
         .then(() => {
           try {
             window.localStorage.setItem(WARMUP_STORAGE_KEY, String(Date.now()))
@@ -188,7 +265,7 @@ export function OfflineWarmup() {
       cancelled = true
       cancelIdle()
     }
-  }, [pathname])
+  }, [pathname, user?.orgId, user?.id])
 
   return null
 }

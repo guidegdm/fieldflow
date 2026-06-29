@@ -137,14 +137,20 @@ export const useWorkflowStore = create<WorkflowStateStore>()((set, get) => ({
   publish: async () => {
     const w = get().workflow
     if (!w) return
-    await fetch(`/api/workflows/${w.id}/publish`, { method: "POST", credentials: "include" })
-    set({
-      workflow: {
-        ...w,
-        status: "published",
-        publishedAt: new Date().toISOString(),
-        version: w.version + 1,
-      },
-    })
+    try {
+      await fetch(`/api/workflows/${w.id}/publish`, { method: "POST", credentials: "include" })
+    } catch {}
+    const workflow = {
+      ...w,
+      status: "published" as const,
+      publishedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      version: w.version + 1,
+    }
+    set({ workflow })
+    try {
+      const { db } = await import("@/lib/db/indexeddb")
+      await db.saveWorkflow(workflow)
+    } catch {}
   },
 }))

@@ -37,7 +37,7 @@ class Store {
   private seq = 0
 
   getRecord(id: string) { return this.records.get(id) ?? Array.from(this.records.values()).find((record) => record.id === id) }
-  putRecord(r: RecordData) { this.records.set(scopedKey(r.orgId, r.id), r); if (DYNAMODB_ENABLED) getDynamo().then(d => d?.putRecord(r).catch(()=>{})) }
+  putRecord(r: RecordData) { this.records.set(scopedKey(r.orgId, r.id), r) }
   async getRecordForOrg(id: string, orgId: string) {
     if (DYNAMODB_ENABLED) return (await getDynamo())?.getRecord(id, orgId)
     const record = this.records.get(scopedKey(orgId, id))
@@ -66,7 +66,7 @@ class Store {
     return this.getRecordsByWorkflow(wfId, orgId)
   }
 
-  putWorkflow(w: WorkflowDefinition) { this.workflows.set(scopedKey(w.orgId, w.id), w); if (DYNAMODB_ENABLED) getDynamo().then(d => d?.putWorkflow(w).catch(()=>{})) }
+  putWorkflow(w: WorkflowDefinition) { this.workflows.set(scopedKey(w.orgId, w.id), w) }
   getWorkflow(id: string) { return this.workflows.get(id) ?? Array.from(this.workflows.values()).find((workflow) => workflow.id === id) }
   getWorkflowForOrg(id: string, orgId: string) {
     const workflow = this.workflows.get(scopedKey(orgId, id))

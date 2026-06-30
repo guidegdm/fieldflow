@@ -1,9 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server"
 
-const SESSION_SECRET = process.env.SESSION_SECRET
-  || process.env.COGNITO_CLIENT_ID
-  || process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID
-  || "7r60o7fnej4vitoksrp6e93n9g"
+const DEV_SESSION_SECRET = process.env.NODE_ENV === "production" ? "" : "fieldflow-local-dev-session-secret"
+
+function getSessionSecret(): string {
+  const secret = process.env.SESSION_SECRET || DEV_SESSION_SECRET
+  if (!secret) throw new Error("SESSION_SECRET is required in production")
+  return secret
+}
 
 function decodeBase64Url(value: string): string {
   const base64 = value.replace(/-/g, "+").replace(/_/g, "/")
@@ -21,7 +24,7 @@ function encodeBase64Url(bytes: ArrayBuffer): string {
 async function sign(payload: string): Promise<string> {
   const key = await crypto.subtle.importKey(
     "raw",
-    new TextEncoder().encode(SESSION_SECRET),
+    new TextEncoder().encode(getSessionSecret()),
     { name: "HMAC", hash: "SHA-256" },
     false,
     ["sign"],

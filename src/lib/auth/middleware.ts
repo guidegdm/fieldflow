@@ -5,11 +5,17 @@ const COGNITO_POOL_ID = process.env.COGNITO_POOL_ID || process.env.NEXT_PUBLIC_C
 const COGNITO_CLIENT_ID = process.env.COGNITO_CLIENT_ID || process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID || "7r60o7fnej4vitoksrp6e93n9g"
 const COGNITO_REGION = COGNITO_POOL_ID.split("_")[0] || "us-east-1"
 const COGNITO_ISSUER = `https://cognito-idp.${COGNITO_REGION}.amazonaws.com/${COGNITO_POOL_ID}`
-const SESSION_SECRET = process.env.SESSION_SECRET || process.env.COGNITO_CLIENT_ID || COGNITO_CLIENT_ID
 const DEMO_INSTALL_COOKIE = "ff_demo_install"
 const PENDING_SETUP_COOKIE = "ff_pending_setup"
 const DEMO_INSTALL_MAX_AGE = 7 * 24 * 60 * 60
 const PENDING_SETUP_MAX_AGE = 30 * 60
+const DEV_SESSION_SECRET = process.env.NODE_ENV === "production" ? "" : "fieldflow-local-dev-session-secret"
+
+function getSessionSecret(): string {
+  const secret = process.env.SESSION_SECRET || DEV_SESSION_SECRET
+  if (!secret) throw new Error("SESSION_SECRET is required in production")
+  return secret
+}
 
 let cachedKeys: Array<{ kid: string; n: string; e: string; kty: string }> = []
 let keysLastFetched = 0
@@ -84,15 +90,14 @@ export async function verifyCognitoJWT(token: string, context?: Partial<AuthUser
     if (payload.token_use === "id" && payload.aud !== COGNITO_CLIENT_ID) return null
     if (payload.token_use === "access" && payload.client_id !== COGNITO_CLIENT_ID) return null
 
-    if (header.alg === "RS256" && header.kid) {
-      const keys = await getCognitoPublicKeys()
-      const key = keys.find((k) => k.kid === header.kid)
-      if (key) {
-        const signingInput = `${parts[0]}.${parts[1]}`
-        const valid = await verifyRS256Signature(signingInput, parts[2], key)
-        if (!valid && keys.length > 0) return null
-      }
-    }
+    if (header.alg !== "RS256" || typeof header.kid !== "string" || !header.kid) return null
+    const keys = await getCognitoPublicKeys()
+    if (keys.length === 0) return null
+    const key = keys.find((k) => k.kid === header.kid)
+    if (!key) return null
+    const signingInput = `${parts[0]}.${parts[1]}`
+    const valid = await verifyRS256Signature(signingInput, parts[2], key)
+    if (!valid) return null
 
     const tokenOrgId = payload["custom:orgId"] as string | undefined
     const contextOrgAllowed = !!context?.orgId && (
@@ -127,7 +132,7 @@ function decodeBase64Url(value: string): string {
 }
 
 function signSessionPayload(payload: string): string {
-  return createHmac("sha256", SESSION_SECRET).update(payload).digest("base64url")
+  return createHmac("sha256", getSessionSecret()).update(payload).digest("base64url")
 }
 
 export function createSessionToken(user: AuthUser, maxAgeSeconds = 86400): string {

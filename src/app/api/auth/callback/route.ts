@@ -16,16 +16,6 @@ function callbackUrl(requestUrl: URL) {
   return `${requestUrl.origin}/api/auth/callback`
 }
 
-function decodeJwtPayload(token: string): Record<string, unknown> | null {
-  try {
-    const payload = token.split(".")[1]
-    if (!payload) return null
-    return JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as Record<string, unknown>
-  } catch {
-    return null
-  }
-}
-
 function dashboardForRole(role: string) {
   if (role === "field_worker") return "/field-worker/home"
   if (role === "supervisor") return "/supervisor/dashboard"
@@ -72,23 +62,25 @@ export async function GET(request: Request) {
   }
 
   let authUser = await verifyCognitoJWT(tokens.id_token)
-  const payload = decodeJwtPayload(tokens.id_token)
-
-  if (authUser) {
-    authUser = await resolveWorkspaceMembership(authUser)
+  if (!authUser) {
+    const redirectUrl = new URL("/auth/signin", url.origin)
+    redirectUrl.searchParams.set("error", "invalid_token")
+    return NextResponse.redirect(redirectUrl)
   }
 
-  if ((!authUser || !authUser.orgId) && payload) {
-    const email = String(payload.email || "")
-    const name = String(payload.name || email)
-    const username = String(payload["cognito:username"] || payload.sub || email)
+  authUser = await resolveWorkspaceMembership(authUser)
+
+  if (!authUser.orgId) {
+    const email = authUser.email
+    const name = authUser.name || email
+    const username = authUser.sub || email
 
     if (email) {
       const store = getStore()
       const profiles = await store.listUserProfilesByEmailAsync(email)
       if (profiles.length > 0) {
         authUser = await resolveWorkspaceMembership({
-          sub: String(payload.sub || email),
+          sub: authUser.sub,
           email,
           name,
           role: "field_worker",
@@ -98,7 +90,7 @@ export async function GET(request: Request) {
         })
       } else {
         const setupToken = createPendingSetupToken({
-          sub: String(payload.sub || email),
+          sub: authUser.sub || email,
           email,
           name,
           username,
@@ -112,9 +104,9 @@ export async function GET(request: Request) {
     }
   }
 
-  if (!authUser) {
+  if (!authUser.orgId) {
     const redirectUrl = new URL("/auth/signin", url.origin)
-    redirectUrl.searchParams.set("error", "invalid_token")
+    redirectUrl.searchParams.set("error", "workspace_required")
     return NextResponse.redirect(redirectUrl)
   }
 

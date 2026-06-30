@@ -8,7 +8,7 @@ This task plan ranks work by dependency. Items earlier in the list unblock or re
 
 ### T01 - Make auth token verification fail closed
 
-Status: In progress
+Status: Done on `audit` - fail-closed JWT verification, verified Google callback setup flow, and production session-secret requirement are patched. Vercel production and preview now have `SESSION_SECRET`.
 
 Why first: every API route depends on `getAuthUser()` being trustworthy.
 
@@ -315,4 +315,3 @@ Primary files:
 - [ ] T18: Standardize production table schema.
 - [ ] T19: Add queryable access paths.
 - [ ] T20: Stamp demo expiry on all demo-scoped writes.
-

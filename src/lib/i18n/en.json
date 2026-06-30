@@ -484,6 +484,7 @@
       "email": "Email code",
       "sms": "SMS code",
       "authenticator": "Authenticator code",
+      "newPassword": "Choose a new password",
       "verifying": "Verifying...",
       "verify": "Verify",
       "back": "Back"

@@ -10,9 +10,10 @@ const REGION = process.env.AWS_REGION || "us-east-1"
 
 const otpSchema = z.object({
   email: z.string().min(1),
-  code: z.string().min(4).max(12),
+  code: z.string().min(4).max(12).optional(),
+  newPassword: z.string().min(8).max(128).optional(),
   session: z.string().min(1),
-  challengeName: z.enum(["EMAIL_OTP", "SMS_MFA", "SOFTWARE_TOKEN_MFA"]),
+  challengeName: z.enum(["EMAIL_OTP", "SMS_MFA", "SOFTWARE_TOKEN_MFA", "NEW_PASSWORD_REQUIRED"]),
 })
 
 function getCognitoClient() {
@@ -22,6 +23,7 @@ function getCognitoClient() {
 function codeResponseKey(challengeName: z.infer<typeof otpSchema>["challengeName"]) {
   if (challengeName === "EMAIL_OTP") return "EMAIL_OTP_CODE"
   if (challengeName === "SMS_MFA") return "SMS_MFA_CODE"
+  if (challengeName === "NEW_PASSWORD_REQUIRED") return "NEW_PASSWORD"
   return "SOFTWARE_TOKEN_MFA_CODE"
 }
 
@@ -37,7 +39,9 @@ export async function POST(request: NextRequest) {
   const parsed = otpSchema.safeParse(await request.json())
   if (!parsed.success) return NextResponse.json({ error: "Requête invalide" }, { status: 400 })
 
-  const { email, code, session, challengeName } = parsed.data
+  const { email, code, newPassword, session, challengeName } = parsed.data
+  const challengeValue = challengeName === "NEW_PASSWORD_REQUIRED" ? newPassword : code
+  if (!challengeValue) return NextResponse.json({ error: "Code invalide" }, { status: 400 })
 
   try {
     const result = await getCognitoClient().send(new RespondToAuthChallengeCommand({
@@ -46,7 +50,7 @@ export async function POST(request: NextRequest) {
       Session: session,
       ChallengeResponses: {
         USERNAME: email,
-        [codeResponseKey(challengeName)]: code,
+        [codeResponseKey(challengeName)]: challengeValue,
       },
     }))
 

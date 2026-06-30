@@ -11,10 +11,15 @@ type BaseUser = {
 }
 
 type MembershipProfile = {
+  userId?: unknown
+  email?: unknown
   orgId?: unknown
   role?: unknown
   name?: unknown
   active?: unknown
+  invited?: unknown
+  inviteStatus?: unknown
+  inviteExpiresAt?: unknown
   createdAt?: unknown
 }
 
@@ -26,6 +31,30 @@ export async function resolveWorkspaceMembership<T extends BaseUser>(user: T): P
   if (!user.email) return user
 
   const store = getStore()
+  const allProfiles = (await store.listUserProfilesByEmailAsync(user.email) as MembershipProfile[])
+    .filter((profile) => typeof profile.orgId === "string" && profile.orgId)
+    .sort((a, b) => profileTimestamp(b) - profileTimestamp(a))
+
+  const now = Date.now()
+  const pending = allProfiles.filter((profile) => (
+    profile.active === false
+    && profile.invited === true
+    && profile.inviteStatus === "pending"
+    && (typeof profile.inviteExpiresAt !== "number" || profile.inviteExpiresAt > now)
+  ))
+
+  for (const profile of pending) {
+    await store.putUserProfileAsync({
+      ...profile,
+      userId: typeof profile.userId === "string" ? profile.userId : user.email,
+      email: typeof profile.email === "string" ? profile.email : user.email,
+      active: true,
+      inviteStatus: "accepted",
+      acceptedAt: now,
+      authSubject: user.sub,
+    } as Record<string, unknown>)
+  }
+
   const profiles = (await store.listUserProfilesByEmailAsync(user.email) as MembershipProfile[])
     .filter((profile) => typeof profile.orgId === "string" && profile.orgId)
     .filter((profile) => profile.active !== false)

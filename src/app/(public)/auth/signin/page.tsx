@@ -16,12 +16,12 @@ const signInSchema = z.object({
 })
 
 const otpSchema = z.object({
-  code: z.string().min(4).max(12),
+  code: z.string().min(4).max(128),
 })
 
 type SignInValues = z.infer<typeof signInSchema>
 type OtpValues = z.infer<typeof otpSchema>
-type AuthChallenge = { challengeName: "EMAIL_OTP" | "SMS_MFA" | "SOFTWARE_TOKEN_MFA"; session: string; email: string } | null
+type AuthChallenge = { challengeName: "EMAIL_OTP" | "SMS_MFA" | "SOFTWARE_TOKEN_MFA" | "NEW_PASSWORD_REQUIRED"; session: string; email: string } | null
 
 function routeForRole(role: string) {
   if (role === "field_worker") return "/field-worker/home"
@@ -81,7 +81,7 @@ export default function SignInPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ ...challenge, code }),
+        body: JSON.stringify(challenge.challengeName === "NEW_PASSWORD_REQUIRED" ? { ...challenge, newPassword: code } : { ...challenge, code }),
       })
 
       if (!res.ok) {
@@ -183,12 +183,13 @@ export default function SignInPage() {
             <form className="mt-6 space-y-4" onSubmit={handleOtpSubmit(onOtpSubmit)}>
               <div>
                 <label htmlFor="code" className="block text-sm font-medium text-soil mb-1">
-                  {challenge.challengeName === "EMAIL_OTP" ? t("signin.otp.email") : challenge.challengeName === "SMS_MFA" ? t("signin.otp.sms") : t("signin.otp.authenticator")}
+                  {challenge.challengeName === "NEW_PASSWORD_REQUIRED" ? t("signin.otp.newPassword") : challenge.challengeName === "EMAIL_OTP" ? t("signin.otp.email") : challenge.challengeName === "SMS_MFA" ? t("signin.otp.sms") : t("signin.otp.authenticator")}
                 </label>
                 <input
                   id="code"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
+                  type={challenge.challengeName === "NEW_PASSWORD_REQUIRED" ? "password" : "text"}
+                  inputMode={challenge.challengeName === "NEW_PASSWORD_REQUIRED" ? "text" : "numeric"}
+                  autoComplete={challenge.challengeName === "NEW_PASSWORD_REQUIRED" ? "new-password" : "one-time-code"}
                   {...registerOtp("code")}
                   aria-invalid={!!otpErrors.code}
                   className="h-11 w-full rounded-md border border-graph-line px-3 text-base focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ink-blue sm:text-sm"

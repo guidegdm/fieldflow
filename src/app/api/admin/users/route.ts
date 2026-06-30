@@ -9,6 +9,7 @@ import {
 import { getStore } from "@/lib/api/in-memory-store"
 import { getAuthUser } from "@/lib/auth/middleware"
 import type { UserRole } from "@/types/auth"
+import { generateId } from "@/lib/utils"
 
 const POOL_ID = process.env.COGNITO_POOL_ID || process.env.NEXT_PUBLIC_COGNITO_POOL_ID || "us-east-1_kpjmcFVqD"
 const REGION = process.env.AWS_REGION || "us-east-1"
@@ -50,6 +51,7 @@ export async function POST(request: NextRequest) {
   const role = parsed.data.role as UserRole
   const name = parsed.data.name?.trim() || email.split("@")[0]
   const now = Date.now()
+  const inviteExpiresAt = now + 14 * 24 * 60 * 60 * 1000
   const store = getStore()
   const demoInvite = user.orgId.startsWith("demo-") || email.endsWith("@demo.ff")
   const cognito = demoInvite ? null : getCognitoClient()
@@ -111,8 +113,11 @@ export async function POST(request: NextRequest) {
     name,
     role,
     orgId: user.orgId,
-    active: true,
+    active: false,
     invited: true,
+    inviteToken: generateId(),
+    inviteStatus: "pending",
+    inviteExpiresAt,
     invitedBy: user.email,
     delivery,
     deliveryWarning,

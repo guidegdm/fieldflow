@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
     }))
 
     if (result.ChallengeName && result.Session) {
-      const supported = ["EMAIL_OTP", "SMS_MFA", "SOFTWARE_TOKEN_MFA"].includes(result.ChallengeName)
+      const supported = ["EMAIL_OTP", "SMS_MFA", "SOFTWARE_TOKEN_MFA", "NEW_PASSWORD_REQUIRED"].includes(result.ChallengeName)
       if (supported) {
         return NextResponse.json({
           challenge: result.ChallengeName,

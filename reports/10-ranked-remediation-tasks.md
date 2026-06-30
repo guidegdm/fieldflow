@@ -134,7 +134,7 @@ Primary files:
 
 ### T09 - Add real invite acceptance or first-login handling
 
-Status: Pending
+Status: Done on `audit` - admin invites now create pending invitation rows with token/expiry/status, first authenticated login activates matching pending invitations, and Cognito `NEW_PASSWORD_REQUIRED` is supported from the sign-in flow.
 
 Tasks:
 - Support Cognito `NEW_PASSWORD_REQUIRED`, or move to self-signup plus pending invitation claim.
@@ -303,7 +303,7 @@ Primary files:
 - [x] T06: Make conflict resolution durable offline.
 - [x] T07: Make mutation idempotency atomic.
 - [x] T08: Stop using global Cognito role for org authorization.
-- [ ] T09: Add real invite acceptance or first-login handling.
+- [x] T09: Add real invite acceptance or first-login handling.
 - [ ] T10: Validate workflow definitions server-side.
 - [ ] T11: Make publish versioned and non-misleading.
 - [ ] T12: Validate record state transitions before mutation.

@@ -245,22 +245,22 @@ Primary files:
 
 ### T17 - Await DynamoDB record writes
 
-Status: Pending
+Status: Done
 
 Tasks:
-- Make `putRecordForOrg` wait for DynamoDB like other store writes.
+- [x] Make `putRecordForOrg` wait for DynamoDB like other store writes.
 
 Primary files:
 - `src/lib/api/in-memory-store.ts`
 
 ### T18 - Standardize production table schema
 
-Status: Pending
+Status: Done
 
 Tasks:
-- Require `pk` HASH and `sk` RANGE for production.
-- Stop silently scanning around schema mismatch in production.
-- Update README/env docs.
+- [x] Require `pk` HASH and `sk` RANGE for production.
+- [x] Stop silently scanning around schema mismatch in production.
+- [x] Update README/env docs.
 
 Primary files:
 - `src/lib/api/dynamo-store.ts`
@@ -269,23 +269,33 @@ Primary files:
 
 ### T19 - Add queryable access paths
 
-Status: Pending
+Status: Done
 
 Tasks:
-- Replace normal scans with key queries/GSIs.
-- Add email membership, org entity lists, mutation cursor, conflict queue access paths.
+- [x] Replace normal scans with key queries/GSIs.
+- [x] Add email membership, org entity lists, mutation cursor, conflict queue access paths.
+
+Notes:
+- New writes include `gsi1pk/gsi1sk` for org entity lists, mutation cursors, open conflict queues, and ledger access.
+- New user profile writes include `gsi2pk/gsi2sk` for email invite and membership lookup.
+- Legacy scan fallback remains outside strict schema mode for current `id`-key table migration tolerance.
+- `DYNAMODB_REQUIRE_COMPOSITE_KEY=true` is the explicit cutover switch once the live table is migrated to `pk/sk`.
 
 Primary files:
 - `src/lib/api/dynamo-store.ts`
 
 ### T20 - Stamp demo expiry on all demo-scoped writes
 
-Status: Pending
+Status: Done
 
 Tasks:
-- Resolve demo org expiry.
-- Apply `expiresAt` to sync-created records, mutations, conflicts, and audits.
-- Decide whether reopened installs extend TTL.
+- [x] Resolve demo org expiry.
+- [x] Apply `expiresAt` to sync-created records, mutations, conflicts, and audits.
+- [x] Decide whether reopened installs extend TTL.
+
+Decision:
+- Sync and conflict routes preserve the seeded demo workspace TTL if it is still valid.
+- If a demo org has no readable expiry, the route falls back to a seven-day TTL instead of making permanent demo data.
 
 Primary files:
 - `src/app/api/sync/batch/route.ts`
@@ -311,7 +321,7 @@ Primary files:
 - [x] T14: Enforce inventory role checks at API level.
 - [x] T15: Validate inventory receipt content hash.
 - [x] T16: Couple reserved workflow transition to inventory transaction.
-- [ ] T17: Await DynamoDB record writes.
-- [ ] T18: Standardize production table schema.
-- [ ] T19: Add queryable access paths.
-- [ ] T20: Stamp demo expiry on all demo-scoped writes.
+- [x] T17: Await DynamoDB record writes.
+- [x] T18: Standardize production table schema.
+- [x] T19: Add queryable access paths.
+- [x] T20: Stamp demo expiry on all demo-scoped writes.

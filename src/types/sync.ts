@@ -9,6 +9,7 @@ export interface MutationEntry {
   status: MutationStatus; retry_count: number; last_error: string | null; enqueued_at: number
   server_seq?: number
   poison_until?: number
+  expiresAt?: number
 }
 
 export interface SyncBatchRequest { device_id: string; device_seq: number; operations: MutationEntry[] }
@@ -73,6 +74,7 @@ export interface InventoryLedgerEntry {
   competingRequestId?: string
   idempotencyKey: string
   timestamp: number
+  expiresAt?: number
 }
 
 export interface DeviceState {
@@ -87,4 +89,5 @@ export interface ConflictRecord {
   value_a: unknown; device_a: string; value_b: unknown; device_b: string
   status: "OPEN" | "RESOLVED"; resolved_by?: string; resolved_at?: number
   resolution?: "accept_a" | "accept_b" | "manual"; manual_value?: unknown; rationale?: string; created_at: number
+  expiresAt?: number
 }

@@ -28,6 +28,20 @@ function resolvedValue(conflict: ConflictRecord, resolution: "accept_a" | "accep
   return manualValue
 }
 
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {}
+}
+
+async function demoExpiresAtForOrg(store: { getOrgAsync: (id: string) => Promise<unknown> }, orgId: string) {
+  if (!orgId.startsWith("demo-")) return undefined
+  const org = asRecord(await store.getOrgAsync(orgId).catch(() => null))
+  const expiresAt = Number(org.expiresAt || 0)
+  if (Number.isFinite(expiresAt) && expiresAt > Math.floor(Date.now() / 1000)) return expiresAt
+  return Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60
+}
+
 export async function GET(request: NextRequest) {
   const user = await getAuthUser(request)
   if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 })
@@ -48,6 +62,7 @@ export async function POST(request: NextRequest) {
   }
 
   const store = getStore()
+  const demoExpiresAt = await demoExpiresAtForOrg(store, user.orgId)
   let conflicts: ConflictRecord[] = []
   if (body.conflict_id) {
     const conflict = await store.getConflictForOrg(body.conflict_id, user.orgId)
@@ -78,6 +93,7 @@ export async function POST(request: NextRequest) {
     if (resolution === "manual") conflict.manual_value = manualValue
     if (body.rationale) conflict.rationale = body.rationale
     conflict.resolved_at = now
+    if (demoExpiresAt) conflict.expiresAt = demoExpiresAt
     await store.putConflictForOrg(conflict, user.orgId)
   }
 
@@ -85,6 +101,7 @@ export async function POST(request: NextRequest) {
   record.version += 1
   record.syncStatus = "synced"
   record.status = record.status === "in_conflict" ? "conflict_resolved" : record.status
+  if (demoExpiresAt) record.expiresAt = demoExpiresAt
   await store.putRecordForOrg(record)
 
   const mutation: MutationEntry = {
@@ -102,6 +119,7 @@ export async function POST(request: NextRequest) {
     retry_count: 0,
     last_error: null,
     enqueued_at: now,
+    expiresAt: demoExpiresAt,
   }
   await store.storeMutationForOrg(mutation, user.orgId)
 

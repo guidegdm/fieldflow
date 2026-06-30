@@ -5,8 +5,10 @@ import {
   PutCommand,
   GetCommand,
   DeleteCommand,
+  QueryCommand,
   ScanCommand,
   UpdateCommand,
+  type QueryCommandInput,
   type ScanCommandInput,
   TransactWriteCommand,
 } from "@aws-sdk/lib-dynamodb"
@@ -36,6 +38,11 @@ const rawClient = new DynamoDBClient({
 const client = DynamoDBDocumentClient.from(rawClient)
 
 const TABLE = process.env.DYNAMODB_TABLE || "FieldFlowRecords"
+const GSI1_NAME = process.env.DYNAMODB_GSI1_NAME || "gsi1"
+const GSI2_NAME = process.env.DYNAMODB_GSI2_NAME || "gsi2"
+const REQUIRE_COMPOSITE_KEY = process.env.DYNAMODB_REQUIRE_COMPOSITE_KEY === "true"
+const FALLBACK_SCAN_ON_EMPTY_INDEX = process.env.DYNAMODB_SCAN_FALLBACK_ON_EMPTY_INDEX !== "false"
+
 interface TableKeyShape {
   hashName: string
   rangeName?: string
@@ -44,22 +51,31 @@ interface TableKeyShape {
 let tableKeyShapePromise: Promise<TableKeyShape> | null = null
 let tableKeyShapeOverride: TableKeyShape | null = null
 
+function assertSupportedTableKeyShape(shape: TableKeyShape) {
+  if (!REQUIRE_COMPOSITE_KEY) return shape
+  if (shape.hashName === "pk" && shape.rangeName === "sk") return shape
+  throw new Error(
+    "FieldFlow production DynamoDB table must use pk (HASH) and sk (RANGE). " +
+      "Set DYNAMODB_ALLOW_LEGACY_KEY_SCHEMA=true only for a temporary migration window.",
+  )
+}
+
 async function tableKeyShape(): Promise<TableKeyShape> {
   const envHash = process.env.DYNAMODB_HASH_KEY
   const envRange = process.env.DYNAMODB_RANGE_KEY
-  if (envHash) return envRange ? { hashName: envHash, rangeName: envRange } : { hashName: envHash }
-  if (process.env.DYNAMODB_SORT_KEY_ENABLED === "true") return { hashName: "pk", rangeName: "sk" }
-  if (process.env.DYNAMODB_SORT_KEY_ENABLED === "false") return { hashName: "pk" }
-  if (tableKeyShapeOverride) return tableKeyShapeOverride
+  if (envHash) return assertSupportedTableKeyShape(envRange ? { hashName: envHash, rangeName: envRange } : { hashName: envHash })
+  if (process.env.DYNAMODB_SORT_KEY_ENABLED === "true") return assertSupportedTableKeyShape({ hashName: "pk", rangeName: "sk" })
+  if (process.env.DYNAMODB_SORT_KEY_ENABLED === "false") return assertSupportedTableKeyShape({ hashName: "pk" })
+  if (tableKeyShapeOverride) return assertSupportedTableKeyShape(tableKeyShapeOverride)
 
   tableKeyShapePromise ||= rawClient.send(new DescribeTableCommand({ TableName: TABLE }))
     .then((result) => {
       const keys = result.Table?.KeySchema || []
       const hashName = keys.find((key) => key.KeyType === "HASH")?.AttributeName || "id"
       const rangeName = keys.find((key) => key.KeyType === "RANGE")?.AttributeName
-      return rangeName ? { hashName, rangeName } : { hashName }
+      return assertSupportedTableKeyShape(rangeName ? { hashName, rangeName } : { hashName })
     })
-    .catch(() => ({ hashName: "id" }))
+    .catch(() => assertSupportedTableKeyShape({ hashName: "id" }))
   return tableKeyShapePromise
 }
 
@@ -73,13 +89,32 @@ async function tableKey(pk: string, sk: string) {
 
 function itemForKey(pk: string, sk: string, entityType: string, attrs: Record<string, unknown>, entityId?: string) {
   const originalId = entityId || (typeof attrs.id === "string" ? attrs.id : undefined)
+  const access = accessPaths(entityType, attrs, originalId)
   return {
     ...attrs,
     id: pk,
     pk,
     sk,
     entityType,
+    ...access,
     ...(originalId ? { entityId: originalId } : {}),
+  }
+}
+
+function indexSk(entityType: string, attrs: Record<string, unknown>, entityId?: string) {
+  if (entityType === "mutation") return `SEQ#${String(Number(attrs.server_seq || 0)).padStart(12, "0")}#${entityId || attrs.client_id || ""}`
+  if (entityType === "conflict") return `${String(attrs.status || "OPEN")}#${String(Number(attrs.created_at || Date.now())).padStart(13, "0")}#${entityId || ""}`
+  if (entityType === "audit") return `RECORD#${String(attrs.recordId || attrs.record_id || "")}#${String(Number(attrs.timestamp || Date.now())).padStart(13, "0")}#${entityId || ""}`
+  if (entityType === "inventory_ledger") return `TS#${String(Number(attrs.timestamp || Date.now())).padStart(13, "0")}#${entityId || ""}`
+  return `${entityId || attrs.id || attrs.device_id || attrs.client_id || ""}`
+}
+
+function accessPaths(entityType: string, attrs: Record<string, unknown>, entityId?: string) {
+  const orgId = typeof attrs.orgId === "string" ? attrs.orgId : typeof attrs.org_id === "string" ? attrs.org_id : ""
+  const email = typeof attrs.email === "string" ? attrs.email.toLowerCase() : ""
+  return {
+    ...(orgId ? { gsi1pk: `ORG#${orgId}#${entityType}`, gsi1sk: indexSk(entityType, attrs, entityId) } : {}),
+    ...(entityType === "user" && email ? { gsi2pk: `EMAIL#${email}`, gsi2sk: `ORG#${orgId}#USER#${entityId || email}` } : {}),
   }
 }
 
@@ -98,7 +133,7 @@ async function sendGet(pk: string, sk: string, projectionExpression?: string) {
       })
     )
   } catch (error) {
-    if (!isKeySchemaError(error) || process.env.DYNAMODB_SORT_KEY_ENABLED) throw error
+    if (!isKeySchemaError(error) || process.env.DYNAMODB_SORT_KEY_ENABLED || REQUIRE_COMPOSITE_KEY) throw error
     const fallbackShapes = [
       { hashName: "id" },
       { hashName: "pk" },
@@ -145,7 +180,7 @@ async function sendDelete(pk: string, sk: string) {
       })
     )
   } catch (error) {
-    if (!isKeySchemaError(error) || process.env.DYNAMODB_SORT_KEY_ENABLED) throw error
+    if (!isKeySchemaError(error) || process.env.DYNAMODB_SORT_KEY_ENABLED || REQUIRE_COMPOSITE_KEY) throw error
     const fallbackShape = firstShape.hashName === "id" ? { hashName: "pk" } : { hashName: "id" }
     tableKeyShapeOverride = fallbackShape
     tableKeyShapePromise = Promise.resolve(fallbackShape)
@@ -174,6 +209,87 @@ async function scanAll(input: Omit<ScanCommandInput, "TableName">) {
   } while (ExclusiveStartKey && (!input.Limit || items.length < input.Limit))
 
   return input.Limit ? items.slice(0, input.Limit) : items
+}
+
+async function queryAll(input: Omit<QueryCommandInput, "TableName">) {
+  const items: Record<string, unknown>[] = []
+  let ExclusiveStartKey = input.ExclusiveStartKey
+  do {
+    const result = await client.send(
+      new QueryCommand({
+        ...input,
+        TableName: TABLE,
+        ExclusiveStartKey,
+      })
+    )
+    items.push(...((result.Items || []) as Record<string, unknown>[]))
+    ExclusiveStartKey = result.LastEvaluatedKey
+  } while (ExclusiveStartKey && (!input.Limit || items.length < input.Limit))
+
+  return input.Limit ? items.slice(0, input.Limit) : items
+}
+
+async function listOrgEntity(entityType: string, orgId: string) {
+  try {
+    const items = await queryAll({
+      IndexName: GSI1_NAME,
+      KeyConditionExpression: "gsi1pk = :pk",
+      ExpressionAttributeValues: { ":pk": `ORG#${orgId}#${entityType}` },
+    })
+    if (items.length === 0 && !REQUIRE_COMPOSITE_KEY && FALLBACK_SCAN_ON_EMPTY_INDEX) return null
+    return items
+  } catch (error) {
+    if (REQUIRE_COMPOSITE_KEY) throw error
+    return null
+  }
+}
+
+async function listOrgMutationsAfter(orgId: string, seq: number) {
+  try {
+    const items = await queryAll({
+      IndexName: GSI1_NAME,
+      KeyConditionExpression: "gsi1pk = :pk AND gsi1sk > :seq",
+      ExpressionAttributeValues: {
+        ":pk": `ORG#${orgId}#mutation`,
+        ":seq": `SEQ#${String(seq).padStart(12, "0")}`,
+      },
+    })
+    if (items.length === 0 && !REQUIRE_COMPOSITE_KEY && FALLBACK_SCAN_ON_EMPTY_INDEX) return null
+    return items
+  } catch (error) {
+    if (REQUIRE_COMPOSITE_KEY) throw error
+    return null
+  }
+}
+
+async function listOpenConflictItems(orgId: string) {
+  try {
+    const items = await queryAll({
+      IndexName: GSI1_NAME,
+      KeyConditionExpression: "gsi1pk = :pk AND begins_with(gsi1sk, :status)",
+      ExpressionAttributeValues: { ":pk": `ORG#${orgId}#conflict`, ":status": "OPEN#" },
+    })
+    if (items.length === 0 && !REQUIRE_COMPOSITE_KEY && FALLBACK_SCAN_ON_EMPTY_INDEX) return null
+    return items
+  } catch (error) {
+    if (REQUIRE_COMPOSITE_KEY) throw error
+    return null
+  }
+}
+
+async function listUsersByEmail(email: string) {
+  try {
+    const items = await queryAll({
+      IndexName: GSI2_NAME,
+      KeyConditionExpression: "gsi2pk = :pk",
+      ExpressionAttributeValues: { ":pk": `EMAIL#${email.toLowerCase()}` },
+    })
+    if (items.length === 0 && !REQUIRE_COMPOSITE_KEY && FALLBACK_SCAN_ON_EMPTY_INDEX) return null
+    return items
+  } catch (error) {
+    if (REQUIRE_COMPOSITE_KEY) throw error
+    return null
+  }
 }
 
 function stripKeys<T>(item: (T & Record<string, unknown>) | undefined): T | undefined {
@@ -249,15 +365,17 @@ export const dynamoStore = {
   },
 
   async getRecordsByWorkflow(workflowId: string, orgId: string): Promise<RecordData[]> {
-    const items = await scanAll({
+    const items = (await listOrgEntity("record", orgId)) ?? await scanAll({
       FilterExpression: "entityType = :type AND orgId = :orgId AND workflowId = :workflowId",
       ExpressionAttributeValues: { ":type": "record", ":orgId": orgId, ":workflowId": workflowId },
     })
-    return items.map((item) => stripKeys<RecordData>(item as RecordData & Record<string, unknown>)!)
+    return items
+      .filter((item) => item.workflowId === workflowId)
+      .map((item) => stripKeys<RecordData>(item as RecordData & Record<string, unknown>)!)
   },
 
   async listRecords(orgId: string): Promise<RecordData[]> {
-    const items = await scanAll({
+    const items = (await listOrgEntity("record", orgId)) ?? await scanAll({
       FilterExpression: "entityType = :type AND orgId = :orgId",
       ExpressionAttributeValues: { ":type": "record", ":orgId": orgId },
     })
@@ -281,7 +399,7 @@ export const dynamoStore = {
   },
 
   async listWorkflows(orgId: string): Promise<WorkflowDefinition[]> {
-    const items = await scanAll({
+    const items = (await listOrgEntity("workflow", orgId)) ?? await scanAll({
       FilterExpression: "entityType = :type AND orgId = :orgId",
       ExpressionAttributeValues: { ":type": "workflow", ":orgId": orgId },
     })
@@ -304,7 +422,7 @@ export const dynamoStore = {
   },
 
   async listDevices(orgId: string): Promise<DeviceState[]> {
-    const items = await scanAll({
+    const items = (await listOrgEntity("device", orgId)) ?? await scanAll({
       FilterExpression: "entityType = :type AND orgId = :orgId",
       ExpressionAttributeValues: { ":type": "device", ":orgId": orgId },
     })
@@ -326,7 +444,7 @@ export const dynamoStore = {
   },
 
   async listOpenConflicts(orgId: string): Promise<ConflictRecord[]> {
-    const items = await scanAll({
+    const items = (await listOpenConflictItems(orgId)) ?? await scanAll({
       FilterExpression: "entityType = :type AND orgId = :orgId AND #status = :status",
       ExpressionAttributeNames: { "#status": "status" },
       ExpressionAttributeValues: { ":type": "conflict", ":orgId": orgId, ":status": "OPEN" },
@@ -349,7 +467,7 @@ export const dynamoStore = {
   },
 
   async listInventoryItems(orgId: string): Promise<InventoryItem[]> {
-    const items = await scanAll({
+    const items = (await listOrgEntity("inventory", orgId)) ?? await scanAll({
       FilterExpression: "entityType = :type AND orgId = :orgId",
       ExpressionAttributeValues: { ":type": "inventory", ":orgId": orgId },
     })
@@ -533,7 +651,7 @@ export const dynamoStore = {
   },
 
   async listInventoryLedger(orgId: string): Promise<InventoryLedgerEntry[]> {
-    const items = await scanAll({
+    const items = (await listOrgEntity("inventory_ledger", orgId)) ?? await scanAll({
       FilterExpression: "entityType = :type AND orgId = :orgId",
       ExpressionAttributeValues: { ":type": "inventory_ledger", ":orgId": orgId },
     })
@@ -585,7 +703,7 @@ export const dynamoStore = {
   },
 
   async getServerSince(orgId: string, seq: number): Promise<MutationEntry[]> {
-    const items = await scanAll({
+    const items = (await listOrgMutationsAfter(orgId, seq)) ?? await scanAll({
       FilterExpression: "entityType = :type AND orgId = :orgId AND server_seq > :seq",
       ExpressionAttributeValues: { ":type": "mutation", ":orgId": orgId, ":seq": seq },
     })
@@ -597,7 +715,7 @@ export const dynamoStore = {
   async getCurrentSeq(orgId: string): Promise<number> {
     const counter = await sendGet(orgMutationSeqPk(orgId), "PROFILE", "server_seq").catch(() => ({ Item: null }))
     if (counter.Item?.server_seq) return Number(counter.Item.server_seq)
-    const items = await scanAll({
+    const items = (await listOrgEntity("mutation", orgId)) ?? await scanAll({
       FilterExpression: "entityType = :type AND orgId = :orgId",
       ExpressionAttributeValues: { ":type": "mutation", ":orgId": orgId },
       ProjectionExpression: "server_seq",
@@ -634,7 +752,7 @@ export const dynamoStore = {
   },
 
   async listUserProfiles(orgId: string) {
-    const items = await scanAll({
+    const items = (await listOrgEntity("user", orgId)) ?? await scanAll({
       FilterExpression: "entityType = :type AND orgId = :orgId",
       ExpressionAttributeValues: { ":type": "user", ":orgId": orgId },
     })
@@ -642,7 +760,7 @@ export const dynamoStore = {
   },
 
   async getUserProfileByEmail(email: string) {
-    const items = await scanAll({
+    const items = (await listUsersByEmail(email)) ?? await scanAll({
       FilterExpression: "entityType = :type AND email = :email",
       ExpressionAttributeValues: { ":type": "user", ":email": email },
       Limit: 1,
@@ -651,7 +769,7 @@ export const dynamoStore = {
   },
 
   async listUserProfilesByEmail(email: string) {
-    const items = await scanAll({
+    const items = (await listUsersByEmail(email)) ?? await scanAll({
       FilterExpression: "entityType = :type AND email = :email",
       ExpressionAttributeValues: { ":type": "user", ":email": email },
     })

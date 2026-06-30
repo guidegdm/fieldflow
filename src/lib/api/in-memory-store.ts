@@ -44,7 +44,7 @@ class Store {
     return record?.orgId === orgId ? record : undefined
   }
   async putRecordForOrg(r: RecordData) {
-    if (DYNAMODB_ENABLED) getDynamo().then(d => d?.putRecord(r).catch(()=>{}))
+    if (DYNAMODB_ENABLED) await (await getDynamo())?.putRecord(r)
     this.records.set(scopedKey(r.orgId, r.id), r)
   }
   async deleteRecordForOrg(id: string, orgId: string) {

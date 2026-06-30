@@ -116,6 +116,14 @@ function cloneRecord(record: RecordData): RecordData {
   }
 }
 
+async function demoExpiresAtForOrg(store: { getOrgAsync: (id: string) => Promise<unknown> }, orgId: string) {
+  if (!orgId.startsWith("demo-")) return undefined
+  const org = asRecord(await store.getOrgAsync(orgId).catch(() => null))
+  const expiresAt = Number(org.expiresAt || 0)
+  if (Number.isFinite(expiresAt) && expiresAt > Math.floor(Date.now() / 1000)) return expiresAt
+  return Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60
+}
+
 export async function POST(request: NextRequest) {
   const user = await getAuthUser(request)
   if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 })
@@ -128,6 +136,7 @@ export async function POST(request: NextRequest) {
   }
 
   const store = getStore()
+  const demoExpiresAt = await demoExpiresAtForOrg(store, user.orgId)
 
   const acked: string[] = []
   const failed: { client_id: string; reason: string }[] = []
@@ -193,13 +202,14 @@ export async function POST(request: NextRequest) {
           deviceId,
           version: 1,
           orgId: user.orgId,
+          expiresAt: demoExpiresAt,
         }
         if (!(await store.claimMutationForOrg(op, user.orgId))) {
           acked.push(op.client_id)
           continue
         }
         await store.putRecordForOrg(record)
-        await store.completeMutationForOrg({ ...op, payload: record }, user.orgId)
+        await store.completeMutationForOrg({ ...op, payload: record, expiresAt: demoExpiresAt }, user.orgId)
         acked.push(op.client_id)
       } else if (op.operation === "update" || op.operation === "attach_evidence") {
         const storedRecord = await store.getRecordForOrg(op.record_id!, user.orgId)
@@ -313,6 +323,7 @@ export async function POST(request: NextRequest) {
               resolved_value: autoResolved ? resolvedValue : undefined,
               detail: field_strategy,
               timestamp: Date.now(),
+              expiresAt: demoExpiresAt,
             }, user.orgId)
           }
         } else {
@@ -367,11 +378,12 @@ export async function POST(request: NextRequest) {
         if (typeof payloadObject.syncStatus === "string") existing.syncStatus = payloadObject.syncStatus
         existing.version += 1
         existing.updatedAt = operationServerTs
+        if (demoExpiresAt) existing.expiresAt = demoExpiresAt
 
         const hasEscalated = opConflicts.some((c) => !c.auto_resolved)
         existing.syncStatus = hasEscalated ? "conflict" : existing.syncStatus || "synced"
         await store.putRecordForOrg(existing)
-        await store.completeMutationForOrg({ ...op, payload: existing }, user.orgId)
+        await store.completeMutationForOrg({ ...op, payload: existing, expiresAt: demoExpiresAt }, user.orgId)
 
         for (const ec of opConflicts.filter((c) => !c.auto_resolved)) {
           const cr: ConflictRecord = {
@@ -385,6 +397,7 @@ export async function POST(request: NextRequest) {
             device_b: existing.deviceId || "server",
             status: "OPEN",
             created_at: Date.now(),
+            expiresAt: demoExpiresAt,
           }
           await store.putConflictForOrg(cr, user.orgId)
         }
@@ -407,6 +420,7 @@ export async function POST(request: NextRequest) {
         await store.completeMutationForOrg({
           ...op,
           payload: { id: existing.id, orgId: user.orgId, deletedAt: operationServerTs },
+          expiresAt: demoExpiresAt,
         }, user.orgId)
         acked.push(op.client_id)
       } else {
@@ -440,7 +454,7 @@ export async function POST(request: NextRequest) {
     last_seq: lastSeq,
     last_sync_at: now,
     pending_count: 0,
-    expiresAt: deviceState?.expiresAt,
+    expiresAt: deviceState?.expiresAt || demoExpiresAt,
   })
 
   return NextResponse.json({

@@ -278,8 +278,9 @@ Tasks:
 Notes:
 - New writes include `gsi1pk/gsi1sk` for org entity lists, mutation cursors, open conflict queues, and ledger access.
 - New user profile writes include `gsi2pk/gsi2sk` for email invite and membership lookup.
-- Legacy scan fallback remains outside strict schema mode for current `id`-key table migration tolerance.
-- `DYNAMODB_REQUIRE_COMPOSITE_KEY=true` is the explicit cutover switch once the live table is migrated to `pk/sk`.
+- `FieldFlowRecordsV2` was created with `pk/sk`, `gsi1`, `gsi2`, and TTL on `expiresAt`.
+- The legacy `FieldFlowRecords` table was backfilled into V2 with `6408` copied items.
+- `DYNAMODB_REQUIRE_COMPOSITE_KEY=true` is now the intended runtime setting after cutover.
 
 Primary files:
 - `src/lib/api/dynamo-store.ts`

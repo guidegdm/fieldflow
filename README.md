@@ -142,11 +142,12 @@ Important environment variables:
 ```bash
 NEXT_PUBLIC_SITE_URL=https://fieldflow-tau.vercel.app
 AWS_REGION=us-east-1
-DYNAMODB_TABLE=FieldFlowRecords
+DYNAMODB_TABLE=FieldFlowRecordsV2
 DYNAMODB_SORT_KEY_ENABLED=true
 DYNAMODB_GSI1_NAME=gsi1
 DYNAMODB_GSI2_NAME=gsi2
-DYNAMODB_REQUIRE_COMPOSITE_KEY=false
+DYNAMODB_REQUIRE_COMPOSITE_KEY=true
+DYNAMODB_SCAN_FALLBACK_ON_EMPTY_INDEX=false
 AWS_S3_BUCKET=fieldflow-attachments-890608336900-us-east-1
 S3_REGION=us-east-1
 COGNITO_POOL_ID=...
@@ -157,13 +158,11 @@ DEEPSEEK_API_KEY=...
 SESSION_SECRET=...
 ```
 
-The target production DynamoDB table is a single-table design with `pk` as the
-hash key, `sk` as the sort key, and `expiresAt` enabled as the TTL attribute.
-The app also writes `gsi1pk/gsi1sk` for org-scoped lists, mutation cursors,
-conflict queues, and inventory ledgers, plus `gsi2pk/gsi2sk` for email invite
-lookup across workspaces. During migration from the original `id`-only table,
-keep `DYNAMODB_REQUIRE_COMPOSITE_KEY=false`; set it to `true` only after the
-live table is recreated or cut over to `pk/sk`.
+The production DynamoDB table is `FieldFlowRecordsV2`, a single-table design
+with `pk` as the hash key, `sk` as the sort key, and `expiresAt` enabled as the
+TTL attribute. The app also writes `gsi1pk/gsi1sk` for org-scoped lists,
+mutation cursors, conflict queues, and inventory ledgers, plus `gsi2pk/gsi2sk`
+for email invite lookup across workspaces.
 
 For local DynamoDB-backed demo testing with an AWS profile:
 

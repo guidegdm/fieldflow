@@ -37,7 +37,7 @@ const rawClient = new DynamoDBClient({
 })
 const client = DynamoDBDocumentClient.from(rawClient)
 
-const TABLE = process.env.DYNAMODB_TABLE || "FieldFlowRecords"
+const TABLE = process.env.DYNAMODB_TABLE || "FieldFlowRecordsV2"
 const GSI1_NAME = process.env.DYNAMODB_GSI1_NAME || "gsi1"
 const GSI2_NAME = process.env.DYNAMODB_GSI2_NAME || "gsi2"
 const REQUIRE_COMPOSITE_KEY = process.env.DYNAMODB_REQUIRE_COMPOSITE_KEY === "true"

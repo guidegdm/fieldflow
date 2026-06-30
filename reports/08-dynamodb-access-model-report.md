@@ -1,5 +1,23 @@
 # DynamoDB Access Model Audit
 
+## 2026-06-30 Migration Update
+
+This report captured the pre-remediation state. The `audit` branch now creates
+and targets `FieldFlowRecordsV2`, a DynamoDB single table with `pk` as the hash
+key, `sk` as the range key, TTL on `expiresAt`, and `gsi1`/`gsi2` access paths.
+
+Migration verification:
+- `FieldFlowRecordsV2` exists in `us-east-1` with `pk/sk`, `gsi1`, and `gsi2`.
+- TTL is enabled on `expiresAt`.
+- The legacy `FieldFlowRecords` table was backfilled into V2 with 6408 copied items.
+- Direct `pk/sk`, org-scoped `gsi1`, and email-scoped `gsi2` queries were verified.
+- Vercel production and preview env values now point at `FieldFlowRecordsV2`.
+- The Vercel runtime IAM user allows DynamoDB V2 table/index access.
+
+The historical findings below remain useful as context, but the table-shape,
+scan-only access, fire-and-forget record write, and missing demo TTL findings
+have been addressed in later commits on this branch.
+
 Source diagram: `docs/docs/diagrams/mermaid/03-dynamodb-access-model.mmd`
 
 Audited implementation: `src/lib/api/dynamo-store.ts`, `src/lib/api/in-memory-store.ts`, sync/workflow/auth/inventory routes, demo seed code, S3 presign route, and shared types.

@@ -14,3 +14,9 @@ codex/
 tmp/
 package-lock.json
 pnpm-lock.yaml
+skills/
+diagrams/*.pptx
+diagrams/~$*.pptx
+screenshots/*
+!screenshots/submission-live-2026-06-29T14-49-46-955Z/
+!screenshots/submission-live-2026-06-29T14-49-46-955Z/**

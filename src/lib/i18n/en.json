@@ -48,6 +48,7 @@
     "required": "Required",
     "close": "Close",
     "or": "or",
+    "later": "Later",
     "yes": "Yes",
     "no": "No"
   },
@@ -79,7 +80,10 @@
   "pwa": {
     "installTitle": "Install FieldFlow",
     "installBody": "Keep the workspace one tap away and ready for low-connectivity work.",
-    "install": "Install"
+    "install": "Install",
+    "updateTitle": "A new FieldFlow version is ready",
+    "updateBody": "Refresh when convenient to load the latest app shell and offline assets.",
+    "update": "Refresh"
   },
   "roles": {
     "field_worker": "Field Agent",

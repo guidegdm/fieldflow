@@ -24,6 +24,17 @@ self.addEventListener("message", (event) => {
   })())
 })
 
+self.addEventListener("notificationclick", (event) => {
+  if (event.notification?.tag !== "fieldflow-install") return
+  event.notification.close()
+  event.waitUntil((async () => {
+    const clientsList = await self.clients.matchAll({ type: "window", includeUncontrolled: true })
+    const focused = clientsList.find((client) => "focus" in client)
+    if (focused) return focused.focus()
+    return self.clients.openWindow("/")
+  })())
+})
+
 self.addEventListener("sync", (event) => {
   if (event.tag !== "fieldflow-sync") return
 
@@ -48,19 +59,27 @@ self.addEventListener("fetch", (event) => {
   event.stopImmediatePropagation()
   event.respondWith((async () => {
     const cache = await caches.open("fieldflow-pages")
+    const exactUrl = new URL(request.url)
+    const cached = await cache.match(request, { ignoreVary: true })
+      || await cache.match(exactUrl.href, { ignoreVary: true })
+      || await cache.match(exactUrl.pathname + exactUrl.search, { ignoreVary: true })
+      || await cache.match(exactUrl.pathname, { ignoreSearch: true, ignoreVary: true })
+
+    if (cached) {
+      event.waitUntil(fetch(request).then(async (response) => {
+        if (!response?.ok) return
+        await cache.put(request, response.clone())
+        await cache.put(request.url, response.clone())
+      }).catch(() => {}))
+      return cached
+    }
+
     try {
       const response = await fetch(request)
       if (response?.ok) await cache.put(request, response.clone())
       if (response?.ok) await cache.put(request.url, response.clone())
       return response
     } catch {
-      const exactUrl = new URL(request.url)
-      const exact = await cache.match(request, { ignoreVary: true })
-        || await cache.match(exactUrl.href, { ignoreVary: true })
-        || await cache.match(exactUrl.pathname + exactUrl.search, { ignoreVary: true })
-        || await cache.match(exactUrl.pathname, { ignoreSearch: true, ignoreVary: true })
-      if (exact) return exact
-
       const fallbackUrls = [
         exactUrl.pathname.startsWith("/field-worker/record/") ? "/field-worker/home" : "",
         exactUrl.pathname.startsWith("/admin/workflows/") ? "/admin/workflows" : "",

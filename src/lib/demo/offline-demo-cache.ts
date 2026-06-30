@@ -226,9 +226,11 @@ export async function cacheOfflineRecordRoutes(workspaces?: DemoOfflineWorkspace
   if (typeof window === "undefined" || !workspaces?.length) return
 
   const urls = Array.from(new Set(
-    workspaces.flatMap((workspace) =>
-      workspace.records.map((record) => new URL(`/field-worker/record/${record.id}`, window.location.origin).href),
-    ),
+    workspaces.flatMap((workspace) => [
+      ...workspace.workflows.map((workflow) => new URL(`/admin/workflows/${workflow.id}`, window.location.origin).href),
+      ...workspace.records.map((record) => new URL(`/field-worker/record/${record.id}`, window.location.origin).href),
+      ...workspace.records.map((record) => new URL(`/supervisor/review?id=${record.id}`, window.location.origin).href),
+    ]),
   ))
   if (!urls.length) return
 

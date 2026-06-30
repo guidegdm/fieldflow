@@ -31,6 +31,7 @@ const APP_ROUTES_TO_CACHE = [
   "/admin/users",
   "/admin/settings",
   "/field-worker/home",
+  "/field-worker/pick-workflow",
   "/field-worker/register",
   "/field-worker/search",
   "/field-worker/conflicts",
@@ -225,26 +226,6 @@ async function warmDemoSandbox() {
 
   await hydrateDemoSandboxOffline(data.offlineWorkspaces)
   await cacheOfflineRecordRoutes(data.offlineWorkspaces)
-  if ("caches" in window) {
-    const cache = await caches.open("fieldflow-pages")
-    const workflowUrls = data.offlineWorkspaces.flatMap((workspace) =>
-      workspace.workflows.flatMap((workflow) => [
-        `/admin/workflows/${workflow.id}`,
-        `/api/workflows/${workflow.id}/definition`,
-        `/api/workflows/${workflow.id}/records`,
-      ]),
-    )
-    await Promise.all(Array.from(new Set(workflowUrls)).map(async (url) => {
-      try {
-        const request = new Request(new URL(url, window.location.origin).href, {
-          credentials: "include",
-          cache: "reload",
-        })
-        const response = await fetch(request)
-        if (response.ok) await cache.put(request, response.clone())
-      } catch {}
-    }))
-  }
   persistDemoSandbox({
     expiresAt: data.expiresAt,
     workspaces: data.offlineWorkspaces,

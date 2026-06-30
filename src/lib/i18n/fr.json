@@ -48,6 +48,7 @@
     "required": "Obligatoire",
     "close": "Fermer",
     "or": "ou",
+    "later": "Plus tard",
     "yes": "Oui",
     "no": "Non"
   },
@@ -79,7 +80,10 @@
   "pwa": {
     "installTitle": "Installer FieldFlow",
     "installBody": "Gardez l'espace de travail à portée de main, même quand le réseau devient instable.",
-    "install": "Installer"
+    "install": "Installer",
+    "updateTitle": "Une nouvelle version de FieldFlow est prête",
+    "updateBody": "Actualisez quand vous voulez pour charger la dernière version de l'application et ses ressources hors ligne.",
+    "update": "Actualiser"
   },
   "roles": {
     "field_worker": "Agent terrain",

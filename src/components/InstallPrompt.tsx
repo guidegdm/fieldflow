@@ -11,6 +11,16 @@ type BeforeInstallPromptEvent = Event & {
 }
 
 const DISMISSED_KEY = "fieldflow-install-dismissed"
+const LAST_NOTICE_KEY = "fieldflow-install-notice-date"
+const NOTICE_DELAY_MS = 90_000
+
+function todayKey() {
+  return new Date().toISOString().slice(0, 10)
+}
+
+function isStandalone() {
+  return window.matchMedia("(display-mode: standalone)").matches
+}
 
 export function InstallPrompt() {
   const { t } = useTranslation()
@@ -18,7 +28,7 @@ export function InstallPrompt() {
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
-    if (window.matchMedia("(display-mode: standalone)").matches) return
+    if (isStandalone()) return
     if (window.localStorage.getItem(DISMISSED_KEY) === "1") return
 
     const handleBeforeInstallPrompt = (promptEvent: Event) => {
@@ -31,10 +41,45 @@ export function InstallPrompt() {
     return () => window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
   }, [])
 
+  useEffect(() => {
+    if (!visible || !event) return
+    if (!("Notification" in window) || !("serviceWorker" in navigator)) return
+    if (isStandalone()) return
+    if (window.localStorage.getItem(DISMISSED_KEY) === "1") return
+    if (window.localStorage.getItem(LAST_NOTICE_KEY) === todayKey()) return
+    if (Notification.permission === "denied") return
+
+    const timer = window.setTimeout(async () => {
+      if (document.visibilityState !== "visible") return
+      if (window.localStorage.getItem(DISMISSED_KEY) === "1") return
+      if (window.localStorage.getItem(LAST_NOTICE_KEY) === todayKey()) return
+
+      const permission = Notification.permission === "granted"
+        ? "granted"
+        : await Notification.requestPermission().catch(() => "default")
+      if (permission !== "granted") {
+        window.localStorage.setItem(LAST_NOTICE_KEY, todayKey())
+        return
+      }
+
+      const registration = await navigator.serviceWorker.ready.catch(() => null)
+      await registration?.showNotification(t("pwa.installTitle"), {
+        body: t("pwa.installBody"),
+        icon: "/icons/icon-192.png",
+        badge: "/icons/icon-192.png",
+        tag: "fieldflow-install",
+      })
+      window.localStorage.setItem(LAST_NOTICE_KEY, todayKey())
+    }, NOTICE_DELAY_MS)
+
+    return () => window.clearTimeout(timer)
+  }, [event, t, visible])
+
   if (!visible || !event) return null
 
   const dismiss = () => {
     window.localStorage.setItem(DISMISSED_KEY, "1")
+    window.localStorage.setItem(LAST_NOTICE_KEY, todayKey())
     setVisible(false)
   }
 

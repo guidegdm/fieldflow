@@ -8,6 +8,7 @@ import { AppLoader } from "@/components/layout/AppLoader"
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister"
 import { OfflineWarmup } from "@/components/OfflineWarmup"
 import { InstallPrompt } from "@/components/InstallPrompt"
+import { AppUpdateManager } from "@/components/AppUpdateManager"
 import { useNetworkStatus } from "@/hooks/useNetworkStatus"
 import { useAuthStore } from "@/stores/authStore"
 import { useWorkflowListStore } from "@/stores/workflowListStore"
@@ -47,6 +48,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
           <ServiceWorkerRegister />
           <OfflineWarmup />
           <InstallPrompt />
+          <AppUpdateManager />
         </>
       ) : (
         <AppLoader />

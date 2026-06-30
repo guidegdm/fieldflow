@@ -1,123 +1,225 @@
 # FieldFlow Demo Video Script
 
-Target length: 2:35 to 2:55
+Target length: 2:45 to 2:58.
 
-Submission requirement reminder: keep the video under 3 minutes, show the working app, explain the problem, explain who it is for, and clearly name Amazon DynamoDB as the AWS database used.
+Goal: show a real SaaS product, not a static demo. The video must clearly say that the frontend is deployed on Vercel and the primary backend database is Amazon DynamoDB.
 
-## 0:00-0:20 — Hook and problem
+## One-Line Positioning
 
-Show: landing page, then a quick cut to demo entry.
+FieldFlow is an offline-first operations platform for teams that still need to register people, collect evidence, review work, and manage critical supplies when the network disappears.
 
-Script:
+## Screen Setup Before Recording
 
-> FieldFlow is for teams that cannot pause when the network disappears. In humanitarian response, health outreach, logistics, agriculture, and field inspections, workers still need to register people, review cases, and manage supplies even with unstable internet. Too often, disconnected teams fall back to paper, spreadsheets, and repeated data entry. FieldFlow keeps the operation moving offline, then synchronizes safely when connectivity returns.
+Open these tabs before starting:
 
-## 0:20-0:40 — What FieldFlow is
+1. `https://fieldflow-tau.vercel.app/`
+2. `https://fieldflow-tau.vercel.app/auth/signup`
+3. `https://fieldflow-tau.vercel.app/auth/signin`
+4. `https://fieldflow-tau.vercel.app/demo`
+5. Runtime architecture diagram slide.
+6. Optional: email inboxes for the two invited users.
 
-Show: demo login / role selection / app shell.
+Use three browser profiles if possible:
 
-Script:
+1. Admin account: created live during the recording.
+2. Supervisor account: pre-existing or invited during the recording.
+3. Field worker account: pre-existing or invited during the recording.
 
-> FieldFlow is an offline-first B2B platform for creating operational field applications. An organization can define forms, roles, approval stages, permissions, validation rules, and critical actions. Field workers use the generated Progressive Web App on phones, tablets, or laptops.
+## 0:00-0:18 - Hook
 
-## 0:40-1:10 — Admin workflow builder
+Show: landing page, then scroll/hover very briefly.
 
-Show: admin dashboard, workflow builder, tabs for fields/flow/roles/preview.
+Say:
 
-Script:
+> FieldFlow is built for teams whose work cannot wait for a perfect internet connection. In humanitarian response, health outreach, logistics, agriculture, and field inspections, people still need to collect data, review cases, and protect limited supplies even when the network disappears.
 
-> Here is the administrator experience. I can create or edit a workflow, define the fields to collect, model the operational states, assign roles, and preview the worker-facing form. The workflow becomes the structure used by the offline app, so the data model and user experience stay connected.
+## 0:18-0:35 - Product Summary
 
-Presenter actions:
+Show: landing page call to action, then sign-up page.
 
-- Open `/admin/dashboard`.
-- Open or create a workflow.
-- Click Fields, Flow, Roles, Preview.
-- Show Save/Publish briefly.
+Say:
 
-## 1:10-1:40 — Offline worker experience
+> FieldFlow turns operational workflows into offline-first web apps. An organization can define forms, roles, approval stages, permissions, and critical actions, then field workers use the generated app on phones, tablets, or laptops.
 
-Show: field worker registration page, fill a simple record, save locally.
+## 0:35-0:58 - Live SaaS Signup And Workspace
 
-Script:
+Show: `/auth/signup`.
 
-> On the worker side, the app continues to work when the network is unreliable. Records, workflow definitions, conflicts, and pending operations are stored locally in IndexedDB. The worker can register a household, capture required information, and save the operation locally. When the network returns, the sync layer sends the pending operations to the server.
+Actions:
 
-Presenter actions:
+1. Create a new admin account.
+2. Enter workspace name and sector.
+3. Show email verification code step.
+4. If recording time is tight, cut after code entry and show the admin dashboard.
 
-- Switch to field worker demo user if possible.
-- Create a record.
-- Show saved locally or pending sync status.
+Say:
 
-## 1:40-2:10 — Sync, conflicts, and supervisor review
+> This is a real account flow backed by Amazon Cognito. Password signups verify the inbox with an email code before the workspace is activated. Google sign-in is also supported, and invited users are linked into the right workspace by their verified email.
 
-Show: conflict/review/sync pages.
+## 0:58-1:18 - Invite Real Users
 
-Script:
+Show: `/admin/users`.
 
-> FieldFlow does not just overwrite records. Each local change is treated as a traceable operation with base values, workflow version, device, and author. If two devices edit different fields, the system can merge them. If they edit the same field differently, FieldFlow creates a conflict for supervisor review instead of silently losing work.
+Actions:
 
-Presenter actions:
+1. Invite one supervisor.
+2. Invite one field worker.
+3. Mention that Cognito sends the invite email.
+4. If possible, quickly show one inbox and then sign in with Google using the invited email.
 
-- Open supervisor review or conflicts.
-- Show a conflict card or review queue.
-- Mention audit trail if visible.
+Say:
 
-## 2:10-2:35 — AWS architecture and DynamoDB
+> From the admin dashboard, I can invite field agents and supervisors. If the Cognito user does not exist yet, FieldFlow creates the user and sends an invite. If that person later signs in with Google using the same email, the app resolves the invitation and places them into this workspace automatically.
 
-Show: architecture diagram slide or engineering/snapshot page.
+## 1:18-1:45 - AI Workflow Generation
 
-Script:
+Show: `/admin/workflows/new` or an existing workflow builder.
 
-> The primary backend database is Amazon DynamoDB. FieldFlow stores organizations, users, workflow definitions, record projections, mutation history, device checkpoints, conflicts, inventory state, idempotency receipts, demo sandbox metrics, and audit/ledger entries in DynamoDB. Data is scoped by organization, including demo sandboxes.
+Actions:
 
-> For critical inventory reservation, FieldFlow uses DynamoDB conditional and transactional writes so the last available item cannot be allocated twice. Retried requests use idempotency receipts, so a network retry does not duplicate the business action.
+1. Open the AI assistant.
+2. Prompt example:
 
-## 2:35-2:55 — Demo sandbox and close
+```text
+Create an aid distribution workflow where field agents register households, supervisors verify eligibility, inventory is reserved only once, and final distribution is confirmed in the field.
+```
 
-Show: demo page and maybe organization switcher.
+3. Show generated fields.
+4. Click Flow.
+5. Click Roles.
+6. Click Preview.
+7. Save or publish.
 
-Script:
+Say:
 
-> The public demo is also database-backed. When a visitor enters demo mode, FieldFlow creates an isolated sandbox with its own seeded data and TTL cleanup metadata. That means judges can test the full experience without creating an account, and without affecting another judge's data.
+> The workflow builder lets an administrator design the operation: fields, states, transitions, roles, and preview. The AI assistant can draft the workflow, but the human admin reviews and publishes it. That keeps AI useful without letting it make operational decisions.
 
-> FieldFlow exists because technology should not stop working precisely where it is needed most.
+## 1:45-2:08 - Field Worker Experience
 
-## What to present on screen
+Show: `/field-worker/register`.
 
-Use this exact order:
+Actions:
 
-1. Landing page: establish product and demo entry.
-2. Demo entry: show no-credential access.
-3. Admin dashboard: show organization-level product.
-4. Workflow builder: fields, flow, roles, preview.
-5. Field worker registration: create or save a record.
-6. Sync/status or conflict page: show offline-first behavior.
-7. Supervisor/inventory: show review or critical reservation.
-8. Architecture diagram: name DynamoDB and Vercel clearly.
-9. Demo sandbox explanation: each visitor gets an isolated DynamoDB-backed workspace.
+1. Use admin, supervisor, or field worker. Admin and supervisor can also perform field work.
+2. Fill a short registration.
+3. Add a photo from gallery if needed.
+4. Save the record.
+5. Show local save or pending sync indicator.
 
-## Lines to make sure you say
+Say:
 
-- "FieldFlow uses Amazon DynamoDB as the primary backend database."
+> On the field side, workers can register a household, capture evidence, and save the operation locally. FieldFlow stores the app state and field work in the browser so the user can continue even when connectivity is unreliable.
+
+## 2:08-2:30 - Offline Sync And Conflict Review
+
+Show: phone or second browser if possible.
+
+Actions:
+
+1. Open an existing record on one device.
+2. Go offline.
+3. Edit a field and save locally.
+4. Edit the same record elsewhere while online.
+5. Reconnect and sync.
+6. Show `/supervisor/conflicts`.
+
+Say:
+
+> FieldFlow does not blindly overwrite records. Local changes carry base values, device information, workflow version, and author. If two devices edit safely, the system can merge. If they disagree on the same field, FieldFlow creates a conflict for supervisor review instead of losing work.
+
+## 2:30-2:43 - Inventory And DynamoDB Correctness
+
+Show: `/supervisor/inventory`.
+
+Actions:
+
+1. Show available stock.
+2. Reserve an item if data allows.
+3. Mention idempotency and conditional writes.
+
+Say:
+
+> For critical inventory, FieldFlow uses DynamoDB conditional and transactional writes with idempotency receipts. If a request retries because of a bad network, the business action is not duplicated, and the last available item cannot be promised twice.
+
+## 2:43-2:55 - Demo Sandbox
+
+Show: `/demo`.
+
+Actions:
+
+1. Show demo roles.
+2. Enter as admin or supervisor.
+3. Mention isolated sandbox and TTL cleanup.
+
+Say:
+
+> Judges can also try the full product without creating an account. The demo is not static data. It creates an isolated DynamoDB-backed sandbox with private seeded records and TTL cleanup, so one visitor cannot break another visitor's demo.
+
+## 2:55-2:59 - Architecture Close
+
+Show: runtime architecture diagram.
+
+Say:
+
+> The frontend is deployed on Vercel. Amazon DynamoDB is the primary backend database for workspaces, users, workflows, records, sync mutations, conflicts, inventory, audit events, and demo sandboxes. FieldFlow exists because field technology should keep working where it is needed most.
+
+## Required Lines To Say Clearly
+
 - "The frontend is deployed on Vercel."
+- "Amazon DynamoDB is the primary backend database."
 - "The app is offline-first and stores local work in IndexedDB."
-- "The demo is not static data; it creates isolated DynamoDB-backed sandboxes."
+- "The public demo creates isolated DynamoDB-backed sandboxes."
 - "Critical inventory uses idempotency and DynamoDB conditional or transactional writes."
+- "Cognito handles email verification, invitations, Google sign-in, and password reset."
 
-## Avoid saying
+## Live Routes Checklist
 
-- Do not mention Aurora DSQL unless it is actually wired in the running app.
-- Do not spend time on internal implementation details that are not visible.
-- Do not let the video go over 3 minutes.
+Use these routes during the recording:
 
-Fatima
-fatima@demo.ff
-Field Agent
+1. Landing: `https://fieldflow-tau.vercel.app/`
+2. Signup: `https://fieldflow-tau.vercel.app/auth/signup`
+3. Signin: `https://fieldflow-tau.vercel.app/auth/signin`
+4. Reset password: `https://fieldflow-tau.vercel.app/auth/reset-password`
+5. Admin dashboard: `https://fieldflow-tau.vercel.app/admin/dashboard`
+6. Users and invites: `https://fieldflow-tau.vercel.app/admin/users`
+7. Workflow list: `https://fieldflow-tau.vercel.app/admin/workflows`
+8. New workflow: `https://fieldflow-tau.vercel.app/admin/workflows/new`
+9. Field registration: `https://fieldflow-tau.vercel.app/field-worker/register`
+10. Field search: `https://fieldflow-tau.vercel.app/field-worker/search`
+11. Supervisor review: `https://fieldflow-tau.vercel.app/supervisor/review`
+12. Conflicts: `https://fieldflow-tau.vercel.app/supervisor/conflicts`
+13. Inventory: `https://fieldflow-tau.vercel.app/supervisor/inventory`
+14. Demo sandbox: `https://fieldflow-tau.vercel.app/demo`
 
-Dr. Amara
-dr-amara@demo.ff
-Supervisor
+## Demo Account Notes
 
-Preparing offline demo...
-celine@demo.ff
+Use these only for the public demo flow:
+
+- `celine@demo.ff` - Administrator
+- `dr-amara@demo.ff` - Supervisor
+- `jean-pierre@demo.ff` - Field Agent
+- `fatima@demo.ff` - Field Agent
+
+## If Time Runs Short
+
+Cut in this order:
+
+1. Password reset mention only, do not show the page.
+2. Email inbox view.
+3. Inventory reservation click.
+4. Detailed role tab in workflow builder.
+
+Do not cut:
+
+1. DynamoDB statement.
+2. Vercel statement.
+3. Offline/local save.
+4. Conflict handling.
+5. Demo sandbox isolation.
+
+## Avoid Saying
+
+- Do not mention Aurora DSQL.
+- Do not say the demo uses static data.
+- Do not spend time explaining implementation internals that are not visible.
+- Do not go over three minutes.

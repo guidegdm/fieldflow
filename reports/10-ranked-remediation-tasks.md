@@ -150,7 +150,7 @@ Primary files:
 
 ### T10 - Validate workflow definitions server-side
 
-Status: Pending
+Status: Done on `audit` - workflow save and publish now validate fields, state graph, transitions, roles, labels, and offline policy with structured 422 errors.
 
 Tasks:
 - Validate fields, state graph, transitions, roles, labels, and offline policy before save/publish.
@@ -163,7 +163,7 @@ Primary files:
 
 ### T11 - Make publish versioned and non-misleading
 
-Status: Pending
+Status: Done on `audit` - publish now returns the server-authored workflow, the client only updates from that response, and failed publish no longer creates a fake local published version.
 
 Tasks:
 - Stop marking publish successful when backend fails.
@@ -178,7 +178,7 @@ Primary files:
 
 ### T12 - Validate record state transitions before mutation
 
-Status: Pending
+Status: Done on `audit` - sync create/update validates state transitions before writes and clones records before mutation to avoid partially mutating stored objects.
 
 Tasks:
 - Validate create/update status and state before mutating existing records.
@@ -304,9 +304,9 @@ Primary files:
 - [x] T07: Make mutation idempotency atomic.
 - [x] T08: Stop using global Cognito role for org authorization.
 - [x] T09: Add real invite acceptance or first-login handling.
-- [ ] T10: Validate workflow definitions server-side.
-- [ ] T11: Make publish versioned and non-misleading.
-- [ ] T12: Validate record state transitions before mutation.
+- [x] T10: Validate workflow definitions server-side.
+- [x] T11: Make publish versioned and non-misleading.
+- [x] T12: Validate record state transitions before mutation.
 - [ ] T13: Add list invalidation after workflow/sync/review/conflict actions.
 - [ ] T14: Enforce inventory role checks at API level.
 - [ ] T15: Validate inventory receipt content hash.

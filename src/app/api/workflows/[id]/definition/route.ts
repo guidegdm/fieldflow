@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getStore } from "@/lib/api/in-memory-store"
 import { getAuthUser } from "@/lib/auth/middleware"
 import type { WorkflowDefinition } from "@/types/workflow"
+import { validateWorkflowDefinition, workflowValidationResponse } from "@/lib/workflows/validate-definition"
 
 export async function GET(
   request: NextRequest,
@@ -62,6 +63,9 @@ export async function PUT(
   }
 
   const store = getStore()
+  const errors = validateWorkflowDefinition(workflow)
+  if (errors.length > 0) return NextResponse.json(workflowValidationResponse(errors), { status: 422 })
+
   await store.putWorkflowForOrg(workflow)
   return NextResponse.json(workflow)
 }

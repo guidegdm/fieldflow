@@ -97,6 +97,14 @@ function isValidTransition(workflow: WorkflowDefinition, fromState: string | und
   )
 }
 
+function cloneRecord(record: RecordData): RecordData {
+  return {
+    ...record,
+    fields: { ...(record.fields ?? {}) },
+    fieldValues: record.fieldValues ? { ...record.fieldValues } : undefined,
+  }
+}
+
 export async function POST(request: NextRequest) {
   const user = await getAuthUser(request)
   if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 })
@@ -149,6 +157,11 @@ export async function POST(request: NextRequest) {
         const payload = asRecord(payloadObject.fields ?? op.payload)
         const payloadStatus = typeof payloadObject.status === "string" ? payloadObject.status : "pending"
         const payloadState = normalizeStateId(workflow, payloadObject.state)
+        const initialState = normalizeStateId(workflow, undefined)
+        if (!isValidTransition(workflow, initialState, payloadState, user.role)) {
+          failed.push({ client_id: op.client_id, reason: "INVALID_INITIAL_STATE_TRANSITION" })
+          continue
+        }
         const clientWorkflowVersion = typeof payloadObject.workflowVersion === "number" ? payloadObject.workflowVersion : workflow.version
         const createdAt = typeof payloadObject.createdAt === "number" ? payloadObject.createdAt : operationServerTs
         const createdBy = typeof payloadObject.createdBy === "string" ? payloadObject.createdBy : user.sub
@@ -178,11 +191,12 @@ export async function POST(request: NextRequest) {
         await store.completeMutationForOrg({ ...op, payload: record }, user.orgId)
         acked.push(op.client_id)
       } else if (op.operation === "update" || op.operation === "attach_evidence") {
-        const existing = await store.getRecordForOrg(op.record_id!, user.orgId)
-        if (!existing) {
+        const storedRecord = await store.getRecordForOrg(op.record_id!, user.orgId)
+        if (!storedRecord) {
           failed.push({ client_id: op.client_id, reason: "RECORD_NOT_FOUND" })
           continue
         }
+        const existing = cloneRecord(storedRecord)
 
         const payloadObject = asRecord(op.payload)
         const incomingFields = asRecord(payloadObject.fields ?? op.payload)

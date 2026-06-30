@@ -16,7 +16,7 @@ interface WorkflowStateStore {
   addField: () => void
   updateField: (id: string, partial: Partial<FieldDefinition>) => void
   removeField: (id: string) => void
-  publish: () => void
+  publish: () => Promise<WorkflowDefinition | null>
 }
 
 export const useWorkflowStore = create<WorkflowStateStore>()((set, get) => ({
@@ -136,21 +136,15 @@ export const useWorkflowStore = create<WorkflowStateStore>()((set, get) => ({
 
   publish: async () => {
     const w = get().workflow
-    if (!w) return
-    try {
-      await fetch(`/api/workflows/${w.id}/publish`, { method: "POST", credentials: "include" })
-    } catch {}
-    const workflow = {
-      ...w,
-      status: "published" as const,
-      publishedAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      version: w.version + 1,
-    }
+    if (!w) return null
+    const res = await fetch(`/api/workflows/${w.id}/publish`, { method: "POST", credentials: "include" })
+    if (!res.ok) throw new Error("workflow_publish_failed")
+    const workflow = await res.json() as WorkflowDefinition
     set({ workflow })
     try {
       const { db } = await import("@/lib/db/indexeddb")
       await db.saveWorkflow(workflow)
     } catch {}
+    return workflow
   },
 }))

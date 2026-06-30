@@ -10,6 +10,7 @@ import { ConflictMerge, type ConflictField } from "@/components/conflicts/Confli
 import type { ConflictRecord } from "@/types/sync"
 import { useAuthStore } from "@/stores/authStore"
 import { useWorkflowContext } from "@/hooks/useWorkflowContext"
+import { resolveConflictsOffline } from "@/lib/sync/offline-conflict-resolution"
 
 export default function SupervisorConflicts() {
   const { t } = useTranslation()
@@ -72,31 +73,11 @@ export default function SupervisorConflicts() {
       return
     } catch {
       if (!recordId) throw new Error("offline_conflict_resolution_failed")
-      const { db } = await import("@/lib/db/indexeddb")
-      const record = await db.getRecord(recordId, user?.orgId)
-      if (record) {
-        record.fields = { ...record.fields }
-        for (const [field, resolution] of Object.entries(resolutions)) {
-          record.fields[field] = resolution.value
-        }
-        record.status = record.status === "in_conflict" ? "conflict_resolved" : record.status
-        record.syncStatus = "local"
-        record.updatedAt = Date.now()
-        record.version += 1
-        await db.putRecord(record)
-      }
-      for (const field of conflictFields) {
-        if (!field.id) continue
-        const resolution = resolutions[field.key]
-        await db.resolveConflict(
-          field.id,
-          resolution?.choice === "remote" ? "accept_b" : resolution?.choice === "manual" ? "manual" : "accept_a",
-          resolution?.choice === "manual" ? resolution.value : undefined,
-          rationale,
-        )
-      }
+      await resolveConflictsOffline({ recordId, resolutions, rationale, resolvedBy: "supervisor", user })
+      setRecordId(null)
+      setConflictFields([])
     }
-  }, [conflictFields, recordId])
+  }, [recordId, user])
 
   if (loading) {
     return (

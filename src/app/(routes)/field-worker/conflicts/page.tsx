@@ -11,6 +11,7 @@ import type { ConflictRecord } from "@/types/sync"
 import Link from "next/link"
 import { useAuthStore } from "@/stores/authStore"
 import { useWorkflowContext } from "@/hooks/useWorkflowContext"
+import { resolveConflictsOffline } from "@/lib/sync/offline-conflict-resolution"
 
 export default function FieldWorkerConflicts() {
   const { t } = useTranslation()
@@ -62,17 +63,12 @@ export default function FieldWorkerConflicts() {
         resolved_by: "field_worker",
       })
     } catch {
-      const { db } = await import("@/lib/db/indexeddb")
-      for (const [field, res] of Object.entries(resolutions)) {
-        const conflicts: ConflictRecord[] = await db.getConflicts()
-        const conflict = conflicts.find(c => c.field === field && c.record_id === recordId && c.status === "OPEN")
-        if (conflict) {
-          const resolution = res.choice === "yours" ? "accept_a" as const : res.choice === "remote" ? "accept_b" as const : "manual" as const
-          await db.resolveConflict(conflict.id, resolution, res.value, rationale)
-        }
-      }
+      if (!recordId) throw new Error("offline_conflict_resolution_failed")
+      await resolveConflictsOffline({ recordId, resolutions, rationale, resolvedBy: "field_worker", user })
+      setRecordId(null)
+      setConflictFields([])
     }
-  }, [recordId])
+  }, [recordId, user])
 
   if (loading) {
     return (

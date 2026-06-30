@@ -89,7 +89,7 @@ Primary files:
 
 ### T06 - Make conflict resolution durable offline
 
-Status: Pending
+Status: Done on `audit` - offline conflict resolution now updates the local record, resolves local conflict rows, enqueues a sync mutation with base fields, and refreshes pending counts.
 
 Tasks:
 - Enqueue conflict-resolution mutations when offline.
@@ -300,7 +300,7 @@ Primary files:
 - [x] T03: Scope IndexedDB workflow/record access by org.
 - [x] T04: Separate failed sync attempts from successful syncs.
 - [x] T05: Drain more than 100 mutations.
-- [ ] T06: Make conflict resolution durable offline.
+- [x] T06: Make conflict resolution durable offline.
 - [ ] T07: Make mutation idempotency atomic.
 - [ ] T08: Stop using global Cognito role for org authorization.
 - [ ] T09: Add real invite acceptance or first-login handling.

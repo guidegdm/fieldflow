@@ -27,7 +27,6 @@ const agentRequestSchema = z.object({
 })
 
 const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || "deepseek-v4-flash"
-const DEEPSEEK_MAX_TOKENS = Number(process.env.DEEPSEEK_MAX_TOKENS || 2048)
 
 export async function POST(request: NextRequest) {
   try {
@@ -65,7 +64,6 @@ export async function POST(request: NextRequest) {
         messages,
         tools: tools?.length ? tools : undefined,
         tool_choice: tools?.length ? "auto" : undefined,
-        max_tokens: Number.isFinite(DEEPSEEK_MAX_TOKENS) ? Math.min(DEEPSEEK_MAX_TOKENS, 2048) : 2048,
       }),
     })
 

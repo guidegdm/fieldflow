@@ -6,6 +6,7 @@ import {
   GetCommand,
   DeleteCommand,
   ScanCommand,
+  UpdateCommand,
   type ScanCommandInput,
   TransactWriteCommand,
 } from "@aws-sdk/lib-dynamodb"
@@ -212,6 +213,10 @@ function orgInventoryLedgerPk(orgId: string, id: string) {
 
 function orgMutationPk(orgId: string, id: string) {
   return `ORG#${orgId}#MUTATION#${id}`
+}
+
+function orgMutationSeqPk(orgId: string) {
+  return `ORG#${orgId}#MUTATION_SEQ`
 }
 
 function orgAuditPk(orgId: string, recordId: string) {
@@ -541,6 +546,36 @@ export const dynamoStore = {
     )
   },
 
+  async putMutationIfAbsent(mutation: MutationEntry, orgId: string, serverSeq: number): Promise<boolean> {
+    try {
+      await client.send(
+        new PutCommand({
+          TableName: TABLE,
+          Item: itemForKey(orgMutationPk(orgId, mutation.client_id), "PROFILE", "mutation", { orgId, ...mutation, server_seq: serverSeq } as unknown as Record<string, unknown>, mutation.client_id),
+          ConditionExpression: "attribute_not_exists(pk)",
+        })
+      )
+      return true
+    } catch (error) {
+      if (error instanceof Error && error.name === "ConditionalCheckFailedException") return false
+      throw error
+    }
+  },
+
+  async nextMutationSeq(orgId: string): Promise<number> {
+    const result = await client.send(
+      new UpdateCommand({
+        TableName: TABLE,
+        Key: await tableKey(orgMutationSeqPk(orgId), "PROFILE"),
+        UpdateExpression: "SET entityType = :type, orgId = :orgId ADD #seq :one",
+        ExpressionAttributeNames: { "#seq": "server_seq" },
+        ExpressionAttributeValues: { ":type": "mutation_sequence", ":orgId": orgId, ":one": 1 },
+        ReturnValues: "UPDATED_NEW",
+      })
+    )
+    return Number(result.Attributes?.server_seq || 0)
+  },
+
   async hasMutation(clientId: string, orgId: string): Promise<boolean> {
     const result = await sendGet(orgMutationPk(orgId, clientId), "PROFILE", "pk")
     return !!result.Item
@@ -551,10 +586,14 @@ export const dynamoStore = {
       FilterExpression: "entityType = :type AND orgId = :orgId AND server_seq > :seq",
       ExpressionAttributeValues: { ":type": "mutation", ":orgId": orgId, ":seq": seq },
     })
-    return items.map((item) => stripKeys<MutationEntry>(item as MutationEntry & Record<string, unknown>)!)
+    return items
+      .map((item) => stripKeys<MutationEntry>(item as MutationEntry & Record<string, unknown>)!)
+      .sort((a, b) => (a.server_seq ?? 0) - (b.server_seq ?? 0))
   },
 
   async getCurrentSeq(orgId: string): Promise<number> {
+    const counter = await sendGet(orgMutationSeqPk(orgId), "PROFILE", "server_seq").catch(() => ({ Item: null }))
+    if (counter.Item?.server_seq) return Number(counter.Item.server_seq)
     const items = await scanAll({
       FilterExpression: "entityType = :type AND orgId = :orgId",
       ExpressionAttributeValues: { ":type": "mutation", ":orgId": orgId },

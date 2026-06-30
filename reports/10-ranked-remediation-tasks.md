@@ -104,7 +104,7 @@ Primary files:
 
 ### T07 - Make mutation idempotency atomic
 
-Status: Pending
+Status: Done on `audit` - sync now claims mutation receipts before validated side effects, DynamoDB receipt creation is conditional, per-org sequence allocation is backed by a DynamoDB counter, and server-change cursors are sorted by sequence.
 
 Tasks:
 - Replace check-then-write idempotency with conditional receipt creation.
@@ -301,7 +301,7 @@ Primary files:
 - [x] T04: Separate failed sync attempts from successful syncs.
 - [x] T05: Drain more than 100 mutations.
 - [x] T06: Make conflict resolution durable offline.
-- [ ] T07: Make mutation idempotency atomic.
+- [x] T07: Make mutation idempotency atomic.
 - [ ] T08: Stop using global Cognito role for org authorization.
 - [ ] T09: Add real invite acceptance or first-login handling.
 - [ ] T10: Validate workflow definitions server-side.

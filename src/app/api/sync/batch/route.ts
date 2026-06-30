@@ -128,8 +128,12 @@ export async function POST(request: NextRequest) {
           failed.push({ client_id: op.client_id, reason: "INVALID_WORKFLOW_DEFINITION" })
           continue
         }
+        if (!(await store.claimMutationForOrg(op, user.orgId))) {
+          acked.push(op.client_id)
+          continue
+        }
         await store.putWorkflowForOrg(op.payload as WorkflowDefinition)
-        await store.storeMutationForOrg(op, user.orgId)
+        await store.completeMutationForOrg(op, user.orgId)
         acked.push(op.client_id)
         continue
       }
@@ -166,8 +170,12 @@ export async function POST(request: NextRequest) {
           version: 1,
           orgId: user.orgId,
         }
+        if (!(await store.claimMutationForOrg(op, user.orgId))) {
+          acked.push(op.client_id)
+          continue
+        }
         await store.putRecordForOrg(record)
-        await store.storeMutationForOrg({ ...op, payload: record }, user.orgId)
+        await store.completeMutationForOrg({ ...op, payload: record }, user.orgId)
         acked.push(op.client_id)
       } else if (op.operation === "update" || op.operation === "attach_evidence") {
         const existing = await store.getRecordForOrg(op.record_id!, user.orgId)
@@ -295,6 +303,10 @@ export async function POST(request: NextRequest) {
           }
           existing.state = nextState
         }
+        if (!(await store.claimMutationForOrg(op, user.orgId))) {
+          acked.push(op.client_id)
+          continue
+        }
         if (typeof payloadObject.syncStatus === "string") existing.syncStatus = payloadObject.syncStatus
         existing.version += 1
         existing.updatedAt = operationServerTs
@@ -302,7 +314,7 @@ export async function POST(request: NextRequest) {
         const hasEscalated = opConflicts.some((c) => !c.auto_resolved)
         existing.syncStatus = hasEscalated ? "conflict" : existing.syncStatus || "synced"
         await store.putRecordForOrg(existing)
-        await store.storeMutationForOrg({ ...op, payload: existing }, user.orgId)
+        await store.completeMutationForOrg({ ...op, payload: existing }, user.orgId)
 
         for (const ec of opConflicts.filter((c) => !c.auto_resolved)) {
           const cr: ConflictRecord = {
@@ -330,8 +342,12 @@ export async function POST(request: NextRequest) {
           continue
         }
 
+        if (!(await store.claimMutationForOrg(op, user.orgId))) {
+          acked.push(op.client_id)
+          continue
+        }
         await store.deleteRecordForOrg(existing.id, user.orgId)
-        await store.storeMutationForOrg({
+        await store.completeMutationForOrg({
           ...op,
           payload: { id: existing.id, orgId: user.orgId, deletedAt: operationServerTs },
         }, user.orgId)

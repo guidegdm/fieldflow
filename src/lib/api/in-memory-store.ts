@@ -95,9 +95,34 @@ class Store {
     return this.hasMutation(clientId)
   }
   async storeMutationForOrg(m: MutationEntry, orgId: string) {
-    this.seq++
-    const stored = { ...m, server_seq: this.seq }
-    if (DYNAMODB_ENABLED) await (await getDynamo())?.putMutation(stored, orgId, this.seq)
+    const serverSeq = DYNAMODB_ENABLED
+      ? await (await getDynamo())?.nextMutationSeq(orgId) ?? this.seq + 1
+      : this.seq + 1
+    this.seq = Math.max(this.seq, serverSeq)
+    const stored = { ...m, server_seq: serverSeq }
+    if (DYNAMODB_ENABLED) await (await getDynamo())?.putMutation(stored, orgId, serverSeq)
+    this.mutations.set(m.client_id, stored)
+  }
+  async claimMutationForOrg(m: MutationEntry, orgId: string) {
+    if (this.mutations.has(m.client_id)) return false
+    const serverSeq = DYNAMODB_ENABLED
+      ? await (await getDynamo())?.nextMutationSeq(orgId) ?? this.seq + 1
+      : this.seq + 1
+    const claimed = { ...m, status: "SENDING" as const, server_seq: serverSeq }
+    if (DYNAMODB_ENABLED) {
+      const stored = await (await getDynamo())?.putMutationIfAbsent(claimed, orgId, serverSeq)
+      if (!stored) return false
+    }
+    this.seq = Math.max(this.seq, serverSeq)
+    this.mutations.set(m.client_id, claimed)
+    return true
+  }
+  async completeMutationForOrg(m: MutationEntry, orgId: string) {
+    const existing = this.mutations.get(m.client_id)
+    const serverSeq = existing?.server_seq ?? this.seq + 1
+    if (!existing) this.seq = serverSeq
+    const stored = { ...m, server_seq: serverSeq }
+    if (DYNAMODB_ENABLED) await (await getDynamo())?.putMutation(stored, orgId, serverSeq)
     this.mutations.set(m.client_id, stored)
   }
   getCurrentSeq() { return this.seq }
@@ -106,7 +131,9 @@ class Store {
     return Math.max(0, ...Array.from(this.mutations.values()).map((m) => m.server_seq ?? 0))
   }
   getServerSince(seq: number): MutationEntry[] {
-    return Array.from(this.mutations.values()).filter((m) => (m.server_seq ?? 0) > seq)
+    return Array.from(this.mutations.values())
+      .filter((m) => (m.server_seq ?? 0) > seq)
+      .sort((a, b) => (a.server_seq ?? 0) - (b.server_seq ?? 0))
   }
   async getServerSinceForOrg(orgId: string, seq: number) {
     if (DYNAMODB_ENABLED) return (await getDynamo())?.getServerSince(orgId, seq) ?? []

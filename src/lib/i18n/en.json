@@ -16,6 +16,7 @@
     "conflicts": "Conflicts",
     "status": "Status",
     "dashboard": "Dashboard",
+    "records": "Records",
     "reviewQueue": "Review",
     "inventory": "Inventory",
     "settings": "Settings",

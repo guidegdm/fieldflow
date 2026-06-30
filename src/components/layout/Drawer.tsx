@@ -35,6 +35,7 @@ const navByRole: Record<string, { labelKey: string; fallback: string; href: stri
   admin: [
     { labelKey: "nav.dashboard", fallback: "Tableau de bord", href: "/admin/dashboard", icon: <LayoutDashboard size={20} /> },
     { labelKey: "nav.workflows", fallback: "Workflows", href: "/admin/workflows", icon: <Workflow size={20} /> },
+    { labelKey: "nav.records", fallback: "Fiches", href: "/field-worker/home", icon: <Home size={20} /> },
     { labelKey: "nav.newRecord", fallback: "Nouvelle fiche", href: "/field-worker/register", icon: <Plus size={20} /> },
     { labelKey: "nav.search", fallback: "Recherche terrain", href: "/field-worker/search", icon: <Search size={20} /> },
     { labelKey: "nav.reviewQueue", fallback: "Validation", href: "/supervisor/review", icon: <Inbox size={20} /> },

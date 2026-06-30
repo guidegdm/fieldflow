@@ -49,6 +49,7 @@ const mobileNavByRole: Record<AppRole, MobileNavItem[]> = {
   admin: [
     { labelKey: "nav.dashboard", fallback: "Dashboard", href: "/admin/dashboard", icon: <LayoutDashboard size={18} /> },
     { labelKey: "nav.workflows", fallback: "Workflows", href: "/admin/workflows", icon: <Workflow size={18} /> },
+    { labelKey: "nav.records", fallback: "Records", href: "/field-worker/home", icon: <Home size={18} /> },
     { labelKey: "nav.newRecord", fallback: "New record", href: "/field-worker/register", icon: <Plus size={18} /> },
     { labelKey: "nav.search", fallback: "Search", href: "/field-worker/search", icon: <Search size={18} /> },
     { labelKey: "nav.reviewQueue", fallback: "Review", href: "/supervisor/review", icon: <Inbox size={18} /> },

@@ -72,9 +72,11 @@ async function cacheAppRoutes() {
         const request = new Request(new URL(url, window.location.origin).href, {
           credentials: "include",
           cache: "reload",
+          headers: { Accept: "text/html,application/xhtml+xml" },
         })
         const response = await fetch(request)
         if (response.ok) await cache.put(request, response.clone())
+        if (response.ok) await cache.put(new URL(url, window.location.origin).href, response.clone())
       } catch {}
     }))
   }
@@ -117,9 +119,11 @@ async function cacheUrls(urls: string[]) {
         const request = new Request(new URL(url, window.location.origin).href, {
           credentials: "include",
           cache: "reload",
+          headers: { Accept: "text/html,application/xhtml+xml" },
         })
         const response = await fetch(request)
         if (response.ok) await cache.put(request, response.clone())
+        if (response.ok) await cache.put(new URL(url, window.location.origin).href, response.clone())
       } catch {}
     }))
   }
@@ -153,21 +157,25 @@ async function cacheUrls(urls: string[]) {
 
 async function cacheCurrentWorkspaceRoutes(user?: DemoUser | null) {
   if (!user?.orgId) return
-
-  const [workflows, records] = await Promise.all([
-    db.getAllWorkflowsForOrg(user.orgId).catch(() => []),
-    db.getAllRecordsForOrg(user.orgId).catch(() => []),
-  ])
+  const orgs = (user as DemoUser & { orgs?: Array<{ id: string; name?: string }> }).orgs?.length
+    ? (user as DemoUser & { orgs?: Array<{ id: string; name?: string }> }).orgs!
+    : [{ id: user.orgId }]
+  const orgIds = Array.from(new Set(orgs.map((org) => org.id).filter(Boolean)))
+  const workspaceData = await Promise.all(orgIds.map(async (orgId) => {
+    const [workflows, records] = await Promise.all([
+      db.getAllWorkflowsForOrg(orgId).catch(() => []),
+      db.getAllRecordsForOrg(orgId).catch(() => []),
+    ])
+    return { workflows, records }
+  }))
 
   await cacheUrls([
     ...APP_ROUTES_TO_CACHE,
-    ...workflows.flatMap((workflow) => [
+    ...workspaceData.flatMap(({ workflows }) => workflows.flatMap((workflow) => [
       `/admin/workflows/${workflow.id}`,
-      `/api/workflows/${workflow.id}/definition`,
-      `/api/workflows/${workflow.id}/records`,
-    ]),
-    ...records.map((record) => `/field-worker/record/${record.id}`),
-    ...records.map((record) => `/supervisor/review?id=${record.id}`),
+    ])),
+    ...workspaceData.flatMap(({ records }) => records.map((record) => `/field-worker/record/${record.id}`)),
+    ...workspaceData.flatMap(({ records }) => records.map((record) => `/supervisor/review?id=${record.id}`)),
   ])
 }
 

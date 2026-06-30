@@ -223,7 +223,7 @@ export function createLocalDemoSandbox(): DemoOfflineSandbox {
 }
 
 export async function cacheOfflineRecordRoutes(workspaces?: DemoOfflineWorkspace[]) {
-  if (typeof window === "undefined" || !("serviceWorker" in navigator) || !workspaces?.length) return
+  if (typeof window === "undefined" || !workspaces?.length) return
 
   const urls = Array.from(new Set(
     workspaces.flatMap((workspace) =>
@@ -232,6 +232,23 @@ export async function cacheOfflineRecordRoutes(workspaces?: DemoOfflineWorkspace
   ))
   if (!urls.length) return
 
+  if ("caches" in window) {
+    const cache = await caches.open("fieldflow-pages")
+    await Promise.all(urls.map(async (url) => {
+      try {
+        const request = new Request(url, {
+          credentials: "include",
+          cache: "reload",
+          headers: { Accept: "text/html,application/xhtml+xml" },
+        })
+        const response = await fetch(request)
+        if (response.ok) await cache.put(request, response.clone())
+        if (response.ok) await cache.put(url, response.clone())
+      } catch {}
+    }))
+  }
+
+  if (!("serviceWorker" in navigator)) return
   const registration = await navigator.serviceWorker.ready.catch(() => null)
   const worker = registration?.active || registration?.waiting || registration?.installing
   if (!worker) return

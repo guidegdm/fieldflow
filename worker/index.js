@@ -38,10 +38,16 @@ self.addEventListener("fetch", (event) => {
       if (response?.ok) await cache.put(request, response.clone())
       return response
     } catch {
-      const exact = await cache.match(request)
+      const exactUrl = new URL(request.url)
+      const exact = await cache.match(request, { ignoreVary: true })
+        || await cache.match(exactUrl.href, { ignoreVary: true })
+        || await cache.match(exactUrl.pathname + exactUrl.search, { ignoreVary: true })
+        || await cache.match(exactUrl.pathname, { ignoreSearch: true, ignoreVary: true })
       if (exact) return exact
 
       const fallbackUrls = [
+        exactUrl.pathname.startsWith("/field-worker/record/") ? "/field-worker/home" : "",
+        exactUrl.pathname.startsWith("/admin/workflows/") ? "/admin/workflows" : "",
         "/field-worker/home",
         "/field-worker/register",
         "/supervisor/dashboard",
@@ -50,6 +56,7 @@ self.addEventListener("fetch", (event) => {
         "/",
       ]
       for (const url of fallbackUrls) {
+        if (!url) continue
         const fallback = await cache.match(new URL(url, self.location.origin).href)
         if (fallback) return fallback
       }

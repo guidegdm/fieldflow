@@ -23,6 +23,7 @@ import {
 import { OrgSwitcher } from "@/components/layout/OrgSwitcher"
 import { WorkflowSwitcher } from "@/components/layout/WorkflowSwitcher"
 import { useAuthStore } from "@/stores/authStore"
+import { clearClientSessionState } from "@/lib/auth/client-session-cleanup"
 import { cn } from "@/lib/utils"
 
 type AppRole = "admin" | "supervisor" | "field_worker" | "engineering"
@@ -72,6 +73,7 @@ export function MobileAccountMenu({ role }: { role: AppRole }) {
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST", credentials: "include" }).catch(() => {})
+    await clearClientSessionState()
     logout()
     setOpen(false)
     router.push("/")

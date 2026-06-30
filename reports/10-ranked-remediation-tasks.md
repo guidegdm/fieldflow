@@ -25,7 +25,7 @@ Primary files:
 
 ### T02 - Purge offline artifacts on logout
 
-Status: Pending
+Status: Done on `audit` - client logout now clears app IndexedDB stores, FieldFlow local/session storage except language preference, and identity-scoped page caches after server cookies are cleared.
 
 Why second: offline auth currently survives logout/revocation in browser-local state.
 
@@ -296,7 +296,7 @@ Primary files:
 ## Clean Todo
 
 - [ ] T01: Make auth token verification fail closed.
-- [ ] T02: Purge offline artifacts on logout.
+- [x] T02: Purge offline artifacts on logout.
 - [ ] T03: Scope IndexedDB workflow/record access by org.
 - [ ] T04: Separate failed sync attempts from successful syncs.
 - [ ] T05: Drain more than 100 mutations.

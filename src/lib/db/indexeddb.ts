@@ -54,6 +54,18 @@ async function getDB(): Promise<IDBPDatabase<FieldFlowTypes>> {
 export const db = {
   open: getDB,
 
+  async clearAll() {
+    const d = await getDB()
+    await Promise.all([
+      d.clear("mutations"),
+      d.clear("records"),
+      d.clear("workflows"),
+      d.clear("attachments"),
+      d.clear("device_state"),
+      d.clear("conflicts"),
+    ])
+  },
+
   async enqueueMutation(m: MutationEntry) {
     const d = await getDB()
     await d.put("mutations", m)

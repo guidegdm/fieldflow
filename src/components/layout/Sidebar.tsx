@@ -15,6 +15,7 @@ import {
   Package,
   LogOut,
 } from "lucide-react"
+import { clearClientSessionState } from "@/lib/auth/client-session-cleanup"
 
 interface SidebarProps {
   role: "admin" | "supervisor"
@@ -40,6 +41,13 @@ export function Sidebar({ role }: SidebarProps) {
   const activeHref = usePathname()
 
   if (!user) return null
+
+  const handleLogout = async () => {
+    await fetch("/api/auth/logout", { method: "POST", credentials: "include" }).catch(() => {})
+    await clearClientSessionState()
+    logout()
+    window.location.href = "/"
+  }
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 bg-white border-r border-grid-line flex flex-col z-40">
@@ -81,7 +89,7 @@ export function Sidebar({ role }: SidebarProps) {
             </span>
           </div>
           <button
-            onClick={logout}
+            onClick={() => void handleLogout()}
             className="p-1.5 text-pencil hover:text-rebar hover:bg-graph-paper rounded-md transition-colors"
             aria-label="Déconnexion"
           >

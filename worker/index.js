@@ -17,6 +17,7 @@ self.addEventListener("message", (event) => {
         })
         const response = await fetch(request)
         if (response?.ok) await cache.put(request, response.clone())
+        if (response?.ok) await cache.put(url, response.clone())
       } catch {}
     }))
     event.ports?.[0]?.postMessage({ ok: true, cached: urlsToCache.length })
@@ -36,6 +37,7 @@ self.addEventListener("fetch", (event) => {
     try {
       const response = await fetch(request)
       if (response?.ok) await cache.put(request, response.clone())
+      if (response?.ok) await cache.put(request.url, response.clone())
       return response
     } catch {
       const exactUrl = new URL(request.url)

@@ -73,7 +73,7 @@ export default function SupervisorConflicts() {
     } catch {
       if (!recordId) throw new Error("offline_conflict_resolution_failed")
       const { db } = await import("@/lib/db/indexeddb")
-      const record = await db.getRecord(recordId)
+      const record = await db.getRecord(recordId, user?.orgId)
       if (record) {
         record.fields = { ...record.fields }
         for (const [field, resolution] of Object.entries(resolutions)) {

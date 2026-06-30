@@ -72,7 +72,8 @@ export default function SupervisorReview() {
         const res = await fetch(`/api/workflows/${activeWorkflowId}/records`, { credentials: "include" })
         return res.ok ? await res.json() : []
       } catch {
-        return (await db.getAllRecords()).filter((candidate) => candidate.workflowId === activeWorkflowId)
+        const local = user?.orgId ? await db.getAllRecordsForOrg(user.orgId) : []
+        return local.filter((candidate) => candidate.workflowId === activeWorkflowId)
       }
     }
     load()
@@ -85,7 +86,7 @@ export default function SupervisorReview() {
       })
       .catch(() => setRecord(null))
       .finally(() => setLoading(false))
-  }, [activeWorkflow, activeWorkflowId, searchParams, user?.role])
+  }, [activeWorkflow, activeWorkflowId, searchParams, user?.orgId, user?.role])
 
   const timeline = useMemo(() => record ? buildTimeline(record) : [], [record])
   const availableTransitions = useMemo(() => {

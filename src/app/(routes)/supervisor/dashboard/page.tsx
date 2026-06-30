@@ -12,6 +12,7 @@ import { useWorkflowContext } from "@/hooks/useWorkflowContext"
 import { recordTitle, workflowLabel } from "@/lib/workflows/runtime"
 import type { WorkflowDefinition } from "@/types/workflow"
 import { db } from "@/lib/db/indexeddb"
+import { useAuthStore } from "@/stores/authStore"
 
 const statusConfig: Record<string, { variant: "warning" | "success" | "danger" | "info"; label: string }> = {
   pending_sync: { variant: "warning", label: "dashboard.pending" },
@@ -26,6 +27,7 @@ const statusConfig: Record<string, { variant: "warning" | "success" | "danger" |
 export default function SupervisorDashboard() {
   const { t, i18n } = useTranslation()
   const { activeWorkflow, activeWorkflowId, workflows } = useWorkflowContext()
+  const user = useAuthStore((state) => state.user)
   const [filter, setFilter] = useState("all")
   const [scope, setScope] = useState<"current" | "all">("current")
   const [records, setRecords] = useState<RecordData[]>([])
@@ -44,17 +46,17 @@ export default function SupervisorDashboard() {
         const data = res.ok ? await res.json() : []
         return Array.isArray(data) ? data.filter((record: RecordData) => record.workflowId === workflowId) : []
       } catch {
-        const local = await db.getAllRecords()
+        const local = user?.orgId ? await db.getAllRecordsForOrg(user.orgId) : []
         return local.filter((record) => record.workflowId === workflowId)
       }
     }))
       .then(groups => setRecords(groups.flat()))
       .catch(async () => {
-        const local = await db.getAllRecords().catch(() => [])
+        const local = user?.orgId ? await db.getAllRecordsForOrg(user.orgId).catch(() => []) : []
         setRecords(scope === "all" ? local : local.filter((record) => record.workflowId === activeWorkflowId))
       })
       .finally(() => setLoading(false))
-  }, [activeWorkflowId, scope, workflows])
+  }, [activeWorkflowId, scope, user?.orgId, workflows])
 
   const workflowsById = new Map<string, WorkflowDefinition>(workflows.map((workflow) => [workflow.id, workflow]))
 

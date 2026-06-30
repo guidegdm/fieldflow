@@ -44,7 +44,7 @@ Primary files:
 
 ### T03 - Scope IndexedDB workflow/record access by org
 
-Status: Pending
+Status: Done on `audit` - local workflow and record primary keys are now workspace-scoped internally while public IDs remain unchanged. Supervisor/record/conflict offline fallbacks now use current org scope.
 
 Why third: offline correctness depends on local data matching the current org.
 
@@ -297,7 +297,7 @@ Primary files:
 
 - [ ] T01: Make auth token verification fail closed.
 - [x] T02: Purge offline artifacts on logout.
-- [ ] T03: Scope IndexedDB workflow/record access by org.
+- [x] T03: Scope IndexedDB workflow/record access by org.
 - [ ] T04: Separate failed sync attempts from successful syncs.
 - [ ] T05: Drain more than 100 mutations.
 - [ ] T06: Make conflict resolution durable offline.

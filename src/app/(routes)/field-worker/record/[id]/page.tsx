@@ -95,12 +95,12 @@ export default function RecordDetailPage() {
       let workflowId = ""
       try {
         const { db } = await import("@/lib/db/indexeddb")
-        const found = await db.getRecord(id)
+        const found = await db.getRecord(id, user?.orgId)
         if (found && (!user?.orgId || found.orgId === user.orgId)) {
           setRecord(found)
           setDraftFields(found.fields ?? {})
           workflowId = found.workflowId || workflowId
-          const workflow = await db.getWorkflow(found.workflowId)
+          const workflow = await db.getWorkflow(found.workflowId, found.orgId || user?.orgId)
           if (workflow) setWorkflow(workflow)
           loadedLocal = true
           setLoading(false)
@@ -122,7 +122,7 @@ export default function RecordDetailPage() {
             setDraftFields(fresh.fields ?? {})
             const { db } = await import("@/lib/db/indexeddb")
             await db.putRecord(fresh)
-            const definition = await db.getWorkflow(fresh.workflowId)
+            const definition = await db.getWorkflow(fresh.workflowId, fresh.orgId || user?.orgId)
             if (definition) setWorkflow(definition)
             break
           }

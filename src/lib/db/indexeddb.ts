@@ -16,6 +16,57 @@ interface FieldFlowTypes {
 let instance: IDBPDatabase<FieldFlowTypes> | null = null
 let instancePromise: Promise<IDBPDatabase<FieldFlowTypes>> | null = null
 
+type ScopedRecordData = RecordData & { remoteId?: string }
+type ScopedWorkflowDefinition = WorkflowDefinition & { remoteId?: string }
+
+function scopedStorageKey(orgId: string, id: string) {
+  return `${encodeURIComponent(orgId)}::${id}`
+}
+
+function originalRecordId(record: ScopedRecordData) {
+  return record.remoteId || record.id
+}
+
+function originalWorkflowId(workflow: ScopedWorkflowDefinition) {
+  return workflow.remoteId || workflow.id
+}
+
+function toStoredRecord(record: RecordData): RecordData {
+  if (!record.orgId) return record
+  const remoteId = originalRecordId(record as ScopedRecordData)
+  return { ...record, id: scopedStorageKey(record.orgId, remoteId), remoteId } as RecordData
+}
+
+function fromStoredRecord(record: RecordData): RecordData {
+  const scoped = record as ScopedRecordData
+  if (!scoped.remoteId) return record
+  const { remoteId, ...rest } = scoped
+  return { ...rest, id: remoteId }
+}
+
+function toStoredWorkflow(workflow: WorkflowDefinition): WorkflowDefinition {
+  if (!workflow.orgId) return workflow
+  const remoteId = originalWorkflowId(workflow as ScopedWorkflowDefinition)
+  return { ...workflow, id: scopedStorageKey(workflow.orgId, remoteId), remoteId } as WorkflowDefinition
+}
+
+function fromStoredWorkflow(workflow: WorkflowDefinition): WorkflowDefinition {
+  const scoped = workflow as ScopedWorkflowDefinition
+  if (!scoped.remoteId) return workflow
+  const { remoteId, ...rest } = scoped
+  return { ...rest, id: remoteId }
+}
+
+function recordMatches(record: RecordData, id: string, orgId?: string) {
+  const exposed = fromStoredRecord(record)
+  return exposed.id === id && (!orgId || exposed.orgId === orgId)
+}
+
+function workflowMatches(workflow: WorkflowDefinition, id: string, orgId?: string) {
+  const exposed = fromStoredWorkflow(workflow)
+  return exposed.id === id && (!orgId || exposed.orgId === orgId)
+}
+
 function defaultDeviceState(): DeviceState {
   return {
     key: "current",
@@ -118,77 +169,101 @@ export const db = {
 
   async putRecord(record: RecordData) {
     const d = await getDB()
-    await d.put("records", record)
+    await d.put("records", toStoredRecord(record))
   },
 
-  async getRecord(id: string): Promise<RecordData | undefined> {
+  async getRecord(id: string, orgId?: string): Promise<RecordData | undefined> {
     const d = await getDB()
-    return d.get("records", id)
+    if (orgId) {
+      const scoped = await d.get("records", scopedStorageKey(orgId, id))
+      if (scoped) return fromStoredRecord(scoped)
+    }
+    const exact = await d.get("records", id)
+    if (exact && (!orgId || exact.orgId === orgId)) return fromStoredRecord(exact)
+    const all = await d.getAll("records")
+    const found = all.find((record) => recordMatches(record, id, orgId))
+    return found ? fromStoredRecord(found) : undefined
   },
 
-  async deleteRecord(id: string) {
+  async deleteRecord(id: string, orgId?: string) {
     const d = await getDB()
-    await d.delete("records", id)
+    if (orgId) {
+      await d.delete("records", scopedStorageKey(orgId, id))
+      return
+    }
+    const exact = await d.get("records", id)
+    if (exact) await d.delete("records", id)
+    const all = await d.getAll("records")
+    await Promise.all(all.filter((record) => recordMatches(record, id)).map((record) => d.delete("records", record.id)))
   },
 
   async getAllRecords(): Promise<RecordData[]> {
     const d = await getDB()
-    return d.getAll("records")
+    return (await d.getAll("records")).map(fromStoredRecord)
   },
 
   async getAllRecordsForOrg(orgId: string): Promise<RecordData[]> {
     const d = await getDB()
     const all = await d.getAll("records")
-    return all.filter((record) => record.orgId === orgId)
+    return all.map(fromStoredRecord).filter((record) => record.orgId === orgId)
   },
 
   async replaceRecordsForOrg(orgId: string, records: RecordData[]) {
     const d = await getDB()
     const tx = d.transaction("records", "readwrite")
     const existing = await tx.store.getAll()
-    await Promise.all(existing.filter((record) => record.orgId === orgId).map((record) => tx.store.delete(record.id)))
-    await Promise.all(records.map((record) => tx.store.put(record)))
+    await Promise.all(existing.filter((record) => fromStoredRecord(record).orgId === orgId).map((record) => tx.store.delete(record.id)))
+    await Promise.all(records.map((record) => tx.store.put(toStoredRecord({ ...record, orgId }))))
     await tx.done
   },
 
-  async updateRecordStatus(id: string, status: RecordStatus, syncStatus?: SyncStatus) {
+  async updateRecordStatus(id: string, status: RecordStatus, syncStatus?: SyncStatus, orgId?: string) {
     const d = await getDB()
-    const r = await d.get("records", id)
+    const r = orgId ? await d.get("records", scopedStorageKey(orgId, id)) : await this.getRecord(id)
     if (r) {
-      r.status = status
-      if (syncStatus) r.syncStatus = syncStatus
-      r.updatedAt = Date.now()
-      await d.put("records", r)
+      const next = fromStoredRecord(r)
+      next.status = status
+      if (syncStatus) next.syncStatus = syncStatus
+      next.updatedAt = Date.now()
+      await d.put("records", toStoredRecord(next))
     }
   },
 
   async saveWorkflow(wf: WorkflowDefinition) {
     const d = await getDB()
-    await d.put("workflows", wf)
+    await d.put("workflows", toStoredWorkflow(wf))
   },
 
-  async getWorkflow(id: string): Promise<WorkflowDefinition | undefined> {
+  async getWorkflow(id: string, orgId?: string): Promise<WorkflowDefinition | undefined> {
     const d = await getDB()
-    return d.get("workflows", id)
+    if (orgId) {
+      const scoped = await d.get("workflows", scopedStorageKey(orgId, id))
+      if (scoped) return fromStoredWorkflow(scoped)
+    }
+    const exact = await d.get("workflows", id)
+    if (exact && (!orgId || exact.orgId === orgId)) return fromStoredWorkflow(exact)
+    const all = await d.getAll("workflows")
+    const found = all.find((workflow) => workflowMatches(workflow, id, orgId))
+    return found ? fromStoredWorkflow(found) : undefined
   },
 
   async getAllWorkflows(): Promise<WorkflowDefinition[]> {
     const d = await getDB()
-    return d.getAll("workflows")
+    return (await d.getAll("workflows")).map(fromStoredWorkflow)
   },
 
   async getAllWorkflowsForOrg(orgId: string): Promise<WorkflowDefinition[]> {
     const d = await getDB()
     const all = await d.getAll("workflows")
-    return all.filter((workflow) => workflow.orgId === orgId)
+    return all.map(fromStoredWorkflow).filter((workflow) => workflow.orgId === orgId)
   },
 
   async replaceWorkflowsForOrg(orgId: string, workflows: WorkflowDefinition[]) {
     const d = await getDB()
     const tx = d.transaction("workflows", "readwrite")
     const existing = await tx.store.getAll()
-    await Promise.all(existing.filter((workflow) => workflow.orgId === orgId).map((workflow) => tx.store.delete(workflow.id)))
-    await Promise.all(workflows.map((workflow) => tx.store.put(workflow)))
+    await Promise.all(existing.filter((workflow) => fromStoredWorkflow(workflow).orgId === orgId).map((workflow) => tx.store.delete(workflow.id)))
+    await Promise.all(workflows.map((workflow) => tx.store.put(toStoredWorkflow({ ...workflow, orgId }))))
     await tx.done
   },
 

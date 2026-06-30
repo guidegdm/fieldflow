@@ -25,7 +25,7 @@ class Store {
   private mutations = new Map<string, MutationEntry>()
   private devices = new Map<string, DeviceState>()
   private conflicts = new Map<string, ConflictRecord>()
-  private criticalOps = new Map<string, { itemId: string; quantity: number; timestamp: number }>()
+  private criticalOps = new Map<string, { itemId: string; quantity: number; timestamp: number; contentHash: string }>()
   private inventory = new Map<string, InventoryItem>()
   private orgs = new Map<string, any>()
   private userProfiles = new Map<string, any>()
@@ -245,10 +245,13 @@ class Store {
   async reserveInventory(
     itemId: string, idempotencyKey: string, qty = 1, userId?: string, orgId?: string
   ): Promise<{ success: boolean; error?: string; remaining?: number; contentHash?: string; competingRequestId?: string; currentStock?: number; retryRecommended?: boolean }> {
-    const contentHash = createHash("sha256").update(`${itemId}|${qty}|${userId || "anonymous"}`).digest("hex")
+    const contentHash = createHash("sha256").update(`${orgId || "global"}|${itemId}|${qty}|${userId || "anonymous"}|${idempotencyKey}`).digest("hex")
 
     if (this.criticalOps.has(idempotencyKey)) {
       const cached = this.criticalOps.get(idempotencyKey)!
+      if (cached.contentHash !== contentHash) {
+        return { success: false, error: "IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_COMMAND", contentHash, retryRecommended: false }
+      }
       const item = this.inventory.get(cached.itemId)
       return { success: true, contentHash, remaining: item ? item.total - item.reserved : 0 }
     }
@@ -292,7 +295,7 @@ class Store {
         return detail
       }
       item.reserved += qty
-      this.criticalOps.set(idempotencyKey, { itemId, quantity: qty, timestamp: Date.now() })
+      this.criticalOps.set(idempotencyKey, { itemId, quantity: qty, timestamp: Date.now(), contentHash })
       logEntry("committed")
       this.pushAuditEvent({
         id: contentHash, type: "inventory_reservation", item_id: itemId, quantity: qty,

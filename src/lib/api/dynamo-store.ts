@@ -366,6 +366,9 @@ export const dynamoStore = {
     const contentHash = createHash("sha256").update(`${orgId}|${itemId}|${qty}|${userId}|${idempotencyKey}`).digest("hex")
     const existingReceipt = await sendGet(orgInventoryReceiptPk(orgId, idempotencyKey), "PROFILE")
     if (existingReceipt.Item) {
+      if (existingReceipt.Item.contentHash && existingReceipt.Item.contentHash !== contentHash) {
+        return { success: false, error: "IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_COMMAND", contentHash, retryRecommended: false }
+      }
       return {
         success: Boolean(existingReceipt.Item.success),
         error: existingReceipt.Item.error as string | undefined,

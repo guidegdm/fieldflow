@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { getStore } from "@/lib/api/in-memory-store"
 import { getAuthUser } from "@/lib/auth/middleware"
+import { hasRoleAccess } from "@/lib/auth/roles"
 
 const reserveSchema = z.object({
   item_id: z.string().min(1),
@@ -12,6 +13,7 @@ const reserveSchema = z.object({
 export async function POST(request: NextRequest) {
   const user = await getAuthUser(request)
   if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 })
+  if (!hasRoleAccess(user.role, "supervisor")) return NextResponse.json({ error: "Accès refusé" }, { status: 403 })
 
   let body: z.infer<typeof reserveSchema>
   try {

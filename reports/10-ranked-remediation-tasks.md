@@ -207,7 +207,7 @@ Primary files:
 
 ### T14 - Enforce inventory role checks at API level
 
-Status: Pending
+Status: Done on `audit` - inventory list/reserve APIs now require supervisor-or-admin role access.
 
 Tasks:
 - Require supervisor-or-admin role for inventory list/reserve APIs.
@@ -219,7 +219,7 @@ Primary files:
 
 ### T15 - Validate inventory receipt content hash
 
-Status: Pending
+Status: Done on `audit` - reused idempotency keys with different inventory commands now return an idempotency mismatch instead of replaying the first receipt.
 
 Tasks:
 - Compare existing receipt content hash with incoming command.
@@ -230,7 +230,7 @@ Primary files:
 
 ### T16 - Couple reserved workflow transition to inventory transaction
 
-Status: Pending
+Status: Done on `audit` - sync update transitions with `inventory_reserve` side effects now reserve inventory through the server path and stamp the record with reservation metadata.
 
 Tasks:
 - Make reservation a server command tied to record transition.
@@ -308,9 +308,9 @@ Primary files:
 - [x] T11: Make publish versioned and non-misleading.
 - [x] T12: Validate record state transitions before mutation.
 - [x] T13: Add list invalidation after workflow/sync/review/conflict actions.
-- [ ] T14: Enforce inventory role checks at API level.
-- [ ] T15: Validate inventory receipt content hash.
-- [ ] T16: Couple reserved workflow transition to inventory transaction.
+- [x] T14: Enforce inventory role checks at API level.
+- [x] T15: Validate inventory receipt content hash.
+- [x] T16: Couple reserved workflow transition to inventory transaction.
 - [ ] T17: Await DynamoDB record writes.
 - [ ] T18: Standardize production table schema.
 - [ ] T19: Add queryable access paths.

@@ -97,6 +97,17 @@ function isValidTransition(workflow: WorkflowDefinition, fromState: string | und
   )
 }
 
+function findWorkflowTransition(workflow: WorkflowDefinition, fromState: string | undefined, toState: string, role: string) {
+  const normalizedFrom = normalizeStateId(workflow, fromState)
+  const normalizedTo = normalizeStateId(workflow, toState)
+  if (normalizedFrom === normalizedTo) return null
+  return workflow.transitions.find((transition) =>
+    transition.fromState === normalizedFrom &&
+    transition.toState === normalizedTo &&
+    hasAnyRoleAccess(role, transition.requiredRoles),
+  ) ?? null
+}
+
 function cloneRecord(record: RecordData): RecordData {
   return {
     ...record,
@@ -202,6 +213,7 @@ export async function POST(request: NextRequest) {
         const incomingFields = asRecord(payloadObject.fields ?? op.payload)
         const opConflicts: ConflictEntry[] = []
         const mergedFields: Record<string, unknown> = {}
+        let inventoryTransition = null as ReturnType<typeof findWorkflowTransition>
 
         if (op.base_version < existing.version) {
           const offlinePolicy = workflow?.offlinePolicy
@@ -311,11 +323,42 @@ export async function POST(request: NextRequest) {
         if (typeof payloadObject.status === "string") existing.status = payloadObject.status
         if (typeof payloadObject.state === "string") {
           const nextState = normalizeStateId(workflow, payloadObject.state)
+          const transition = findWorkflowTransition(workflow, existing.state, nextState, user.role)
           if (!isValidTransition(workflow, existing.state, nextState, user.role)) {
             failed.push({ client_id: op.client_id, reason: "INVALID_STATE_TRANSITION" })
             continue
           }
+          inventoryTransition = transition
           existing.state = nextState
+        }
+        if (inventoryTransition?.sideEffects?.includes("inventory_reserve")) {
+          const reservation = asRecord(payloadObject.inventoryReservation)
+          let itemId = typeof reservation.item_id === "string" ? reservation.item_id : typeof reservation.itemId === "string" ? reservation.itemId : ""
+          const quantity = typeof reservation.quantity === "number" ? reservation.quantity : 1
+          if (!itemId) {
+            const item = (await store.getInventoryItemsForOrg(user.orgId)).find((candidate) => candidate.total - candidate.reserved >= quantity)
+            itemId = item?.id || ""
+          }
+          if (!itemId) {
+            failed.push({ client_id: op.client_id, reason: "INVENTORY_ITEM_REQUIRED" })
+            continue
+          }
+          const idempotencyKey = typeof reservation.idempotency_key === "string"
+            ? reservation.idempotency_key
+            : typeof reservation.idempotencyKey === "string"
+              ? reservation.idempotencyKey
+              : `transition-${existing.id}-${inventoryTransition.id}`
+          const inventory = await store.reserveInventoryForOrg(itemId, idempotencyKey, quantity, user.sub, user.orgId)
+          if (!inventory.success) {
+            failed.push({ client_id: op.client_id, reason: inventory.error || "INVENTORY_RESERVATION_FAILED" })
+            continue
+          }
+          existing.fields = {
+            ...existing.fields,
+            inventory_reserved_item_id: itemId,
+            inventory_reserved_quantity: quantity,
+            inventory_reservation_hash: inventory.contentHash,
+          }
         }
         if (!(await store.claimMutationForOrg(op, user.orgId))) {
           acked.push(op.client_id)

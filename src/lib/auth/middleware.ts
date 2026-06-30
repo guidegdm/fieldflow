@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto"
+import { resolveWorkspaceMembership } from "@/lib/auth/workspace-membership"
 
 const COGNITO_POOL_ID = process.env.COGNITO_POOL_ID || process.env.NEXT_PUBLIC_COGNITO_POOL_ID || "us-east-1_kpjmcFVqD"
 const COGNITO_CLIENT_ID = process.env.COGNITO_CLIENT_ID || process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID || "7r60o7fnej4vitoksrp6e93n9g"
@@ -109,8 +110,8 @@ export async function verifyCognitoJWT(token: string, context?: Partial<AuthUser
       sub: (payload.sub as string) || token,
       email: (payload.email as string) || context?.email || "",
       name: (payload.name as string) || (payload.email as string) || context?.name || "",
-      role: (payload["custom:role"] as string) || context?.role || "field_worker",
-      groups: (payload["cognito:groups"] as string[]) || context?.groups || ["field_worker"],
+      role: context?.role || (payload["custom:role"] as string) || "field_worker",
+      groups: context?.groups?.length ? context.groups : (payload["cognito:groups"] as string[]) || [context?.role || "field_worker"],
       orgId,
       orgs: context?.orgs ?? (orgId ? [{ id: orgId, name: "" }] : []),
     }
@@ -229,20 +230,20 @@ export async function getAuthUser(request: NextRequest): Promise<AuthUser | null
   const accessToken = request.cookies.get("ff_access")?.value
   if (accessToken) {
     const user = await verifyCognitoJWT(accessToken, contextUser ?? undefined)
-    if (user) return user
+    if (user) return resolveWorkspaceMembership(user)
   }
 
   const cookieToken = request.cookies.get("ff_session")?.value
   if (cookieToken) {
     const signedSessionUser = verifySessionToken(cookieToken)
-    if (signedSessionUser) return signedSessionUser
+    if (signedSessionUser) return resolveWorkspaceMembership(signedSessionUser)
 
     const sessionUser = sessionTokens.get(cookieToken)
-    if (sessionUser) return sessionUser
+    if (sessionUser) return resolveWorkspaceMembership(sessionUser)
 
     if (!cookieToken.startsWith("demo-") && !cookieToken.startsWith("session-")) {
       const user = await verifyCognitoJWT(cookieToken)
-      if (user) return user
+      if (user) return resolveWorkspaceMembership(user)
     }
   }
 
@@ -250,10 +251,10 @@ export async function getAuthUser(request: NextRequest): Promise<AuthUser | null
   const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null
   if (bearerToken) {
     const signedSessionUser = verifySessionToken(bearerToken)
-    if (signedSessionUser) return signedSessionUser
+    if (signedSessionUser) return resolveWorkspaceMembership(signedSessionUser)
 
     const user = await verifyCognitoJWT(bearerToken)
-    if (user) return user
+    if (user) return resolveWorkspaceMembership(user)
   }
 
   return null

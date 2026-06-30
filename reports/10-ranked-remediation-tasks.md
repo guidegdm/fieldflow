@@ -120,7 +120,7 @@ Primary files:
 
 ### T08 - Stop using global Cognito role for org authorization
 
-Status: Pending
+Status: Done on `audit` - API auth now prefers signed/resolved workspace membership over Cognito global role claims, re-resolves membership from the profile store, and invites no longer mutate Cognito `custom:role`.
 
 Tasks:
 - Prefer signed session membership role over Cognito `custom:role`.
@@ -302,7 +302,7 @@ Primary files:
 - [x] T05: Drain more than 100 mutations.
 - [x] T06: Make conflict resolution durable offline.
 - [x] T07: Make mutation idempotency atomic.
-- [ ] T08: Stop using global Cognito role for org authorization.
+- [x] T08: Stop using global Cognito role for org authorization.
 - [ ] T09: Add real invite acceptance or first-login handling.
 - [ ] T10: Validate workflow definitions server-side.
 - [ ] T11: Make publish versioned and non-misleading.

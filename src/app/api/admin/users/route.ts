@@ -65,7 +65,6 @@ export async function POST(request: NextRequest) {
           Username: email,
           UserAttributes: [
             { Name: "name", Value: name },
-            { Name: "custom:role", Value: role },
           ],
         }))
         if (existing.UserStatus === "FORCE_CHANGE_PASSWORD") {
@@ -78,7 +77,6 @@ export async function POST(request: NextRequest) {
               { Name: "email", Value: email },
               { Name: "email_verified", Value: "true" },
               { Name: "name", Value: name },
-              { Name: "custom:role", Value: role },
             ],
           }))
           delivery = "invite_email_sent"
@@ -95,7 +93,6 @@ export async function POST(request: NextRequest) {
             { Name: "email", Value: email },
             { Name: "email_verified", Value: "true" },
             { Name: "name", Value: name },
-            { Name: "custom:role", Value: role },
           ],
         }))
         delivery = "invite_email_sent"

@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 import { apiPost, apiGet } from "@/lib/api/client"
+import { useAuthStore } from "@/stores/authStore"
 
 type InventoryItem = {
   itemId: string
@@ -18,6 +19,7 @@ type InventoryItem = {
 
 export default function SupervisorInventory() {
   const { t } = useTranslation()
+  const user = useAuthStore((state) => state.user)
   const [items, setItems] = useState<InventoryItem[]>([])
   const [loading, setLoading] = useState<string | null>(null)
   const [pageLoading, setPageLoading] = useState(true)
@@ -28,13 +30,25 @@ export default function SupervisorInventory() {
       try {
         const data = await apiGet<InventoryItem[]>("/api/critical/inventory")
         setItems(data)
+        if (user?.orgId) {
+          window.localStorage.setItem(`fieldflow-inventory-${user.orgId}`, JSON.stringify({ savedAt: Date.now(), items: data }))
+        }
         setPageLoading(false)
         return
-      } catch { setItems([]) }
+      } catch {
+        if (user?.orgId) {
+          try {
+            const cached = JSON.parse(window.localStorage.getItem(`fieldflow-inventory-${user.orgId}`) || "null") as { items?: InventoryItem[] } | null
+            setItems(Array.isArray(cached?.items) ? cached.items : [])
+          } catch { setItems([]) }
+        } else {
+          setItems([])
+        }
+      }
       setPageLoading(false)
     }
     load()
-  }, [])
+  }, [user?.orgId])
 
   const handleReserve = async (itemId: string) => {
     setLoading(itemId)

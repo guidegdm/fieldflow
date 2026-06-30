@@ -4,6 +4,7 @@ import { useEffect } from "react"
 import { usePathname } from "next/navigation"
 import {
   cacheOfflineRecordRoutes,
+  hydrateAuthenticatedUserOffline,
   hydrateDemoWorkspaceOffline,
   hydrateDemoSandboxOffline,
   loadOfflineDemoSandbox,
@@ -172,8 +173,30 @@ async function cacheCurrentWorkspaceRoutes(user?: DemoUser | null) {
 
 async function warmCurrentUserWorkspace(user?: DemoUser | null) {
   if (!user?.orgId) return
-  await hydrateDemoWorkspaceOffline(user).catch(() => {})
+  await hydrateAuthenticatedUserOffline(user).catch(() => hydrateDemoWorkspaceOffline(user).catch(() => {}))
+  await cacheInventory(user).catch(() => {})
   await cacheCurrentWorkspaceRoutes(user)
+}
+
+async function cacheInventory(user?: DemoUser | null) {
+  if (!user?.orgId || typeof window === "undefined") return
+  const orgs = (user as DemoUser & { orgs?: Array<{ id: string; name?: string }> }).orgs?.length
+    ? (user as DemoUser & { orgs?: Array<{ id: string; name?: string }> }).orgs!
+    : [{ id: user.orgId }]
+  for (const org of orgs) {
+    try {
+      const response = await fetch("/api/critical/inventory", {
+        credentials: "include",
+        cache: "no-store",
+        headers: { "x-fieldflow-org-id": org.id },
+      })
+      if (!response.ok) continue
+      window.localStorage.setItem(`fieldflow-inventory-${org.id}`, JSON.stringify({
+        savedAt: Date.now(),
+        items: await response.json(),
+      }))
+    } catch {}
+  }
 }
 
 async function warmDemoSandbox() {
@@ -224,13 +247,15 @@ async function warmDemoSandbox() {
 export function OfflineWarmup() {
   const pathname = usePathname()
   const user = useAuthStore((state) => state.user)
+  const orgs = useAuthStore((state) => state.orgs)
+  const warmupUser = user ? { ...user, orgs } : null
 
   useEffect(() => {
     if (!navigator.onLine) return
 
     let cancelled = false
     void cacheAppRoutes()
-    void warmCurrentUserWorkspace(user)
+    void warmCurrentUserWorkspace(warmupUser)
     const connection = "connection" in navigator
       ? (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection
       : undefined
@@ -252,7 +277,7 @@ export function OfflineWarmup() {
 
     const cancelIdle = runWhenIdle(() => {
       if (cancelled) return
-      Promise.all([warmDemoSandbox(), warmCurrentUserWorkspace(user)])
+      Promise.all([warmDemoSandbox(), warmCurrentUserWorkspace(warmupUser)])
         .then(() => {
           try {
             window.localStorage.setItem(WARMUP_STORAGE_KEY, String(Date.now()))
@@ -265,7 +290,7 @@ export function OfflineWarmup() {
       cancelled = true
       cancelIdle()
     }
-  }, [pathname, user?.orgId, user?.id])
+  }, [pathname, warmupUser?.orgId, warmupUser?.id, orgs.map((org) => org.id).join("|")])
 
   return null
 }

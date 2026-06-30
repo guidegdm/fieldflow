@@ -98,8 +98,7 @@ export async function verifyCognitoJWT(token: string, context?: Partial<AuthUser
     const contextOrgAllowed = !!context?.orgId && (
       !context.orgs?.length || context.orgs.some((org) => org.id === context.orgId)
     )
-    const orgId = contextOrgAllowed ? context.orgId : tokenOrgId || context?.orgId
-    if (!orgId) return null
+    const orgId = (contextOrgAllowed ? context?.orgId : tokenOrgId || context?.orgId) || ""
 
     return {
       sub: (payload.sub as string) || token,
@@ -108,7 +107,7 @@ export async function verifyCognitoJWT(token: string, context?: Partial<AuthUser
       role: (payload["custom:role"] as string) || context?.role || "field_worker",
       groups: (payload["cognito:groups"] as string[]) || context?.groups || ["field_worker"],
       orgId,
-      orgs: context?.orgs ?? [{ id: orgId, name: "" }],
+      orgs: context?.orgs ?? (orgId ? [{ id: orgId, name: "" }] : []),
     }
   } catch { return null }
 }

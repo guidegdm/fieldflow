@@ -574,6 +574,11 @@ export const dynamoStore = {
     )
   },
 
+  async getOrgItem(id: string) {
+    const result = await sendGet(`ORG#${id}`, "PROFILE")
+    return stripKeys(result.Item)
+  },
+
   async putUserProfile(item: Record<string, unknown>) {
     const orgId = String(item.orgId || "")
     const userId = String(item.userId || item.email || "")
@@ -601,6 +606,14 @@ export const dynamoStore = {
       Limit: 1,
     })
     return stripKeys(items[0])
+  },
+
+  async listUserProfilesByEmail(email: string) {
+    const items = await scanAll({
+      FilterExpression: "entityType = :type AND email = :email",
+      ExpressionAttributeValues: { ":type": "user", ":email": email },
+    })
+    return items.map((item) => stripKeys(item)).filter(Boolean)
   },
 
   async putAuditEvent(orgId: string, recordId: string, event: Record<string, unknown>) {

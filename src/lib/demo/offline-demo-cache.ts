@@ -255,11 +255,15 @@ export async function cacheOfflineRecordRoutes(workspaces?: DemoOfflineWorkspace
   })
 }
 
-async function getJson<T>(url: string): Promise<T | null> {
+async function getJson<T>(url: string, orgId?: string): Promise<T | null> {
   const controller = new AbortController()
   const timeout = window.setTimeout(() => controller.abort(), 8000)
   try {
-    const response = await fetch(url, { credentials: "include", signal: controller.signal })
+    const response = await fetch(url, {
+      credentials: "include",
+      signal: controller.signal,
+      headers: orgId ? { "x-fieldflow-org-id": orgId } : undefined,
+    })
     if (!response.ok) return null
     return response.json() as Promise<T>
   } catch {
@@ -321,21 +325,21 @@ export async function hydrateDemoWorkspaceOffline(user: DemoUser, workspaces?: D
     return { workflows, records, conflicts, workspaces: workspaces.length }
   }
 
-  const workflows = await getJson<WorkflowListItem[]>("/api/workflows")
+  const workflows = await getJson<WorkflowListItem[]>("/api/workflows", user.orgId)
   if (!workflows?.length) return { workflows: 0, records: 0, conflicts: 0, workspaces: 0 }
 
   const workflowDefinitions: WorkflowDefinition[] = []
   const records: RecordData[] = []
 
   for (const workflow of workflows) {
-    const definition = await getJson<WorkflowDefinition>(`/api/workflows/${workflow.id}/definition`)
+    const definition = await getJson<WorkflowDefinition>(`/api/workflows/${workflow.id}/definition`, user.orgId)
     workflowDefinitions.push(definition ?? workflow)
 
-    const workflowRecords = await getJson<RecordData[]>(`/api/workflows/${workflow.id}/records`)
+    const workflowRecords = await getJson<RecordData[]>(`/api/workflows/${workflow.id}/records`, user.orgId)
     if (Array.isArray(workflowRecords)) records.push(...workflowRecords)
   }
 
-  const conflicts = await getJson<ConflictRecord[]>("/api/sync/conflict")
+  const conflicts = await getJson<ConflictRecord[]>("/api/sync/conflict", user.orgId)
   await writeWorkspace(user, {
     orgId: user.orgId,
     workflows: workflowDefinitions,
@@ -349,6 +353,25 @@ export async function hydrateDemoWorkspaceOffline(user: DemoUser, workspaces?: D
     conflicts: Array.isArray(conflicts) ? conflicts.length : 0,
     workspaces: 1,
   }
+}
+
+export async function hydrateAuthenticatedUserOffline(user: DemoUser & { orgs?: Array<{ id: string; name?: string }> }) {
+  const orgs = user.orgs?.length ? user.orgs : user.orgId ? [{ id: user.orgId }] : []
+  let workflows = 0
+  let records = 0
+  let conflicts = 0
+  let workspaces = 0
+
+  for (const org of orgs) {
+    const scopedUser = { ...user, orgId: org.id }
+    const result = await hydrateDemoWorkspaceOffline(scopedUser)
+    workflows += result.workflows
+    records += result.records
+    conflicts += result.conflicts
+    workspaces += result.workspaces
+  }
+
+  return { workflows, records, conflicts, workspaces }
 }
 
 export async function hydrateDemoSandboxOffline(workspaces?: DemoOfflineWorkspace[]) {

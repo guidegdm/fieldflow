@@ -124,6 +124,10 @@ class Store {
     this.orgs.set(o.id, o)
   }
   getOrg(id: string) { return this.orgs.get(id) }
+  async getOrgAsync(id: string) {
+    if (DYNAMODB_ENABLED) return (await getDynamo())?.getOrgItem(id)
+    return this.orgs.get(id)
+  }
   putUserProfile(p: any) { this.userProfiles.set(p.userId || p.email, p) }
   async putUserProfileAsync(p: Record<string, unknown>) {
     if (DYNAMODB_ENABLED) await (await getDynamo())?.putUserProfile(p)
@@ -137,6 +141,10 @@ class Store {
   async getUserProfileByEmailAsync(email: string) {
     if (DYNAMODB_ENABLED) return (await getDynamo())?.getUserProfileByEmail(email)
     return Array.from(this.userProfiles.values()).find((p) => p.email === email)
+  }
+  async listUserProfilesByEmailAsync(email: string) {
+    if (DYNAMODB_ENABLED) return (await getDynamo())?.listUserProfilesByEmail(email) ?? []
+    return Array.from(this.userProfiles.values()).filter((p) => p.email === email)
   }
 
   putDevice(d: DeviceState) { this.devices.set(d.device_id, d) }

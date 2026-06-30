@@ -3,7 +3,7 @@ import { CognitoIdentityProviderClient, RespondToAuthChallengeCommand } from "@a
 import { z } from "zod"
 import { createSessionToken, setAccessCookie, setRefreshCookie, setSessionCookie, verifyCognitoJWT } from "@/lib/auth/middleware"
 import { checkRateLimit } from "@/lib/auth/rate-limit"
-import { getStore } from "@/lib/api/in-memory-store"
+import { resolveWorkspaceMembership, responseOrgContext } from "@/lib/auth/workspace-membership"
 
 const CLIENT_ID = process.env.COGNITO_CLIENT_ID || "7r60o7fnej4vitoksrp6e93n9g"
 const REGION = process.env.AWS_REGION || "us-east-1"
@@ -57,26 +57,15 @@ export async function POST(request: NextRequest) {
 
     const tokenUser = await verifyCognitoJWT(idToken)
     if (!tokenUser) return NextResponse.json({ error: "Token invalide" }, { status: 401 })
-    const profile = await getStore().getUserProfileByEmailAsync(tokenUser.email)
-    const profileOrgId = typeof profile?.orgId === "string" ? profile.orgId : ""
-    const profileRole = typeof profile?.role === "string" ? profile.role : ""
-    const profileName = typeof profile?.name === "string" ? profile.name : ""
-    const authUser = profileOrgId
-      ? {
-          ...tokenUser,
-          name: profileName || tokenUser.name,
-          role: profileRole || tokenUser.role,
-          groups: [profileRole || tokenUser.role],
-          orgId: profileOrgId,
-          orgs: [{ id: profileOrgId, name: "" }],
-        }
-      : tokenUser
+    const authUser = await resolveWorkspaceMembership(tokenUser)
+    if (!authUser.orgId) return NextResponse.json({ error: "Workspace membership required" }, { status: 403 })
     const contextToken = createSessionToken(authUser, 3600)
+    const { org, orgs } = await responseOrgContext(authUser)
 
     const response = NextResponse.json({
       user: { id: authUser.sub, email: authUser.email, name: authUser.name, role: authUser.role, deviceId: "web", token: accessToken, orgId: authUser.orgId },
-      org: { id: authUser.orgId, name: "" },
-      orgs: [{ id: authUser.orgId, name: "" }],
+      org,
+      orgs,
     })
     response.headers.set("Set-Cookie", setAccessCookie(accessToken, 3600))
     if (refreshToken) response.headers.append("Set-Cookie", setRefreshCookie(refreshToken))

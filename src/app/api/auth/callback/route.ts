@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createPendingSetupToken, createSessionToken, setAccessCookie, setPendingSetupCookie, setRefreshCookie, setSessionCookie, verifyCognitoJWT } from "@/lib/auth/middleware"
 import { getStore } from "@/lib/api/in-memory-store"
+import { resolveWorkspaceMembership } from "@/lib/auth/workspace-membership"
 
 const CLIENT_ID = process.env.COGNITO_CLIENT_ID || process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID || "7r60o7fnej4vitoksrp6e93n9g"
 const DOMAIN = process.env.COGNITO_DOMAIN || process.env.NEXT_PUBLIC_COGNITO_DOMAIN || "fieldflow-hackathon.auth.us-east-1.amazoncognito.com"
@@ -74,44 +75,27 @@ export async function GET(request: Request) {
   const payload = decodeJwtPayload(tokens.id_token)
 
   if (authUser) {
-    const existingProfile = await getStore().getUserProfileByEmailAsync(authUser.email)
-    const orgId = typeof existingProfile?.orgId === "string" ? existingProfile.orgId : ""
-    const name = typeof existingProfile?.name === "string" ? existingProfile.name : authUser.name
-    const role = typeof existingProfile?.role === "string" ? existingProfile.role : authUser.role
-    if (orgId) {
-      authUser = {
-        ...authUser,
-        name,
-        role,
-        groups: [role],
-        orgId,
-        orgs: [{ id: orgId, name: "" }],
-      }
-    }
+    authUser = await resolveWorkspaceMembership(authUser)
   }
 
-  if (!authUser && payload) {
+  if ((!authUser || !authUser.orgId) && payload) {
     const email = String(payload.email || "")
     const name = String(payload.name || email)
     const username = String(payload["cognito:username"] || payload.sub || email)
 
     if (email) {
       const store = getStore()
-      const existingProfile = await store.getUserProfileByEmailAsync(email)
-      const orgId = typeof existingProfile?.orgId === "string" ? existingProfile.orgId : ""
-      const existingName = typeof existingProfile?.name === "string" ? existingProfile.name : name
-      const role = typeof existingProfile?.role === "string" ? existingProfile.role : "org_admin"
-
-      if (orgId) {
-        authUser = {
+      const profiles = await store.listUserProfilesByEmailAsync(email)
+      if (profiles.length > 0) {
+        authUser = await resolveWorkspaceMembership({
           sub: String(payload.sub || email),
           email,
-          name: existingName,
-          role,
-          groups: [role],
-          orgId,
-          orgs: [{ id: orgId, name: "" }],
-        }
+          name,
+          role: "field_worker",
+          groups: ["field_worker"],
+          orgId: "",
+          orgs: [],
+        })
       } else {
         const setupToken = createPendingSetupToken({
           sub: String(payload.sub || email),

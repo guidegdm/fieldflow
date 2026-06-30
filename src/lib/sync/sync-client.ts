@@ -1,12 +1,32 @@
 import { db } from "@/lib/db/indexeddb"
 import { apiGet, apiPost } from "@/lib/api/client"
 import { generateId } from "@/lib/utils"
-import type { SyncBatchRequest, SyncBatchResponse, ConflictRecord } from "@/types/sync"
+import type { SyncBatchRequest, SyncBatchResponse, ConflictRecord, MutationEntry } from "@/types/sync"
 import type { RecordData } from "@/types/record"
 import type { WorkflowDefinition } from "@/types/workflow"
 
-export async function pushBatch(): Promise<SyncBatchResponse> {
-  const [deviceState, pending] = await Promise.all([db.getDeviceState(), db.getPendingMutations()])
+function emptySyncResponse(): SyncBatchResponse {
+  return {
+    acked: [],
+    failed: [],
+    conflicts: [],
+    server_changes: [],
+    last_seq: 0,
+    server_timestamp: Date.now(),
+  }
+}
+
+function mergeSyncResponse(target: SyncBatchResponse, response: SyncBatchResponse) {
+  target.acked.push(...response.acked)
+  target.failed.push(...response.failed)
+  target.conflicts.push(...response.conflicts)
+  target.server_changes.push(...response.server_changes)
+  target.last_seq = response.last_seq
+  target.server_timestamp = response.server_timestamp
+}
+
+export async function pushBatch(operations?: MutationEntry[]): Promise<SyncBatchResponse> {
+  const [deviceState, pending] = await Promise.all([db.getDeviceState(), operations ? Promise.resolve(operations) : db.getPendingMutations()])
 
   const request: SyncBatchRequest = {
     device_id: deviceState.device_id,
@@ -66,44 +86,58 @@ async function refreshOpenConflicts() {
 }
 
 export async function fullSync(): Promise<SyncBatchResponse> {
-  const [deviceState, pendingMutations] = await Promise.all([db.getDeviceState(), db.getPendingMutations()])
+  const aggregate = emptySyncResponse()
+  const attemptedThisRun = new Set<string>()
+  let batches = 0
 
-  if (pendingMutations.length === 0) {
-    const response = await pushBatch()
+  while (batches < 25) {
+    const [deviceState, pendingMutations] = await Promise.all([db.getDeviceState(), db.getPendingMutations()])
+    const nextBatch = pendingMutations.filter((mutation) => !attemptedThisRun.has(mutation.client_id)).slice(0, 100)
+
+    if (nextBatch.length === 0) {
+      if (batches === 0) {
+        const response = await pushBatch([])
+        mergeSyncResponse(aggregate, response)
+        await applyServerChanges(response.server_changes)
+        await saveConflicts(response, deviceState.device_id)
+        await db.updateDeviceState({
+          last_seq: response.last_seq,
+          last_sync_at: response.server_timestamp,
+          pending_count: (await db.getPendingMutations()).length,
+        })
+      }
+      break
+    }
+
+    nextBatch.forEach((mutation) => attemptedThisRun.add(mutation.client_id))
+    const mutationMap = new Map(nextBatch.map((mutation) => [mutation.client_id, mutation]))
+    const response = await pushBatch(nextBatch)
+    mergeSyncResponse(aggregate, response)
+
+    for (const clientId of response.acked) {
+      await db.updateMutationStatus(clientId, "ACKED")
+      await db.deleteMutation(clientId)
+    }
+
+    for (const f of response.failed) {
+      await db.markMutationFailed(f.client_id, f.reason)
+    }
+
     await applyServerChanges(response.server_changes)
-    await saveConflicts(response, deviceState.device_id)
-    await refreshOpenConflicts()
+    await saveConflicts(response, deviceState.device_id, mutationMap)
+
+    const remaining = await db.getPendingMutations()
     await db.updateDeviceState({
       last_seq: response.last_seq,
       last_sync_at: response.server_timestamp,
-      pending_count: 0,
+      pending_count: remaining.length,
     })
-    return response
+
+    batches += 1
+
+    if (remaining.every((mutation) => attemptedThisRun.has(mutation.client_id))) break
   }
 
-  const response = await pushBatch()
-
-  const mutationMap = new Map(pendingMutations.map(m => [m.client_id, m]))
-
-  for (const clientId of response.acked) {
-    await db.updateMutationStatus(clientId, "ACKED")
-    await db.deleteMutation(clientId)
-  }
-
-  for (const f of response.failed) {
-    await db.markMutationFailed(f.client_id, f.reason)
-  }
-
-  await applyServerChanges(response.server_changes)
-
-  await saveConflicts(response, deviceState.device_id, mutationMap)
   await refreshOpenConflicts()
-
-  await db.updateDeviceState({
-    last_seq: response.last_seq,
-    last_sync_at: response.server_timestamp,
-    pending_count: 0,
-  })
-
-  return response
+  return aggregate
 }

@@ -77,7 +77,7 @@ Primary files:
 
 ### T05 - Drain more than 100 mutations
 
-Status: Pending
+Status: Done on `audit` - full sync now drains bounded batches of 100, tracks aggregate results, keeps pending counts accurate, and avoids retrying the same failed mutation repeatedly in one run.
 
 Tasks:
 - Loop batches until no pending mutations remain or a safety limit is reached.
@@ -299,7 +299,7 @@ Primary files:
 - [x] T02: Purge offline artifacts on logout.
 - [x] T03: Scope IndexedDB workflow/record access by org.
 - [x] T04: Separate failed sync attempts from successful syncs.
-- [ ] T05: Drain more than 100 mutations.
+- [x] T05: Drain more than 100 mutations.
 - [ ] T06: Make conflict resolution durable offline.
 - [ ] T07: Make mutation idempotency atomic.
 - [ ] T08: Stop using global Cognito role for org authorization.

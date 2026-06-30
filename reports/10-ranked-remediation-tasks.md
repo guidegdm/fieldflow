@@ -295,7 +295,7 @@ Primary files:
 
 ## Clean Todo
 
-- [ ] T01: Make auth token verification fail closed.
+- [x] T01: Make auth token verification fail closed.
 - [x] T02: Purge offline artifacts on logout.
 - [x] T03: Scope IndexedDB workflow/record access by org.
 - [x] T04: Separate failed sync attempts from successful syncs.

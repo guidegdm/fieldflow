@@ -10,6 +10,7 @@ import { useWorkflowContext } from "@/hooks/useWorkflowContext"
 import { generateId } from "@/lib/utils"
 import { db } from "@/lib/db/indexeddb"
 import { runBackgroundSync } from "@/lib/sync/run-background-sync"
+import { registerFieldFlowBackgroundSync } from "@/lib/sync/register-background-sync"
 import { groupFieldsBySection, sectionLabel, submittedStateId, workflowLabel } from "@/lib/workflows/runtime"
 import { useAuthStore } from "@/stores/authStore"
 import { useSyncStore } from "@/stores/syncStore"
@@ -121,6 +122,7 @@ export default function RegisterPage() {
       setSaveError("")
       await db.putRecord(record)
       await db.enqueueMutation(mutation)
+      void registerFieldFlowBackgroundSync()
       useSyncStore.getState().setPendingCount((await db.getPendingMutations()).length)
       if (typeof navigator !== "undefined" && navigator.onLine) {
         await runBackgroundSync(user)

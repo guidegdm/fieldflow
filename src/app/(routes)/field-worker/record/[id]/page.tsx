@@ -14,6 +14,7 @@ import { FieldRenderer } from "@/components/fields/FieldRenderer"
 import { groupFieldsBySection, recordTitle, sectionLabel } from "@/lib/workflows/runtime"
 import { db } from "@/lib/db/indexeddb"
 import { runBackgroundSync } from "@/lib/sync/run-background-sync"
+import { registerFieldFlowBackgroundSync } from "@/lib/sync/register-background-sync"
 import { generateId } from "@/lib/utils"
 import { useSyncStore } from "@/stores/syncStore"
 import type { MutationEntry } from "@/types/sync"
@@ -198,6 +199,7 @@ export default function RecordDetailPage() {
       setSaveError("")
       await db.putRecord(updated)
       await db.enqueueMutation(mutation)
+      void registerFieldFlowBackgroundSync()
       useSyncStore.getState().setPendingCount((await db.getPendingMutations()).length)
       setRecord(updated)
       setEditing(false)

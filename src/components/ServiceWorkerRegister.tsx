@@ -1,6 +1,8 @@
 "use client"
 
 import { useEffect } from "react"
+import { runBackgroundSync } from "@/lib/sync/run-background-sync"
+import { useAuthStore } from "@/stores/authStore"
 
 export function ServiceWorkerRegister() {
   useEffect(() => {
@@ -19,8 +21,15 @@ export function ServiceWorkerRegister() {
     const handleOnline = () => {
       if (registrationRef) void registrationRef.update()
     }
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type !== "FIELD_FLOW_SYNC_NOW") return
+      const user = useAuthStore.getState().user
+      if (!user) return
+      void runBackgroundSync(user, { retry: true })
+    }
 
     navigator.serviceWorker.addEventListener("controllerchange", handleControllerChange)
+    navigator.serviceWorker.addEventListener("message", handleMessage)
 
     navigator.serviceWorker.register("/sw.js")
       .then((registration) => {
@@ -38,6 +47,7 @@ export function ServiceWorkerRegister() {
 
     return () => {
       navigator.serviceWorker.removeEventListener("controllerchange", handleControllerChange)
+      navigator.serviceWorker.removeEventListener("message", handleMessage)
       window.removeEventListener("online", handleOnline)
     }
   }, [])

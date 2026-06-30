@@ -1,6 +1,7 @@
 "use client"
 
 import { db } from "@/lib/db/indexeddb"
+import { registerFieldFlowBackgroundSync } from "@/lib/sync/register-background-sync"
 import { generateId } from "@/lib/utils"
 import { useSyncStore } from "@/stores/syncStore"
 import { invalidate } from "@/lib/invalidation"
@@ -101,6 +102,7 @@ export async function resolveConflictsOffline({
 
   await db.putRecord(updated)
   await db.enqueueMutation(mutation)
+  void registerFieldFlowBackgroundSync()
   useSyncStore.getState().setPendingCount((await db.getPendingMutations()).length)
   invalidate(["conflicts", "records", "review", "sync"])
   return { record: updated, conflicts }

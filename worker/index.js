@@ -24,6 +24,20 @@ self.addEventListener("message", (event) => {
   })())
 })
 
+self.addEventListener("sync", (event) => {
+  if (event.tag !== "fieldflow-sync") return
+
+  event.waitUntil((async () => {
+    const clientsList = await self.clients.matchAll({
+      type: "window",
+      includeUncontrolled: true,
+    })
+    await Promise.all(clientsList.map(async (client) => {
+      client.postMessage({ type: "FIELD_FLOW_SYNC_NOW" })
+    }))
+  })())
+})
+
 self.addEventListener("fetch", (event) => {
   const request = event.request
   if (request.method !== "GET") return
@@ -50,7 +64,11 @@ self.addEventListener("fetch", (event) => {
       const fallbackUrls = [
         exactUrl.pathname.startsWith("/field-worker/record/") ? "/field-worker/home" : "",
         exactUrl.pathname.startsWith("/admin/workflows/") ? "/admin/workflows" : "",
+        exactUrl.pathname.startsWith("/field-worker/") ? "/field-worker/home" : "",
+        exactUrl.pathname.startsWith("/supervisor/") ? "/supervisor/dashboard" : "",
+        exactUrl.pathname.startsWith("/admin/") ? "/admin/dashboard" : "",
         "/field-worker/home",
+        "/field-worker/pick-workflow",
         "/field-worker/register",
         "/supervisor/dashboard",
         "/admin/dashboard",

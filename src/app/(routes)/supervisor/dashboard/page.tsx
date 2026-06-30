@@ -13,6 +13,7 @@ import { recordTitle, workflowLabel } from "@/lib/workflows/runtime"
 import type { WorkflowDefinition } from "@/types/workflow"
 import { db } from "@/lib/db/indexeddb"
 import { useAuthStore } from "@/stores/authStore"
+import { onInvalidation } from "@/lib/invalidation"
 
 const statusConfig: Record<string, { variant: "warning" | "success" | "danger" | "info"; label: string }> = {
   pending_sync: { variant: "warning", label: "dashboard.pending" },
@@ -32,6 +33,9 @@ export default function SupervisorDashboard() {
   const [scope, setScope] = useState<"current" | "all">("current")
   const [records, setRecords] = useState<RecordData[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  useEffect(() => onInvalidation(["records", "review", "sync", "conflicts"], () => setRefreshKey((value) => value + 1)), [])
 
   useEffect(() => {
     if (!activeWorkflowId && scope === "current") {
@@ -56,7 +60,7 @@ export default function SupervisorDashboard() {
         setRecords(scope === "all" ? local : local.filter((record) => record.workflowId === activeWorkflowId))
       })
       .finally(() => setLoading(false))
-  }, [activeWorkflowId, scope, user?.orgId, workflows])
+  }, [activeWorkflowId, refreshKey, scope, user?.orgId, workflows])
 
   const workflowsById = new Map<string, WorkflowDefinition>(workflows.map((workflow) => [workflow.id, workflow]))
 

@@ -9,6 +9,7 @@ import { useAuthStore } from "@/stores/authStore"
 import { useWorkflowContext } from "@/hooks/useWorkflowContext"
 import { recordSubtitle, recordTitle, workflowLabel } from "@/lib/workflows/runtime"
 import type { WorkflowDefinition } from "@/types/workflow"
+import { onInvalidation } from "@/lib/invalidation"
 
 type FilterKey = "all" | "pending" | "verified" | "synced"
 
@@ -39,6 +40,9 @@ export default function SearchPage() {
   const [activeFilter, setActiveFilter] = useState<FilterKey>("all")
   const [records, setRecords] = useState<RecordData[]>([])
   const [scope, setScope] = useState<"current" | "all">("current")
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  useEffect(() => onInvalidation(["records", "sync", "conflicts"], () => setRefreshKey((value) => value + 1)), [])
 
   useEffect(() => {
     async function load() {
@@ -66,7 +70,7 @@ export default function SearchPage() {
       } catch { /* keep local records */ }
     }
     load()
-  }, [activeWorkflowId, scope, user?.orgId, workflows])
+  }, [activeWorkflowId, refreshKey, scope, user?.orgId, workflows])
 
   const workflowsById = useMemo(() => new Map<string, WorkflowDefinition>(workflows.map((workflow) => [workflow.id, workflow])), [workflows])
 

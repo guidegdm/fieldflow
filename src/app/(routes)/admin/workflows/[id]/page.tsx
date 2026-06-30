@@ -18,6 +18,7 @@ import { AgentStatusBar } from "@/components/ai/AgentStatusBar"
 import { QuestionCard } from "@/components/ai/QuestionCard"
 import { useAgentStore } from "@/stores/agentStore"
 import { db } from "@/lib/db/indexeddb"
+import { invalidate } from "@/lib/invalidation"
 import type { DemoUser } from "@/types/auth"
 import type { WorkflowDefinition } from "@/types/workflow"
 
@@ -243,6 +244,7 @@ export default function WorkflowBuilder() {
     const saved = await res.json()
     await db.saveWorkflow(saved)
     setWorkflow(saved)
+    invalidate(["workflows"])
     setLastSaved(new Date())
     return saved as WorkflowDefinition
   }
@@ -263,6 +265,7 @@ export default function WorkflowBuilder() {
   const handlePublish = async () => {
     await persistWorkflow()
     await publish()
+    invalidate(["workflows"])
     setPublishConfirm(false)
     setLastSaved(new Date())
   }

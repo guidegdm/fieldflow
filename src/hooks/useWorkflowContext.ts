@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation"
 import { useAuthStore } from "@/stores/authStore"
 import { useActiveWorkflowStore } from "@/stores/activeWorkflowStore"
 import { useWorkflowListStore } from "@/stores/workflowListStore"
+import { onInvalidation } from "@/lib/invalidation"
 
 const EMPTY_WORKFLOWS = [] as const
 
@@ -21,6 +22,13 @@ export function useWorkflowContext() {
   useEffect(() => {
     if (!orgId) return
     void loadForOrg(orgId).catch(() => {})
+  }, [loadForOrg, orgId])
+
+  useEffect(() => {
+    if (!orgId) return
+    return onInvalidation(["workflows", "sync"], () => {
+      void loadForOrg(orgId, { force: true }).catch(() => {})
+    })
   }, [loadForOrg, orgId])
 
   useEffect(() => {

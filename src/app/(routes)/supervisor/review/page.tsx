@@ -16,6 +16,7 @@ import { groupFieldsBySection, recordTitle, sectionLabel } from "@/lib/workflows
 import { useAuthStore } from "@/stores/authStore"
 import { hasAnyRoleAccess } from "@/lib/auth/roles"
 import { db } from "@/lib/db/indexeddb"
+import { invalidate } from "@/lib/invalidation"
 
 type TimelineStatus = "success" | "default" | "warning" | "danger"
 
@@ -152,6 +153,7 @@ export default function SupervisorReview() {
       })
 
       if (!res.ok) return
+      invalidate(["records", "review", "sync"])
       router.push("/supervisor/dashboard")
     } finally {
       setSubmitting(false)

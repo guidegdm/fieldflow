@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useTranslation } from "react-i18next"
 import { useRouter } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
@@ -11,6 +11,7 @@ import { ChevronRight, Workflow as WorkflowIcon, Plus } from "lucide-react"
 import { db } from "@/lib/db/indexeddb"
 import { useAuthStore } from "@/stores/authStore"
 import type { WorkflowDefinition } from "@/types/workflow"
+import { onInvalidation } from "@/lib/invalidation"
 
 type Row = {
   id: string
@@ -27,12 +28,9 @@ export default function AdminWorkflowsIndex() {
   const user = useAuthStore((state) => state.user)
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
-  const loaded = useRef(false)
 
-  useEffect(() => {
-    if (loaded.current) return
-    loaded.current = true
-    async function load() {
+  const loadRows = useCallback(async () => {
+      setLoading(true)
       try {
         const res = await fetch("/api/workflows", { credentials: "include" })
         const all = res.ok ? await res.json() : user?.orgId ? await db.getAllWorkflowsForOrg(user.orgId) : []
@@ -61,9 +59,17 @@ export default function AdminWorkflowsIndex() {
         )
       }
       setLoading(false)
-    }
-    load()
   }, [user?.orgId])
+
+  useEffect(() => {
+    void loadRows()
+  }, [loadRows])
+
+  useEffect(() => {
+    return onInvalidation(["workflows", "sync"], () => {
+      void loadRows()
+    })
+  }, [loadRows])
 
   return (
     <div className="max-w-5xl space-y-8">

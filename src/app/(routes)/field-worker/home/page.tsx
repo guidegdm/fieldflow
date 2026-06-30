@@ -13,6 +13,7 @@ import { useAuthStore } from "@/stores/authStore"
 import { useWorkflowContext } from "@/hooks/useWorkflowContext"
 import { recordSubtitle, recordTitle, workflowLabel } from "@/lib/workflows/runtime"
 import type { WorkflowDefinition } from "@/types/workflow"
+import { onInvalidation } from "@/lib/invalidation"
 
 const statusDot: Record<string, string> = {
   draft: "bg-pencil",
@@ -36,6 +37,9 @@ export default function FieldWorkerHome() {
   const [loading, setLoading] = useState(true)
   const [conflictCount, setConflictCount] = useState(0)
   const [scope, setScope] = useState<"current" | "all">("current")
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  useEffect(() => onInvalidation(["records", "sync", "conflicts"], () => setRefreshKey((value) => value + 1)), [])
 
   useEffect(() => {
     let cancelled = false
@@ -74,7 +78,7 @@ export default function FieldWorkerHome() {
     }
     load()
     return () => { cancelled = true }
-  }, [activeWorkflowId, router, scope, user?.orgId, workflows, workflows.length, workflowsLoading])
+  }, [activeWorkflowId, refreshKey, router, scope, user?.orgId, workflows, workflows.length, workflowsLoading])
 
   const urgent = records.filter((r) => r.status === "in_conflict" || r.status === "rejected" || r.status === "blocked")
   const pending = records.filter((r) => r.syncStatus === "pending" || r.syncStatus === "local")

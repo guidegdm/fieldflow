@@ -11,6 +11,7 @@ import type { ConflictRecord } from "@/types/sync"
 import { useAuthStore } from "@/stores/authStore"
 import { useWorkflowContext } from "@/hooks/useWorkflowContext"
 import { resolveConflictsOffline } from "@/lib/sync/offline-conflict-resolution"
+import { invalidate, onInvalidation } from "@/lib/invalidation"
 
 export default function SupervisorConflicts() {
   const { t } = useTranslation()
@@ -19,6 +20,9 @@ export default function SupervisorConflicts() {
   const [conflictFields, setConflictFields] = useState<ConflictField[]>([])
   const [loading, setLoading] = useState(true)
   const [recordId, setRecordId] = useState<string | null>(null)
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  useEffect(() => onInvalidation(["conflicts", "records", "sync"], () => setRefreshKey((value) => value + 1)), [])
 
   useEffect(() => {
     let cancelled = false
@@ -60,7 +64,7 @@ export default function SupervisorConflicts() {
     }
     load()
     return () => { cancelled = true }
-  }, [activeWorkflowId, user?.orgId])
+  }, [activeWorkflowId, refreshKey, user?.orgId])
 
   const handleResolve = useCallback(async (resolutions: Record<string, { choice: string; value: string }>, rationale: string) => {
     try {
@@ -70,6 +74,7 @@ export default function SupervisorConflicts() {
         rationale,
         resolved_by: "supervisor",
       })
+      invalidate(["conflicts", "records", "review", "sync"])
       return
     } catch {
       if (!recordId) throw new Error("offline_conflict_resolution_failed")

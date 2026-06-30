@@ -3,6 +3,7 @@
 import { db } from "@/lib/db/indexeddb"
 import { generateId } from "@/lib/utils"
 import { useSyncStore } from "@/stores/syncStore"
+import { invalidate } from "@/lib/invalidation"
 import type { DemoUser } from "@/types/auth"
 import type { MutationEntry, ConflictRecord } from "@/types/sync"
 
@@ -101,5 +102,6 @@ export async function resolveConflictsOffline({
   await db.putRecord(updated)
   await db.enqueueMutation(mutation)
   useSyncStore.getState().setPendingCount((await db.getPendingMutations()).length)
+  invalidate(["conflicts", "records", "review", "sync"])
   return { record: updated, conflicts }
 }

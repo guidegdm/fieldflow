@@ -1,5 +1,6 @@
 import { create } from "zustand"
 import { generateId } from "@/lib/utils"
+import { invalidate } from "@/lib/invalidation"
 import type { WorkflowDefinition, WorkflowState, WorkflowTransition, FieldDefinition } from "@/types/workflow"
 
 interface WorkflowStateStore {
@@ -145,6 +146,7 @@ export const useWorkflowStore = create<WorkflowStateStore>()((set, get) => ({
       const { db } = await import("@/lib/db/indexeddb")
       await db.saveWorkflow(workflow)
     } catch {}
+    invalidate(["workflows"])
     return workflow
   },
 }))

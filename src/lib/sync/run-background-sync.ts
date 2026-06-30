@@ -4,6 +4,7 @@ import { retryWithBackoff } from "@/lib/sync/backoff"
 import { fullSync } from "@/lib/sync/sync-client"
 import { useSyncStore } from "@/stores/syncStore"
 import { syncPendingAttachments } from "@/lib/attachments/sync-pending"
+import { invalidate } from "@/lib/invalidation"
 import type { DemoUser } from "@/types/auth"
 
 let activeSync: Promise<unknown> | null = null
@@ -57,6 +58,7 @@ async function performSync(user?: DemoUser | null, options: { retry?: boolean } 
     syncStore.setConflicts(conflicts.filter((conflict) => conflict.status === "OPEN"))
     syncStore.setSyncSuccess(Date.now())
     syncStore.setPendingCount((await db.getPendingMutations()).length)
+    invalidate(["sync", "records", "review", "conflicts", "workflows"])
     return result
   } catch (error) {
     syncStore.setSyncError(error instanceof Error ? error.message : "Sync failed")

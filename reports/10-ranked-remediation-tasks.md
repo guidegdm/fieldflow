@@ -191,7 +191,7 @@ Primary files:
 
 ### T13 - Add list invalidation after workflow/sync/review/conflict actions
 
-Status: Pending
+Status: Done on `audit` - client-side invalidation events now refresh workflow, record, review, search, and conflict lists after save/publish/sync/review/conflict actions.
 
 Tasks:
 - Refresh workflow lists after save/publish.
@@ -307,7 +307,7 @@ Primary files:
 - [x] T10: Validate workflow definitions server-side.
 - [x] T11: Make publish versioned and non-misleading.
 - [x] T12: Validate record state transitions before mutation.
-- [ ] T13: Add list invalidation after workflow/sync/review/conflict actions.
+- [x] T13: Add list invalidation after workflow/sync/review/conflict actions.
 - [ ] T14: Enforce inventory role checks at API level.
 - [ ] T15: Validate inventory receipt content hash.
 - [ ] T16: Couple reserved workflow transition to inventory transaction.

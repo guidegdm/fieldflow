@@ -76,6 +76,11 @@
       }
     }
   },
+  "pwa": {
+    "installTitle": "Install FieldFlow",
+    "installBody": "Keep the workspace one tap away and ready for low-connectivity work.",
+    "install": "Install"
+  },
   "roles": {
     "field_worker": "Field Agent",
     "supervisor": "Supervisor",

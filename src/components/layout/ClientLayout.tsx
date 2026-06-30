@@ -7,6 +7,7 @@ import { Toaster } from "@/components/layout/Toaster"
 import { AppLoader } from "@/components/layout/AppLoader"
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister"
 import { OfflineWarmup } from "@/components/OfflineWarmup"
+import { InstallPrompt } from "@/components/InstallPrompt"
 import { useNetworkStatus } from "@/hooks/useNetworkStatus"
 import { useAuthStore } from "@/stores/authStore"
 import { useWorkflowListStore } from "@/stores/workflowListStore"
@@ -45,6 +46,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
           <Toaster />
           <ServiceWorkerRegister />
           <OfflineWarmup />
+          <InstallPrompt />
         </>
       ) : (
         <AppLoader />

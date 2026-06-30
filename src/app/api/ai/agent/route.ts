@@ -26,6 +26,9 @@ const agentRequestSchema = z.object({
   tools: z.array(z.record(z.string(), z.unknown())).max(20).optional(),
 })
 
+const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || "deepseek-v4-flash"
+const DEEPSEEK_MAX_TOKENS = Number(process.env.DEEPSEEK_MAX_TOKENS || 2048)
+
 export async function POST(request: NextRequest) {
   try {
     const user = await getAuthUser(request)
@@ -58,11 +61,11 @@ export async function POST(request: NextRequest) {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "deepseek-chat",
+        model: DEEPSEEK_MODEL,
         messages,
         tools: tools?.length ? tools : undefined,
         tool_choice: tools?.length ? "auto" : undefined,
-        max_tokens: 4096,
+        max_tokens: Number.isFinite(DEEPSEEK_MAX_TOKENS) ? Math.min(DEEPSEEK_MAX_TOKENS, 2048) : 2048,
       }),
     })
 

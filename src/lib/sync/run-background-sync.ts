@@ -30,6 +30,8 @@ export async function runBackgroundSync(user?: DemoUser | null, options: { retry
 async function performSync(user?: DemoUser | null, options: { retry?: boolean } = {}) {
   const syncStore = useSyncStore.getState()
   syncStore.setSyncing(true)
+  syncStore.setSyncAttempt(Date.now())
+  syncStore.setSyncError(null)
   try {
     await syncPendingAttachments(user)
     const pendingMutations = await db.getPendingMutations()
@@ -53,11 +55,11 @@ async function performSync(user?: DemoUser | null, options: { retry?: boolean } 
       : await fullSync()
     const conflicts = await db.getConflicts()
     syncStore.setConflicts(conflicts.filter((conflict) => conflict.status === "OPEN"))
-    syncStore.setLastSync(Date.now())
+    syncStore.setSyncSuccess(Date.now())
     syncStore.setPendingCount((await db.getPendingMutations()).length)
     return result
-  } catch {
-    syncStore.setLastSync(Date.now())
+  } catch (error) {
+    syncStore.setSyncError(error instanceof Error ? error.message : "Sync failed")
     syncStore.setPendingCount((await db.getPendingMutations()).length)
     return null
   } finally {

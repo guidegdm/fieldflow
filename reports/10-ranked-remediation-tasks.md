@@ -63,7 +63,7 @@ Primary files:
 
 ### T04 - Separate failed sync attempts from successful syncs
 
-Status: Pending
+Status: Done on `audit` - sync now tracks attempt time, successful sync time, and last error separately. Failed runs no longer update the successful sync timestamp.
 
 Tasks:
 - Track `lastAttemptAt`, `lastSuccessfulSyncAt`, and `lastError`.
@@ -298,7 +298,7 @@ Primary files:
 - [ ] T01: Make auth token verification fail closed.
 - [x] T02: Purge offline artifacts on logout.
 - [x] T03: Scope IndexedDB workflow/record access by org.
-- [ ] T04: Separate failed sync attempts from successful syncs.
+- [x] T04: Separate failed sync attempts from successful syncs.
 - [ ] T05: Drain more than 100 mutations.
 - [ ] T06: Make conflict resolution durable offline.
 - [ ] T07: Make mutation idempotency atomic.

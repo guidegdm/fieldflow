@@ -20,13 +20,13 @@ const modes: { value: NetworkMode; label: string }[] = [
 
 export function ConnectivityBar() {
   const { t } = useTranslation()
-  const { isOnline, isSyncing, pendingCount, lastSyncAt, setOnline } =
+  const { isOnline, isSyncing, pendingCount, lastError, setOnline } =
     useSyncStore()
   const { usage, quota, percentageUsed, isNearLimit } = useStorageQuota()
   const [showSim, setShowSim] = useState(false)
   const [simMode, setSimMode] = useState<NetworkMode>(getCurrentMode())
 
-  const failed = pendingCount > 0 && !isSyncing
+  const failed = (!!lastError || pendingCount > 0) && !isSyncing
   const showStorage = quota > 0 && percentageUsed > 70
 
   const isDev = process.env.NODE_ENV === "development"
@@ -75,7 +75,7 @@ export function ConnectivityBar() {
     }
   } else if (failed) {
     status = {
-      text: t("common.pendingSync"),
+      text: lastError ? t("sync.failed", "Sync failed") : t("common.pendingSync"),
       className: "bg-amber-50 text-warning-600",
     }
   } else {

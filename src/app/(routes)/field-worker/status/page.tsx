@@ -20,7 +20,7 @@ function formatTime(ts: number | null): string {
 }
 
 export default function FieldWorkerStatus() {
-  const { isOnline, isSyncing, pendingCount, lastSyncAt, conflicts } = useSyncStore()
+  const { isOnline, isSyncing, pendingCount, lastAttemptAt, lastSuccessfulSyncAt, lastError, conflicts } = useSyncStore()
   const user = useAuthStore((s) => s.user)
   const quota = useStorageQuota()
   const [recordCount, setRecordCount] = useState<number | null>(null)
@@ -84,9 +84,23 @@ export default function FieldWorkerStatus() {
         <StatRow
           icon={<CheckCircle2 size={16} className="text-success-500" />}
           label="Dernière synchronisation"
-          value={formatTime(lastSyncAt)}
+          value={formatTime(lastSuccessfulSyncAt)}
           mono
         />
+        <StatRow
+          icon={<Clock size={16} className="text-pencil" />}
+          label="Dernière tentative"
+          value={formatTime(lastAttemptAt)}
+          mono
+        />
+        {lastError ? (
+          <StatRow
+            icon={<AlertTriangle size={16} className="text-danger-500" />}
+            label="Dernière erreur"
+            value={lastError}
+            accent="text-danger-500"
+          />
+        ) : null}
         <StatRow
           icon={<AlertTriangle size={16} className={conflicts.length > 0 ? "text-clay" : "text-pencil"} />}
           label="Conflits à résoudre"

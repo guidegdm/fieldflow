@@ -85,6 +85,42 @@ async function refreshOpenConflicts() {
   }
 }
 
+function payloadRecordId(mutation: MutationEntry) {
+  const payload = mutation.payload && typeof mutation.payload === "object" && !Array.isArray(mutation.payload)
+    ? mutation.payload as { id?: unknown }
+    : {}
+  return mutation.record_id || (typeof payload.id === "string" ? payload.id : null)
+}
+
+async function markAcceptedRecordsSynced(response: SyncBatchResponse, mutationMap: Map<string, MutationEntry>) {
+  for (const clientId of response.acked) {
+    const mutation = mutationMap.get(clientId)
+    if (!mutation || !["create", "update", "attach_evidence"].includes(mutation.operation)) continue
+    const recordId = payloadRecordId(mutation)
+    if (!recordId) continue
+    const record = await db.getRecord(recordId)
+    if (!record) continue
+    await db.putRecord({
+      ...record,
+      syncStatus: "synced",
+      syncedAt: response.server_timestamp,
+      updatedAt: Math.max(record.updatedAt || 0, response.server_timestamp),
+    })
+  }
+}
+
+async function markRejectedRecordsFailed(response: SyncBatchResponse, mutationMap: Map<string, MutationEntry>) {
+  for (const failed of response.failed) {
+    const mutation = mutationMap.get(failed.client_id)
+    if (!mutation || !["create", "update", "attach_evidence"].includes(mutation.operation)) continue
+    const recordId = payloadRecordId(mutation)
+    if (!recordId) continue
+    const record = await db.getRecord(recordId)
+    if (!record) continue
+    await db.putRecord({ ...record, syncStatus: "failed" })
+  }
+}
+
 export async function fullSync(): Promise<SyncBatchResponse> {
   const aggregate = emptySyncResponse()
   const attemptedThisRun = new Set<string>()
@@ -124,6 +160,8 @@ export async function fullSync(): Promise<SyncBatchResponse> {
     }
 
     await applyServerChanges(response.server_changes)
+    await markAcceptedRecordsSynced(response, mutationMap)
+    await markRejectedRecordsFailed(response, mutationMap)
     await saveConflicts(response, deviceState.device_id, mutationMap)
 
     const remaining = await db.getPendingMutations()

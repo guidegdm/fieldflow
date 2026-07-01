@@ -18,6 +18,7 @@ export default function ResetPasswordPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
   const [sent, setSent] = useState(false)
+  const [temporaryPasswordSent, setTemporaryPasswordSent] = useState(false)
 
   async function requestReset() {
     if (!email.trim()) return
@@ -30,11 +31,16 @@ export default function ResetPasswordPage() {
         credentials: "include",
         body: JSON.stringify({ email: email.trim() }),
       })
+      const data = await res.json().catch(() => null) as { error?: string; mode?: string } | null
       if (!res.ok) {
-        const data = await res.json().catch(() => null) as { error?: string } | null
         throw new Error(data?.error || "request_failed")
       }
       setSent(true)
+      if (data?.mode === "temporary_password") {
+        setTemporaryPasswordSent(true)
+        return
+      }
+      setTemporaryPasswordSent(false)
       setStep("confirm")
     } catch (err) {
       setError(err instanceof Error && err.message !== "request_failed" ? err.message : t("reset.errors.request"))
@@ -95,7 +101,7 @@ export default function ResetPasswordPage() {
 
           {sent && (
             <div className="mt-4 rounded-md border border-antiseptic-green/30 bg-antiseptic-green/10 px-4 py-2 text-sm text-antiseptic-green">
-              {t("reset.sent")}
+              {temporaryPasswordSent ? t("reset.temporaryPasswordSent") : t("reset.sent")}
             </div>
           )}
 
@@ -130,17 +136,23 @@ export default function ResetPasswordPage() {
               </>
             )}
 
-            <Button
-              type="button"
-              className="w-full"
-              loading={busy}
-              disabled={step === "request" ? !email.trim() : !email.trim() || !code.trim() || password.length < 8}
-              onClick={step === "request" ? requestReset : confirmReset}
-            >
-              {step === "request" ? t("reset.sendCode") : t("reset.savePassword")}
-            </Button>
+            {temporaryPasswordSent ? (
+              <Button type="button" className="w-full" onClick={() => router.push(`/auth/signin?email=${encodeURIComponent(email.trim())}`)}>
+                {t("reset.backToSignin")}
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                className="w-full"
+                loading={busy}
+                disabled={step === "request" ? !email.trim() : !email.trim() || !code.trim() || password.length < 8}
+                onClick={step === "request" ? requestReset : confirmReset}
+              >
+                {step === "request" ? t("reset.sendCode") : t("reset.savePassword")}
+              </Button>
+            )}
 
-            {step === "confirm" && (
+            {step === "confirm" && !temporaryPasswordSent && (
               <Button type="button" variant="ghost" className="w-full" onClick={requestReset} disabled={busy || !email.trim()}>
                 {t("reset.resend")}
               </Button>

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import {
+  AdminCreateUserCommand,
   AdminGetUserCommand,
   AdminResetUserPasswordCommand,
   CognitoIdentityProviderClient,
@@ -51,7 +52,17 @@ export async function POST(request: Request) {
 
     if (!user) return NextResponse.json({ success: true })
 
-    if (user.UserStatus === "FORCE_CHANGE_PASSWORD" || user.UserStatus === "RESET_REQUIRED") {
+    if (user.UserStatus === "FORCE_CHANGE_PASSWORD") {
+      await cognito.send(new AdminCreateUserCommand({
+        UserPoolId: POOL_ID,
+        Username: username,
+        MessageAction: "RESEND",
+        DesiredDeliveryMediums: ["EMAIL"],
+      }))
+      return NextResponse.json({ success: true, mode: "temporary_password" })
+    }
+
+    if (user.UserStatus === "RESET_REQUIRED") {
       await cognito.send(new AdminResetUserPasswordCommand({
         UserPoolId: POOL_ID,
         Username: username,

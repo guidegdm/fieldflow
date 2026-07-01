@@ -599,6 +599,8 @@
     "savePassword": "Enregistrer le nouveau mot de passe",
     "resend": "Renvoyer le code",
     "sent": "Si le compte existe, un code de réinitialisation a été envoyé.",
+    "temporaryPasswordSent": "Ce compte invité doit encore faire sa première connexion. Nous avons envoyé un nouveau mot de passe temporaire; utilisez-le sur la page de connexion, puis choisissez votre mot de passe.",
+    "backToSignin": "Retour à la connexion",
     "errors": {
       "request": "Impossible d'envoyer le code.",
       "confirm": "Code invalide ou expiré."

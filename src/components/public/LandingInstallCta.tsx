@@ -3,17 +3,11 @@
 import { useEffect, useState } from "react"
 import { Download } from "lucide-react"
 import { useTranslation } from "react-i18next"
-
-type BeforeInstallPromptEvent = Event & {
-  prompt: () => Promise<void>
-  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>
-}
-
-const INSTALLED_KEY = "fieldflow-installed"
-
-function isStandalone() {
-  return window.matchMedia("(display-mode: standalone)").matches || Boolean((navigator as Navigator & { standalone?: boolean }).standalone)
-}
+import {
+  type BeforeInstallPromptEvent,
+  markFieldFlowInstalled,
+  shouldSuppressInstallUi,
+} from "@/lib/pwa/install-state"
 
 export function LandingInstallCta() {
   const { t } = useTranslation()
@@ -21,14 +15,17 @@ export function LandingInstallCta() {
   const [installed, setInstalled] = useState(false)
 
   useEffect(() => {
-    setInstalled(isStandalone() || window.localStorage.getItem(INSTALLED_KEY) === "1")
-    const onInstallPrompt = (promptEvent: Event) => {
-      if (isStandalone() || window.localStorage.getItem(INSTALLED_KEY) === "1") return
+    void shouldSuppressInstallUi().then(setInstalled)
+    const onInstallPrompt = async (promptEvent: Event) => {
+      if (await shouldSuppressInstallUi()) {
+        setInstalled(true)
+        return
+      }
       promptEvent.preventDefault()
       setEvent(promptEvent as BeforeInstallPromptEvent)
     }
     const onInstalled = () => {
-      window.localStorage.setItem(INSTALLED_KEY, "1")
+      markFieldFlowInstalled()
       setInstalled(true)
       setEvent(null)
     }
@@ -46,7 +43,7 @@ export function LandingInstallCta() {
     await event.prompt()
     const choice = await event.userChoice.catch(() => null)
     if (choice?.outcome === "accepted") {
-      window.localStorage.setItem(INSTALLED_KEY, "1")
+      markFieldFlowInstalled()
       setInstalled(true)
       setEvent(null)
     }

@@ -5,17 +5,19 @@ export async function GET(request: NextRequest) {
   const user = await getAuthUser(request)
   if (!user) return NextResponse.json({ user: null, org: null, orgs: [] })
 
-  const org = user.orgs?.find((candidate) => candidate.id === user.orgId) ?? { id: user.orgId, name: "" }
+  const orgs = user.orgs?.length ? user.orgs : [{ id: user.orgId, name: "", role: user.role }]
+  const org = orgs.find((candidate) => candidate.id === user.orgId) ?? { id: user.orgId, name: "", role: user.role }
+  const role = org.role || user.role
   return NextResponse.json({
     user: {
       id: user.sub,
       email: user.email,
       name: user.name,
-      role: user.role,
+      role,
       deviceId: "web",
       orgId: user.orgId,
     },
-    org,
-    orgs: user.orgs?.length ? user.orgs : [org],
+    org: { ...org, role },
+    orgs: orgs.map((candidate) => candidate.id === org.id ? { ...candidate, role } : candidate),
   })
 }

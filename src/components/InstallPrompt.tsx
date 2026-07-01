@@ -11,11 +11,13 @@ import {
   markFieldFlowInstallDismissed,
   shouldSuppressInstallUi,
 } from "@/lib/pwa/install-state"
+import { usePromptQueueSlot } from "@/lib/ui/prompt-queue"
 
 export function InstallPrompt() {
   const { t } = useTranslation()
   const [event, setEvent] = useState<BeforeInstallPromptEvent | null>(null)
   const [visible, setVisible] = useState(false)
+  const { canShow, release } = usePromptQueueSlot("install", visible && !!event)
 
   useEffect(() => {
     const handleInstalled = () => {
@@ -41,11 +43,12 @@ export function InstallPrompt() {
     }
   }, [])
 
-  if (!visible || !event) return null
+  if (!canShow || !event) return null
 
   const dismiss = () => {
     markFieldFlowInstallDismissed()
     setVisible(false)
+    release()
   }
 
   const install = async () => {

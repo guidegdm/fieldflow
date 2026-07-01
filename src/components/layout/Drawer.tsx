@@ -17,7 +17,7 @@ interface DrawerProps { role: "admin" | "supervisor" | "field_worker" | "enginee
 
 const navByRole: Record<string, { labelKey: string; fallback: string; href: string; icon: React.ReactNode }[]> = {
   field_worker: [
-    { labelKey: "nav.home", fallback: "Accueil", href: "/field-worker/home", icon: <Home size={20} /> },
+    { labelKey: "nav.dashboard", fallback: "Dashboard", href: "/field-worker/home", icon: <LayoutDashboard size={20} /> },
     { labelKey: "nav.search", fallback: "Rechercher", href: "/field-worker/search", icon: <Search size={20} /> },
     { labelKey: "nav.newRecord", fallback: "Nouveau", href: "/field-worker/register", icon: <Plus size={20} /> },
     { labelKey: "nav.conflicts", fallback: "Conflits", href: "/field-worker/conflicts", icon: <AlertTriangle size={20} /> },
@@ -51,7 +51,7 @@ const navByRole: Record<string, { labelKey: string; fallback: string; href: stri
 }
 
 export function Drawer({ role, open, onToggle }: DrawerProps) {
-  const { user, logout } = useAuthStore()
+  const { user, org, logout } = useAuthStore()
   const { t } = useTranslation()
   const pathname = usePathname()
   const router = useRouter()
@@ -108,7 +108,8 @@ export function Drawer({ role, open, onToggle }: DrawerProps) {
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-ink-black">{user.name}</p>
-              <p className="truncate text-[10px] uppercase tracking-wider text-pencil">{t(`roles.${role}`, role.replace("_", " "))}</p>
+              <p className="truncate text-xs text-pencil">{org?.name || t("workspace.current", "Workspace")}</p>
+              <p className="truncate text-[10px] uppercase tracking-wider text-pencil">{t(`roles.${user.role}`, user.role.replace("_", " "))}</p>
             </div>
             <button onClick={handleLogout} className="rounded-md p-2 text-pencil hover:bg-white hover:text-rebar" aria-label={t("auth.logout")}>
               <LogOut size={16} />

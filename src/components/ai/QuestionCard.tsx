@@ -44,21 +44,23 @@ export function QuestionCard() {
   }
 
   return (
-    <div className="absolute inset-0 z-40 flex items-center justify-center bg-ink-black/10">
-      <div className="bg-white rounded-md border border-graph-line shadow-sm max-w-md w-full mx-4 p-5">
-        <span className="text-[10px] bg-clay/10 text-clay px-2 py-0.5 rounded-full inline-block mb-3">
-          {pendingQuestion.header}
-        </span>
-        <p className="text-sm text-ink-black mb-4">{pendingQuestion.question}</p>
+    <div className="absolute inset-0 z-40 flex min-h-0 items-start justify-center overflow-y-auto bg-ink-black/15 px-3 py-4 backdrop-blur-sm sm:items-center sm:px-5">
+      <div className="flex max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-graph-line bg-white shadow-2xl">
+        <div className="shrink-0 border-b border-graph-line px-5 py-4">
+          <span className="mb-3 inline-flex rounded-full bg-clay/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-clay">
+            {pendingQuestion.header}
+          </span>
+          <p className="text-sm leading-6 text-ink-black">{pendingQuestion.question}</p>
+        </div>
 
-        <div className="space-y-1.5 mb-4">
+        <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-5 py-4">
           {pendingQuestion.options.map((opt, i) => (
             <label
               key={i}
-              className={`flex items-start gap-2.5 p-2.5 rounded-md border cursor-pointer transition-colors text-sm ${
+              className={`flex cursor-pointer items-start gap-2.5 rounded-md border p-3 text-sm transition-colors ${
                 selectedIndices.includes(i)
                   ? "border-clay/40 bg-clay/5 text-soil"
-                  : "border-graph-line text-soil hover:bg-kivu-paper"
+                  : "border-graph-line text-soil hover:bg-graph-paper"
               }`}
             >
               <input
@@ -71,37 +73,36 @@ export function QuestionCard() {
               <div>
                 <span className="font-medium text-ink-black">{opt.label}</span>
                 {opt.description && (
-                  <p className="text-xs text-pencil mt-0.5">{opt.description}</p>
+                  <p className="mt-0.5 text-xs leading-5 text-pencil">{opt.description}</p>
                 )}
               </div>
             </label>
           ))}
-        </div>
 
-        {pendingQuestion.custom && (
-          <div className="mb-4">
+          {pendingQuestion.custom && (
             <textarea
               value={customText}
               onChange={(e) => setCustomText(e.target.value)}
               placeholder={t("ai.question.customPlaceholder", "Other...")}
-              className="w-full h-16 text-xs rounded border border-graph-line px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-clay"
+              className="h-24 w-full resize-none rounded-md border border-graph-line px-3 py-2 text-sm leading-5 focus:outline-none focus:ring-2 focus:ring-clay"
             />
-          </div>
-        )}
+          )}
+        </div>
 
-        <div className="flex gap-2">
+        <div className="grid shrink-0 grid-cols-[1fr_auto] gap-2 border-t border-graph-line px-5 py-4">
           <Button
             variant="primary"
-            size="sm"
+            size="md"
             onClick={handleConfirm}
             disabled={isEmpty}
-            className="flex-1"
+            className="w-full"
           >
             {t("ai.question.confirm", "Confirm")}
           </Button>
           <button
+            type="button"
             onClick={handleDismiss}
-            className="text-xs text-pencil hover:text-ink-black transition-colors"
+            className="rounded-md px-3 text-xs font-medium text-pencil transition-colors hover:bg-graph-paper hover:text-ink-black"
           >
             {t("ai.question.dismiss", "Skip")}
           </button>

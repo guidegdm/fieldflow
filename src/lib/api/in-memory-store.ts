@@ -155,10 +155,15 @@ class Store {
     if (DYNAMODB_ENABLED) return (await getDynamo())?.getOrgItem(id)
     return this.orgs.get(id)
   }
-  putUserProfile(p: any) { this.userProfiles.set(p.userId || p.email, p) }
+  private userProfileKey(p: Record<string, unknown>) {
+    const orgId = String(p.orgId || "")
+    const userId = String(p.userId || p.email || "")
+    return orgId && userId ? `${orgId}#${userId}` : userId
+  }
+  putUserProfile(p: any) { this.userProfiles.set(this.userProfileKey(p), p) }
   async putUserProfileAsync(p: Record<string, unknown>) {
     if (DYNAMODB_ENABLED) await (await getDynamo())?.putUserProfile(p)
-    this.userProfiles.set(String(p.userId || p.email), p)
+    this.userProfiles.set(this.userProfileKey(p), p)
   }
   async getUsersByOrg(orgId: string) {
     if (DYNAMODB_ENABLED) return (await getDynamo())?.listUserProfiles(orgId) ?? []

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { RefreshCw, X } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
+import { usePromptQueueSlot } from "@/lib/ui/prompt-queue"
 
 const VERSION_KEY = "fieldflow-app-version"
 const UPDATE_SNOOZE_KEY = "fieldflow-update-snooze"
@@ -37,6 +38,7 @@ export function AppUpdateManager() {
   const { t } = useTranslation()
   const [updateReady, setUpdateReady] = useState(false)
   const checking = useRef(false)
+  const { canShow, release } = usePromptQueueSlot("update", updateReady)
 
   useEffect(() => {
     let mounted = true
@@ -73,7 +75,7 @@ export function AppUpdateManager() {
     }
   }, [])
 
-  if (!updateReady) return null
+  if (!canShow) return null
 
   const reload = async () => {
     const latest = await fetchVersion()
@@ -99,6 +101,7 @@ export function AppUpdateManager() {
                 const latest = await fetchVersion()
                 if (latest) window.localStorage.setItem(snoozeKey(latest), String(Date.now()))
                 setUpdateReady(false)
+                release()
               }}
             >
               {t("common.later")}
@@ -109,7 +112,10 @@ export function AppUpdateManager() {
           type="button"
           aria-label={t("common.close")}
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-pencil transition-colors hover:bg-graph-paper hover:text-ink-black"
-          onClick={() => setUpdateReady(false)}
+          onClick={() => {
+            setUpdateReady(false)
+            release()
+          }}
         >
           <X className="h-4 w-4" aria-hidden="true" />
         </button>

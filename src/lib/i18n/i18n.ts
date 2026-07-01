@@ -6,6 +6,7 @@ import en from "./en.json"
 const resources = { fr: { translation: fr }, en: { translation: en } }
 export type AppLanguage = "fr" | "en"
 export const LANGUAGE_STORAGE_KEY = "fieldflow-lang"
+export const LANGUAGE_CHANGED_EVENT = "fieldflow:language-changed"
 
 function normalizeLanguage(value: string | undefined | null): AppLanguage | null {
   if (!value) return null
@@ -46,6 +47,9 @@ export async function setAppLanguage(language: AppLanguage) {
     document.documentElement.lang = language
   }
   await i18next.changeLanguage(language)
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(LANGUAGE_CHANGED_EVENT, { detail: { language } }))
+  }
 }
 
 export default i18next

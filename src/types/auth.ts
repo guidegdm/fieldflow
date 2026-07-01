@@ -9,9 +9,11 @@ export interface Org {
   id: string
   name: string
   key?: string
+  role?: UserRole
   sector?: string
   region?: string
   summary?: string
+  localOnly?: boolean
 }
 
 export interface DemoMembership {

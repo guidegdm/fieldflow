@@ -200,7 +200,7 @@ export function createLocalDemoSandbox(): DemoOfflineSandbox {
 
   const accounts = ORG_MEMBERSHIPS.map((membership) => {
     const template = DEMO_USERS.find((candidate) => candidate.id === membership.userId)!
-    const org = orgs.find((candidate) => candidate.key === membership.orgKey)!
+    const org = { ...orgs.find((candidate) => candidate.key === membership.orgKey)!, role: membership.role }
     return {
       email: template.email,
       orgKey: membership.orgKey,
@@ -214,7 +214,10 @@ export function createLocalDemoSandbox(): DemoOfflineSandbox {
       org,
       orgs: ORG_MEMBERSHIPS
         .filter((allowed) => allowed.userId === membership.userId)
-        .map((allowed) => orgs.find((candidate) => candidate.key === allowed.orgKey)!)
+        .map((allowed) => {
+          const allowedOrg = orgs.find((candidate) => candidate.key === allowed.orgKey)!
+          return allowedOrg ? { ...allowedOrg, role: allowed.role } : allowedOrg
+        })
         .filter(Boolean),
     }
   })

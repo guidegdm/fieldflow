@@ -6,8 +6,11 @@ interface WorkflowListState {
   byOrgId: Record<string, WorkflowDefinition[]>
   loadingByOrgId: Record<string, boolean>
   errorByOrgId: Record<string, string | null>
+  fetchedAtByOrgId: Record<string, number>
   loadForOrg: (orgId: string, options?: { force?: boolean }) => Promise<WorkflowDefinition[]>
 }
+
+const WORKFLOW_LIST_TTL_MS = 45_000
 
 function published(workflows: WorkflowDefinition[]) {
   return workflows
@@ -23,8 +26,11 @@ export const useWorkflowListStore = create<WorkflowListState>((set, get) => ({
   byOrgId: {},
   loadingByOrgId: {},
   errorByOrgId: {},
+  fetchedAtByOrgId: {},
   loadForOrg: async (orgId, options) => {
     const cached = get().byOrgId[orgId]
+    const fetchedAt = get().fetchedAtByOrgId[orgId] ?? 0
+    if (cached && !options?.force && Date.now() - fetchedAt < WORKFLOW_LIST_TTL_MS) return cached
     if (cached?.length && !options?.force) return cached
 
     set((state) => ({
@@ -50,6 +56,7 @@ export const useWorkflowListStore = create<WorkflowListState>((set, get) => ({
       set((state) => ({
         byOrgId: { ...state.byOrgId, [orgId]: server },
         loadingByOrgId: { ...state.loadingByOrgId, [orgId]: false },
+        fetchedAtByOrgId: { ...state.fetchedAtByOrgId, [orgId]: Date.now() },
       }))
       try {
         const { db } = await import("@/lib/db/indexeddb")
@@ -67,6 +74,7 @@ export const useWorkflowListStore = create<WorkflowListState>((set, get) => ({
       set((state) => ({
         loadingByOrgId: { ...state.loadingByOrgId, [orgId]: false },
         errorByOrgId: { ...state.errorByOrgId, [orgId]: message },
+        fetchedAtByOrgId: { ...state.fetchedAtByOrgId, [orgId]: Date.now() },
       }))
       const activeStore = useActiveWorkflowStore.getState()
       const current = activeStore.getActiveWorkflowId(orgId)

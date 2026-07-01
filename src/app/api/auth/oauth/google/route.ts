@@ -25,7 +25,7 @@ export async function GET(request: Request) {
   authorizeUrl.searchParams.set("redirect_uri", redirectUri)
   authorizeUrl.searchParams.set("response_type", "CODE")
   authorizeUrl.searchParams.set("client_id", CLIENT_ID)
-  authorizeUrl.searchParams.set("scope", "email openid profile")
+  authorizeUrl.searchParams.set("scope", "email openid profile aws.cognito.signin.user.admin")
   authorizeUrl.searchParams.set("state", state)
 
   return NextResponse.redirect(authorizeUrl)

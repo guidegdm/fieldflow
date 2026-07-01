@@ -10,6 +10,7 @@ const VERSION_KEY = "fieldflow-app-version"
 const UPDATE_SNOOZE_KEY = "fieldflow-update-snooze"
 const CHECK_INTERVAL_MS = 10 * 60 * 1000
 const UPDATE_SNOOZE_MS = 24 * 60 * 60 * 1000
+const SERVICE_WORKER_UPDATE_VERSION = "service-worker"
 
 function snoozeKey(version: string) {
   return `${UPDATE_SNOOZE_KEY}:${version}`
@@ -37,17 +38,45 @@ async function refreshServiceWorker() {
 export function AppUpdateManager() {
   const { t } = useTranslation()
   const [updateReady, setUpdateReady] = useState(false)
+  const pendingVersion = useRef<string | null>(null)
   const checking = useRef(false)
   const { canShow, release } = usePromptQueueSlot("update", updateReady)
 
   useEffect(() => {
     let mounted = true
+    let registrationRef: ServiceWorkerRegistration | null = null
+
+    const markUpdateReady = (version = SERVICE_WORKER_UPDATE_VERSION) => {
+      if (!mounted || isSnoozed(version)) return
+      pendingVersion.current = version
+      setUpdateReady(true)
+    }
+
+    const watchRegistration = (registration: ServiceWorkerRegistration) => {
+      registrationRef = registration
+      if (registration.waiting && navigator.serviceWorker.controller) {
+        markUpdateReady()
+      }
+      registration.addEventListener("updatefound", () => {
+        const worker = registration.installing
+        if (!worker) return
+        worker.addEventListener("statechange", () => {
+          if (worker.state === "installed" && navigator.serviceWorker.controller) {
+            markUpdateReady()
+          }
+        })
+      })
+    }
 
     const check = async () => {
       if (checking.current || !navigator.onLine) return
       checking.current = true
       try {
         await refreshServiceWorker()
+        if (registrationRef?.waiting && navigator.serviceWorker.controller) {
+          markUpdateReady()
+          return
+        }
         const latest = await fetchVersion()
         if (!latest || !mounted) return
         const current = window.localStorage.getItem(VERSION_KEY)
@@ -55,16 +84,19 @@ export function AppUpdateManager() {
           window.localStorage.setItem(VERSION_KEY, latest)
           return
         }
-        if (current !== latest && !isSnoozed(latest)) setUpdateReady(true)
+        if (current !== latest) markUpdateReady(latest)
       } finally {
         checking.current = false
       }
     }
 
     const onOnlineOrFocus = () => void check()
+    const onServiceWorkerUpdated = () => markUpdateReady()
     const interval = window.setInterval(check, CHECK_INTERVAL_MS)
     window.addEventListener("online", onOnlineOrFocus)
     window.addEventListener("focus", onOnlineOrFocus)
+    window.addEventListener("fieldflow:service-worker-updated", onServiceWorkerUpdated)
+    void navigator.serviceWorker?.ready.then(watchRegistration).catch(() => {})
     void check()
 
     return () => {
@@ -72,6 +104,7 @@ export function AppUpdateManager() {
       window.clearInterval(interval)
       window.removeEventListener("online", onOnlineOrFocus)
       window.removeEventListener("focus", onOnlineOrFocus)
+      window.removeEventListener("fieldflow:service-worker-updated", onServiceWorkerUpdated)
     }
   }, [])
 
@@ -99,7 +132,8 @@ export function AppUpdateManager() {
               variant="secondary"
               onClick={async () => {
                 const latest = await fetchVersion()
-                if (latest) window.localStorage.setItem(snoozeKey(latest), String(Date.now()))
+                const version = latest || pendingVersion.current || SERVICE_WORKER_UPDATE_VERSION
+                window.localStorage.setItem(snoozeKey(version), String(Date.now()))
                 setUpdateReady(false)
                 release()
               }}

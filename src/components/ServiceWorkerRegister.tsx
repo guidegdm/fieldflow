@@ -11,10 +11,15 @@ export function ServiceWorkerRegister() {
     if (process.env.NODE_ENV !== "production") return
 
     const CONTROL_RELOAD_KEY = "fieldflow-sw-control-reload"
+    const hadControllerAtStart = Boolean(navigator.serviceWorker.controller)
     let refreshing = false
     let registrationRef: ServiceWorkerRegistration | null = null
     const handleControllerChange = () => {
       if (refreshing) return
+      if (hadControllerAtStart) {
+        window.dispatchEvent(new CustomEvent("fieldflow:service-worker-updated"))
+        return
+      }
       refreshing = true
       window.sessionStorage.removeItem(CONTROL_RELOAD_KEY)
       window.location.reload()

@@ -539,7 +539,9 @@
     "errors": {
       "default": "Impossible de se connecter",
       "network": "Erreur réseau",
-      "invalidCode": "Code invalide"
+      "invalidCode": "Code invalide",
+      "oauthConfig": "La connexion Google est temporairement mal configurée. Réessayez.",
+      "workspaceRequired": "Votre compte doit être lié à un espace de travail avant de continuer."
     }
   },
   "signup": {

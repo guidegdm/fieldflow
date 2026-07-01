@@ -24,9 +24,9 @@ export async function GET(request: Request) {
   const authorizeUrl = new URL(`https://${DOMAIN}/oauth2/authorize`)
   authorizeUrl.searchParams.set("identity_provider", "Google")
   authorizeUrl.searchParams.set("redirect_uri", redirectUri)
-  authorizeUrl.searchParams.set("response_type", "CODE")
+  authorizeUrl.searchParams.set("response_type", "code")
   authorizeUrl.searchParams.set("client_id", CLIENT_ID)
-  authorizeUrl.searchParams.set("scope", "email openid profile aws.cognito.signin.user.admin")
+  authorizeUrl.searchParams.set("scope", "email openid profile")
   authorizeUrl.searchParams.set("state", state)
 
   const response = NextResponse.redirect(authorizeUrl)

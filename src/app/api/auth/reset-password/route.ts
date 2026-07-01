@@ -7,7 +7,7 @@ const CLIENT_ID = process.env.COGNITO_CLIENT_ID || "7r60o7fnej4vitoksrp6e93n9g"
 const REGION = process.env.AWS_REGION || "us-east-1"
 
 const resetPasswordSchema = z.object({
-  email: z.string().email(),
+  email: z.string().trim().toLowerCase().email(),
   code: z.string().min(4).max(12),
   password: z.string().min(8).max(128),
 })
@@ -37,15 +37,21 @@ export async function POST(request: Request) {
   try {
     await getCognitoClient().send(new ConfirmForgotPasswordCommand({
       ClientId: CLIENT_ID,
-      Username: parsed.data.email.trim().toLowerCase(),
+      Username: parsed.data.email,
       ConfirmationCode: parsed.data.code.trim(),
       Password: parsed.data.password,
     }))
   } catch (error) {
-    console.error("[reset-password] Cognito failed", error instanceof Error ? error.name : error)
+    const errorName = error instanceof Error ? error.name : ""
+    console.error("[reset-password] Cognito failed", errorName || error)
+    if (errorName === "InvalidPasswordException") {
+      return NextResponse.json({ error: "Le mot de passe ne respecte pas la politique de sécurité." }, { status: 400 })
+    }
+    if (errorName === "LimitExceededException") {
+      return NextResponse.json({ error: "Trop de tentatives. Réessayez plus tard." }, { status: 429 })
+    }
     return NextResponse.json({ error: "Code invalide ou expiré" }, { status: 401 })
   }
 
   return NextResponse.json({ success: true })
 }
-

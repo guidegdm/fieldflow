@@ -1,13 +1,19 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
-import { CognitoIdentityProviderClient, ForgotPasswordCommand } from "@aws-sdk/client-cognito-identity-provider"
+import {
+  AdminGetUserCommand,
+  AdminResetUserPasswordCommand,
+  CognitoIdentityProviderClient,
+  ForgotPasswordCommand,
+} from "@aws-sdk/client-cognito-identity-provider"
 import { checkRateLimit } from "@/lib/auth/rate-limit"
 
 const CLIENT_ID = process.env.COGNITO_CLIENT_ID || "7r60o7fnej4vitoksrp6e93n9g"
+const POOL_ID = process.env.COGNITO_POOL_ID || process.env.NEXT_PUBLIC_COGNITO_POOL_ID || "us-east-1_kpjmcFVqD"
 const REGION = process.env.AWS_REGION || "us-east-1"
 
 const forgotPasswordSchema = z.object({
-  email: z.string().email(),
+  email: z.string().trim().toLowerCase().email(),
 })
 
 function getCognitoClient() {
@@ -33,13 +39,38 @@ export async function POST(request: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Requête invalide" }, { status: 400 })
 
   try {
-    await getCognitoClient().send(new ForgotPasswordCommand({
-      ClientId: CLIENT_ID,
-      Username: parsed.data.email.trim().toLowerCase(),
-    }))
+    const cognito = getCognitoClient()
+    const username = parsed.data.email
+    const user = await cognito.send(new AdminGetUserCommand({
+      UserPoolId: POOL_ID,
+      Username: username,
+    })).catch((error) => {
+      if (error instanceof Error && error.name === "UserNotFoundException") return null
+      throw error
+    })
+
+    if (!user) return NextResponse.json({ success: true })
+
+    if (user.UserStatus === "FORCE_CHANGE_PASSWORD" || user.UserStatus === "RESET_REQUIRED") {
+      await cognito.send(new AdminResetUserPasswordCommand({
+        UserPoolId: POOL_ID,
+        Username: username,
+      }))
+    } else {
+      await cognito.send(new ForgotPasswordCommand({
+        ClientId: CLIENT_ID,
+        Username: username,
+      }))
+    }
   } catch (error) {
     if (error instanceof Error && error.name === "UserNotFoundException") {
       return NextResponse.json({ success: true })
+    }
+    if (error instanceof Error && error.name === "LimitExceededException") {
+      return NextResponse.json({ error: "Trop de demandes. Réessayez plus tard." }, { status: 429 })
+    }
+    if (error instanceof Error && error.name === "InvalidParameterException") {
+      return NextResponse.json({ error: "Aucune adresse email vérifiée n'est disponible pour ce compte." }, { status: 400 })
     }
     console.error("[forgot-password] Cognito failed", error)
     return NextResponse.json({ error: "Impossible d'envoyer le code" }, { status: 503 })
@@ -47,4 +78,3 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ success: true })
 }
-

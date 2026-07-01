@@ -30,11 +30,14 @@ export default function ResetPasswordPage() {
         credentials: "include",
         body: JSON.stringify({ email: email.trim() }),
       })
-      if (!res.ok) throw new Error("request_failed")
+      if (!res.ok) {
+        const data = await res.json().catch(() => null) as { error?: string } | null
+        throw new Error(data?.error || "request_failed")
+      }
       setSent(true)
       setStep("confirm")
-    } catch {
-      setError(t("reset.errors.request"))
+    } catch (err) {
+      setError(err instanceof Error && err.message !== "request_failed" ? err.message : t("reset.errors.request"))
     } finally {
       setBusy(false)
     }
@@ -51,10 +54,13 @@ export default function ResetPasswordPage() {
         credentials: "include",
         body: JSON.stringify({ email: email.trim(), code: code.trim(), password }),
       })
-      if (!res.ok) throw new Error("reset_failed")
+      if (!res.ok) {
+        const data = await res.json().catch(() => null) as { error?: string } | null
+        throw new Error(data?.error || "reset_failed")
+      }
       router.push(`/auth/signin?email=${encodeURIComponent(email.trim())}`)
-    } catch {
-      setError(t("reset.errors.confirm"))
+    } catch (err) {
+      setError(err instanceof Error && err.message !== "reset_failed" ? err.message : t("reset.errors.confirm"))
     } finally {
       setBusy(false)
     }

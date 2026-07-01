@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useTranslation } from "react-i18next"
@@ -44,6 +44,21 @@ export default function SignInPage() {
     resolver: zodResolver(otpSchema),
     defaultValues: { code: "" },
   })
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const oauthError = params.get("error")
+    if (!oauthError) return
+    if (oauthError === "invalid_request" || oauthError === "invalid_scope") {
+      setError(t("signin.errors.oauthConfig", "Google sign-in is temporarily misconfigured. Please try again."))
+      return
+    }
+    if (oauthError === "workspace_required") {
+      setError(t("signin.errors.workspaceRequired", "Your account needs a workspace before you can continue."))
+      return
+    }
+    setError(t("signin.errors.default"))
+  }, [t])
 
   const onSubmit = async ({ email, password }: SignInValues) => {
     setError("")

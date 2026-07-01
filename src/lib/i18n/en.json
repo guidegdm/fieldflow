@@ -539,7 +539,9 @@
     "errors": {
       "default": "Unable to sign in",
       "network": "Network error",
-      "invalidCode": "Invalid code"
+      "invalidCode": "Invalid code",
+      "oauthConfig": "Google sign-in is temporarily misconfigured. Please try again.",
+      "workspaceRequired": "Your account needs a workspace before you can continue."
     }
   },
   "signup": {

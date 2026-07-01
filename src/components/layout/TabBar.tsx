@@ -57,6 +57,7 @@ const configByRole: Record<string, TabConfig> = {
     tabs: [
       { labelKey: "nav.dashboard", fallback: "Tableau de bord", href: "/admin/dashboard", icon: LayoutDashboard },
       { labelKey: "nav.workflows", fallback: "Workflows", href: "/admin/workflows", icon: Workflow },
+      { labelKey: "nav.records", fallback: "Records", href: "/field-worker/home", icon: Home },
       { labelKey: "nav.reviewQueue", fallback: "Review", href: "/supervisor/review", icon: Inbox },
       { labelKey: "nav.inventory", fallback: "Inventory", href: "/supervisor/inventory", icon: Package },
     ],

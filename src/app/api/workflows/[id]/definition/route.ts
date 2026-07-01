@@ -4,6 +4,11 @@ import { getAuthUser } from "@/lib/auth/middleware"
 import type { WorkflowDefinition } from "@/types/workflow"
 import { validateWorkflowDefinition, workflowValidationResponse } from "@/lib/workflows/validate-definition"
 
+function workflowStatus(status: unknown): WorkflowDefinition["status"] {
+  if (status === "published" || status === "archived") return status
+  return "draft"
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -54,7 +59,7 @@ export async function PUT(
       allowedAttachmentTypes: ["image/jpeg", "image/png", "application/pdf"],
       attachmentSyncPriority: "deferred",
     },
-    status: payload.status === "published" ? "published" : "draft",
+    status: workflowStatus(payload.status),
     createdAt: payload.createdAt ?? now,
     updatedAt: now,
     publishedAt: payload.publishedAt,
@@ -68,4 +73,30 @@ export async function PUT(
 
   await store.putWorkflowForOrg(workflow)
   return NextResponse.json(workflow)
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const user = await getAuthUser(request)
+  if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 })
+  if (user.role !== "org_admin") return NextResponse.json({ error: "Accès refusé" }, { status: 403 })
+
+  const { id } = await params
+  const store = getStore()
+  const workflow = await store.getWorkflowForOrgAsync(id, user.orgId)
+  if (!workflow) return NextResponse.json({ error: "Workflow not found" }, { status: 404 })
+
+  const now = new Date().toISOString()
+  const archived = {
+    ...workflow,
+    status: "archived" as const,
+    updatedAt: now,
+    archivedAt: now,
+    archivedBy: user.email,
+  }
+
+  await store.putWorkflowForOrg(archived)
+  return NextResponse.json(archived)
 }

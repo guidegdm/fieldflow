@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     store.getOpenConflictsForOrg(user.orgId),
   ])
   const counts = {
-    workflows: workflows.length,
+    workflows: workflows.filter((workflow) => workflow.status !== "archived").length,
     records: records.length,
     devices: devices.length,
     conflicts: conflicts.length,

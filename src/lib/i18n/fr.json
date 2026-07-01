@@ -81,6 +81,7 @@
     "installTitle": "Installer FieldFlow",
     "installBody": "Gardez l'espace de travail à portée de main, même quand le réseau devient instable.",
     "install": "Installer",
+    "installCta": "Installer l'application",
     "updateTitle": "Une nouvelle version de FieldFlow est prête",
     "updateBody": "Actualisez quand vous voulez pour charger la dernière version de l'application et ses ressources hors ligne.",
     "update": "Actualiser"
@@ -122,6 +123,7 @@
     "publish": "Publier",
     "published": "Publié",
     "draft": "Brouillon",
+    "archived": "Archivé",
     "loading": "Chargement du workflow...",
     "key": "Clé",
     "initial": "Initial",
@@ -142,6 +144,8 @@
     "stateDraft": "Brouillon",
     "stateSubmitted": "Soumis",
     "transitionSubmit": "Soumettre",
+    "transitionHelp": "Les transitions pilotent l'état de revue des fiches. Choisissez la source, la destination et le rôle autorisé à exécuter l'action.",
+    "addTransition": "Ajouter une transition",
     "fieldPalette": "Champs",
     "aiAssistant": "Assistant IA",
     "aiPrompt": "Décrivez le workflow dont vous avez besoin...",
@@ -297,6 +301,10 @@
     "total": "Total",
     "toResolve": "À résoudre",
     "inactive": "Inactif",
+    "invited": "Invité",
+    "activate": "Activer",
+    "existingAccountLinked": "Compte existant lié",
+    "userUpdateFailed": "L'utilisateur n'a pas pu être mis à jour.",
     "noUsers": "Aucun utilisateur",
     "status": "Statut",
     "actions": "Actions",
@@ -319,7 +327,9 @@
     "newWorkflow": "Nouveau workflow",
     "noWorkflows": "Aucun workflow",
     "workflowRecordSummary": "v{{version}} · {{count}} enregistrement(s)",
-    "lastModified": "Dernière modification"
+    "lastModified": "Dernière modification",
+    "archiveWorkflow": "Archiver le workflow",
+    "archiveWorkflowConfirm": "Archiver ce workflow ? Les fiches existantes restent disponibles, mais les agents ne l'utiliseront plus pour de nouvelles entrées."
   },
   "supervisor": {
     "settings": "Paramètres",

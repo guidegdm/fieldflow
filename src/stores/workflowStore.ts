@@ -12,7 +12,7 @@ interface WorkflowStateStore {
   addState: () => void
   updateState: (id: string, partial: Partial<WorkflowState>) => void
   removeState: (id: string) => void
-  addTransition: (from: string, to: string) => void
+  addTransition: (from: string, to: string, requiredRoles?: string[]) => void
   removeTransition: (id: string) => void
   addField: () => void
   updateField: (id: string, partial: Partial<FieldDefinition>) => void
@@ -67,17 +67,21 @@ export const useWorkflowStore = create<WorkflowStateStore>()((set, get) => ({
       }
     }),
 
-  addTransition: (from, to) => {
+  addTransition: (from, to, requiredRoles = ["supervisor"]) => {
     const w = get().workflow
     if (!w) return
+    const fromState = w.states.find((state) => state.id === from)
+    const toState = w.states.find((state) => state.id === to)
+    const transitionNumber = w.transitions.length + 1
+    const fallbackLabel = `Transition ${transitionNumber}`
     const t: WorkflowTransition = {
       id: generateId(),
-      key: `transition_${w.transitions.length + 1}`,
-      label: `Transition ${w.transitions.length + 1}`,
-      labelEn: `Transition ${w.transitions.length + 1}`,
+      key: `transition_${transitionNumber}`,
+      label: fromState && toState ? `${fromState.label} → ${toState.label}` : fallbackLabel,
+      labelEn: fromState && toState ? `${fromState.labelEn || fromState.label} → ${toState.labelEn || toState.label}` : fallbackLabel,
       fromState: from,
       toState: to,
-      requiredRoles: [],
+      requiredRoles,
     }
     set({ workflow: { ...w, transitions: [...w.transitions, t] } })
   },

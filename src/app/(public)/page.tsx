@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { ArrowRight, Boxes, GitBranch, RadioTower, ShieldCheck } from "lucide-react"
+import { LandingInstallCta } from "@/components/public/LandingInstallCta"
 
 const metrics = [
   { label: "Local-first records", value: "IndexedDB" },
@@ -72,6 +73,7 @@ export default function LandingPage() {
             >
               Create workspace
             </Link>
+            <LandingInstallCta />
           </div>
 
           <dl className="mt-14 grid max-w-4xl grid-cols-1 border-y border-grid-line bg-white/70 md:grid-cols-3">

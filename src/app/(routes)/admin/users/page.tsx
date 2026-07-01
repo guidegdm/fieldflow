@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import type { UserRole } from "@/types/auth"
-import { UserPlus, X, ChevronDown, Check } from "lucide-react"
+import { Loader2, UserPlus, X, ChevronDown, Check } from "lucide-react"
 
 interface UserRow {
   id: string
@@ -17,6 +17,8 @@ interface UserRow {
   email: string
   role: UserRole
   active: boolean
+  invited?: boolean
+  inviteStatus?: "pending" | "accepted" | "inactive" | "expired" | string
   delivery?: string
 }
 
@@ -46,6 +48,9 @@ export default function AdminUsersPage() {
         email: u.email,
         role: u.role,
         active: u.active !== false,
+        invited: Boolean(u.invited),
+        inviteStatus: u.inviteStatus,
+        delivery: u.delivery,
       }))))
       .catch(() => setUsers([]))
       .finally(() => setLoading(false))
@@ -70,6 +75,8 @@ export default function AdminUsersPage() {
         email: user.email,
         role: user.role,
         active: user.active !== false,
+        invited: Boolean(user.invited),
+        inviteStatus: user.inviteStatus,
         delivery: user.delivery,
       }
       setUsers((prev) => [newUser, ...prev.filter((item) => item.email !== newUser.email)])
@@ -83,16 +90,55 @@ export default function AdminUsersPage() {
     }
   }
 
-  const handleRoleChange = (userId: string, role: UserRole) => {
-    setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role } : u)))
-    setEditingRole(null)
+  const persistUser = async (email: string, updates: Partial<Pick<UserRow, "role" | "active">>) => {
+    const res = await fetch("/api/admin/users", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ email, ...updates }),
+    })
+    if (!res.ok) throw new Error("user_update_failed")
+    return res.json()
   }
 
-  const handleToggleActive = (userId: string) => {
-    setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, active: !u.active } : u)))
+  const handleRoleChange = async (userId: string, role: UserRole) => {
+    const current = users.find((u) => u.id === userId)
+    if (!current) return
+    setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role } : u)))
+    setEditingRole(null)
+    try {
+      const updated = await persistUser(current.email, { role })
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, ...updated, id: updated.id || updated.userId || updated.email } : u)))
+    } catch {
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role: current.role } : u)))
+      setInviteError(t("admin.userUpdateFailed", "User could not be updated."))
+    }
+  }
+
+  const handleToggleActive = async (userId: string) => {
+    const current = users.find((u) => u.id === userId)
+    if (!current) return
+    const nextActive = !current.active
+    setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, active: nextActive, inviteStatus: nextActive ? "accepted" : "inactive" } : u)))
+    try {
+      const updated = await persistUser(current.email, { active: nextActive })
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, ...updated, id: updated.id || updated.userId || updated.email } : u)))
+    } catch {
+      setUsers((prev) => prev.map((u) => (u.id === userId ? current : u)))
+      setInviteError(t("admin.userUpdateFailed", "User could not be updated."))
+    }
   }
 
   const isFr = i18n.language === "fr"
+
+  const statusFor = (user: UserRow) => {
+    if (user.inviteStatus === "pending" || (user.invited && !user.active)) return {
+      label: t("admin.invited", "Invited"),
+      variant: "warning" as const,
+    }
+    if (user.active) return { label: t("admin.active"), variant: "success" as const }
+    return { label: t("admin.inactive"), variant: "default" as const }
+  }
 
   return (
     <div className="max-w-5xl space-y-8">
@@ -146,6 +192,7 @@ export default function AdminUsersPage() {
                   {t("common.cancel")}
                 </Button>
                 <Button variant="primary" onClick={handleInvite} disabled={!inviteEmail || inviteBusy}>
+                  {inviteBusy && <Loader2 size={14} className="animate-spin" />}
                   {t("admin.inviteSubmit")}
                 </Button>
               </div>
@@ -216,9 +263,12 @@ export default function AdminUsersPage() {
                     )}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={u.active ? "success" : "default"} size="sm">
-                      {u.active ? t("admin.active") : t("admin.inactive")}
+                    <Badge variant={statusFor(u).variant} size="sm">
+                      {statusFor(u).label}
                     </Badge>
+                    {u.delivery === "existing_account_linked" && (
+                      <p className="mt-1 text-xs text-pencil">{t("admin.existingAccountLinked", "Existing account linked")}</p>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Button
@@ -226,7 +276,7 @@ export default function AdminUsersPage() {
                       size="sm"
                       onClick={() => handleToggleActive(u.id)}
                     >
-                      {u.active ? t("admin.deactivate") : "Activer"}
+                      {u.active ? t("admin.deactivate") : t("admin.activate", "Activate")}
                     </Button>
                   </TableCell>
                 </TableRow>

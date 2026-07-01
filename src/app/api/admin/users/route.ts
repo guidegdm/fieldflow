@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import {
   AdminCreateUserCommand,
-  AdminGetUserCommand,
   AdminUpdateUserAttributesCommand,
   CognitoIdentityProviderClient,
+  ListUsersCommand,
 } from "@aws-sdk/client-cognito-identity-provider"
 import { getStore } from "@/lib/api/in-memory-store"
 import { getAuthUser } from "@/lib/auth/middleware"
@@ -20,6 +20,12 @@ const inviteSchema = z.object({
   name: z.string().min(1).max(120).optional(),
 })
 
+const updateUserSchema = z.object({
+  email: z.string().email(),
+  role: z.enum(["field_worker", "supervisor", "org_admin"]).optional(),
+  active: z.boolean().optional(),
+})
+
 function getCognitoClient() {
   return new CognitoIdentityProviderClient({
     region: REGION,
@@ -28,6 +34,15 @@ function getCognitoClient() {
       secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
     } : undefined,
   })
+}
+
+async function findCognitoUserByEmail(cognito: CognitoIdentityProviderClient, email: string) {
+  const result = await cognito.send(new ListUsersCommand({
+    UserPoolId: POOL_ID,
+    Filter: `email = "${email.replace(/\\/g, "\\\\").replace(/"/g, "\\\"")}"`,
+    Limit: 1,
+  }))
+  return result.Users?.[0]
 }
 
 export async function GET(request: NextRequest) {
@@ -53,40 +68,29 @@ export async function POST(request: NextRequest) {
   const now = Date.now()
   const inviteExpiresAt = now + 14 * 24 * 60 * 60 * 1000
   const store = getStore()
+  const existingProfiles = await store.listUserProfilesByEmailAsync(email)
+  const existingInWorkspace = existingProfiles.find((profile) => profile?.orgId === user.orgId)
   const demoInvite = user.orgId.startsWith("demo-") || email.endsWith("@demo.ff")
   const cognito = demoInvite ? null : getCognitoClient()
-  let delivery: "linked" | "invite_email_sent" | "profile_only" | "demo_profile_only" = demoInvite ? "demo_profile_only" : "profile_only"
+  let delivery: "existing_account_linked" | "invite_email_sent" | "profile_only" | "demo_profile_only" = demoInvite ? "demo_profile_only" : "profile_only"
   let deliveryWarning: string | undefined
 
   if (cognito) {
     try {
-      try {
-        const existing = await cognito.send(new AdminGetUserCommand({ UserPoolId: POOL_ID, Username: email }))
-        await cognito.send(new AdminUpdateUserAttributesCommand({
-          UserPoolId: POOL_ID,
-          Username: email,
-          UserAttributes: [
-            { Name: "name", Value: name },
-          ],
-        }))
-        if (existing.UserStatus === "FORCE_CHANGE_PASSWORD") {
-          await cognito.send(new AdminCreateUserCommand({
+      const existing = await findCognitoUserByEmail(cognito, email)
+      if (existing || existingProfiles.length > 0) {
+        const username = existing?.Username
+        if (username) {
+          await cognito.send(new AdminUpdateUserAttributesCommand({
             UserPoolId: POOL_ID,
-            Username: email,
-            MessageAction: "RESEND",
-            DesiredDeliveryMediums: ["EMAIL"],
+            Username: username,
             UserAttributes: [
-              { Name: "email", Value: email },
-              { Name: "email_verified", Value: "true" },
               { Name: "name", Value: name },
             ],
           }))
-          delivery = "invite_email_sent"
-        } else {
-          delivery = "linked"
         }
-      } catch (error) {
-        if (!(error instanceof Error) || error.name !== "UserNotFoundException") throw error
+        delivery = "existing_account_linked"
+      } else {
         await cognito.send(new AdminCreateUserCommand({
           UserPoolId: POOL_ID,
           Username: email,
@@ -107,23 +111,54 @@ export async function POST(request: NextRequest) {
   }
 
   const row = {
-    userId: email,
-    id: email,
+    ...(existingInWorkspace ?? {}),
+    userId: existingInWorkspace?.userId || email,
+    id: existingInWorkspace?.id || existingInWorkspace?.userId || email,
     email,
     name,
     role,
     orgId: user.orgId,
-    active: false,
-    invited: true,
-    inviteToken: generateId(),
-    inviteStatus: "pending",
-    inviteExpiresAt,
-    invitedBy: user.email,
+    active: existingInWorkspace?.active === true ? true : false,
+    invited: existingInWorkspace?.active === true ? Boolean(existingInWorkspace?.invited) : true,
+    inviteToken: existingInWorkspace?.inviteToken || generateId(),
+    inviteStatus: existingInWorkspace?.active === true ? existingInWorkspace?.inviteStatus || "accepted" : "pending",
+    inviteExpiresAt: existingInWorkspace?.active === true ? existingInWorkspace?.inviteExpiresAt : inviteExpiresAt,
+    invitedBy: existingInWorkspace?.invitedBy || user.email,
     delivery,
     deliveryWarning,
-    createdAt: now,
+    createdAt: existingInWorkspace?.createdAt || now,
+    updatedAt: now,
   }
 
   await store.putUserProfileAsync(row)
-  return NextResponse.json(row, { status: 201 })
+  return NextResponse.json(row, { status: existingInWorkspace ? 200 : 201 })
+}
+
+export async function PATCH(request: NextRequest) {
+  const user = await getAuthUser(request)
+  if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 })
+  if (user.role !== "org_admin") return NextResponse.json({ error: "Accès refusé" }, { status: 403 })
+
+  const parsed = updateUserSchema.safeParse(await request.json().catch(() => null))
+  if (!parsed.success) return NextResponse.json({ error: "Requête invalide" }, { status: 400 })
+
+  const email = parsed.data.email.trim().toLowerCase()
+  const store = getStore()
+  const profiles = await store.listUserProfilesByEmailAsync(email)
+  const profile = profiles.find((candidate) => candidate?.orgId === user.orgId)
+  if (!profile) return NextResponse.json({ error: "User not found" }, { status: 404 })
+
+  const active = parsed.data.active ?? Boolean(profile.active)
+  const updated = {
+    ...profile,
+    email,
+    role: parsed.data.role ?? profile.role,
+    active,
+    inviteStatus: active ? "accepted" : profile.inviteStatus === "pending" ? "pending" : "inactive",
+    invited: active ? Boolean(profile.invited) : profile.invited,
+    updatedAt: Date.now(),
+  }
+
+  await store.putUserProfileAsync(updated)
+  return NextResponse.json(updated)
 }

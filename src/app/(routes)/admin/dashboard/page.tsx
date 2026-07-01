@@ -73,7 +73,7 @@ export default function AdminDashboard() {
         })))
         setUsers(offlineAccounts)
         setData({
-          workflows: localWorkflows.length,
+          workflows: localWorkflows.filter((workflow) => workflow.status !== "archived").length,
           records: localRecords.length,
           users: offlineAccounts.length,
           conflicts: localConflicts.filter((conflict) => conflict.status === "OPEN").length,
@@ -116,7 +116,9 @@ export default function AdminDashboard() {
                 <p className="text-sm font-medium text-ink-black">{wf.name}</p>
                 <p className="text-xs text-pencil">{t("admin.workflowRecordSummary", { version: wf.version, count: wf.count })}</p>
               </div>
-              <Badge variant={wf.status === "published" ? "success" : "warning"}>{wf.status === "published" ? t("workflow.published") : t("workflow.draft")}</Badge>
+              <Badge variant={wf.status === "published" ? "success" : wf.status === "archived" ? "default" : "warning"}>
+                {wf.status === "published" ? t("workflow.published") : wf.status === "archived" ? t("workflow.archived", "Archived") : t("workflow.draft")}
+              </Badge>
             </Link>
           ))}
           {!loading && workflows.length === 0 && (

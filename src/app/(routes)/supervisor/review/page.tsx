@@ -153,8 +153,21 @@ export default function SupervisorReview() {
       })
 
       if (!res.ok) return
+      const updatedRecord: RecordData = {
+        ...record,
+        fields: { ...record.fields, ...reviewFields },
+        status,
+        state,
+        syncStatus: "synced",
+        updatedAt: now,
+        syncedAt: now,
+        version: record.version + 1,
+      }
+      await db.putRecord(updatedRecord).catch(() => {})
+      setRecord(updatedRecord)
+      setSelectedTransitionId(null)
+      setReason("")
       invalidate(["records", "review", "sync"])
-      router.push("/supervisor/dashboard")
     } finally {
       setSubmitting(false)
     }

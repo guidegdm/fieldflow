@@ -10,6 +10,7 @@ import Link from "next/link"
 import {
   LayoutDashboard,
   Workflow,
+  Home,
   Inbox,
   AlertTriangle,
   Package,
@@ -26,6 +27,7 @@ type NavItem = { label: string; href: string; icon: React.ReactNode }
 const adminLinks: NavItem[] = [
   { label: "Tableau de bord", href: "/admin/dashboard", icon: <LayoutDashboard size={18} /> },
   { label: "Workflows", href: "/admin/workflows", icon: <Workflow size={18} /> },
+  { label: "Records", href: "/field-worker/home", icon: <Home size={18} /> },
 ]
 
 const supervisorLinks: NavItem[] = [

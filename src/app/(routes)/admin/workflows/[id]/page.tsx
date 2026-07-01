@@ -8,6 +8,7 @@ import { useWorkflowStore } from "@/stores/workflowStore"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
+import { Select } from "@/components/ui/select"
 import { ArrowRight, Plus, Trash2, Save, Send, Sparkles, X } from "lucide-react"
 import { FieldPalette } from "@/components/builder/FieldPalette"
 import { FormCanvas } from "@/components/builder/FormCanvas"
@@ -170,7 +171,7 @@ export default function WorkflowBuilder() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
   const { user } = useAuthStore()
-  const { workflow, setWorkflow, updateWorkflow, addState, removeState, removeTransition, publish } = useWorkflowStore()
+  const { workflow, setWorkflow, updateWorkflow, addState, removeState, addTransition, removeTransition, publish } = useWorkflowStore()
   const agentPhase = useAgentStore((s) => s.phase)
   const startGeneration = useAgentStore((s) => s.startGeneration)
 
@@ -180,6 +181,9 @@ export default function WorkflowBuilder() {
   const [loadingWorkflow, setLoadingWorkflow] = useState(true)
   const [aiPromptOpen, setAiPromptOpen] = useState(false)
   const [aiPromptText, setAiPromptText] = useState("")
+  const [transitionFrom, setTransitionFrom] = useState("")
+  const [transitionTo, setTransitionTo] = useState("")
+  const [transitionRole, setTransitionRole] = useState("supervisor")
   const english = isEnglish(i18n.resolvedLanguage || i18n.language)
 
   useEffect(() => {
@@ -287,6 +291,17 @@ export default function WorkflowBuilder() {
     startGeneration(prompt, workflow)
     setAiPromptText("")
     setAiPromptOpen(false)
+  }
+
+  useEffect(() => {
+    if (!workflow?.states.length) return
+    setTransitionFrom((current) => current && workflow.states.some((state) => state.id === current) ? current : workflow.states[0].id)
+    setTransitionTo((current) => current && workflow.states.some((state) => state.id === current) ? current : workflow.states[Math.min(1, workflow.states.length - 1)].id)
+  }, [workflow?.states])
+
+  const createTransition = () => {
+    if (!workflow || !transitionFrom || !transitionTo || transitionFrom === transitionTo) return
+    addTransition(transitionFrom, transitionTo, [transitionRole])
   }
 
   if (!user || user.role !== "org_admin") return null
@@ -499,6 +514,51 @@ export default function WorkflowBuilder() {
 
                 <div>
                   <h3 className="text-[11px] uppercase tracking-[0.15em] text-soil font-semibold mb-3">{t("workflow.transitions", "Transitions")}</h3>
+                  <div className="mb-3 rounded-lg border border-graph-line bg-slate-50 p-2">
+                    <p className="mb-2 text-xs leading-5 text-pencil">
+                      {t("workflow.transitionHelp", "Transitions drive the record review state. Choose the source, destination, and role allowed to perform the action.")}
+                    </p>
+                    <div className="grid gap-2">
+                      <Select
+                        value={transitionFrom}
+                        onChange={(event) => setTransitionFrom(event.target.value)}
+                        className="h-9 text-xs"
+                      >
+                        {workflow.states.map((state) => (
+                          <option key={state.id} value={state.id}>{localizedLabel(state, english)}</option>
+                        ))}
+                      </Select>
+                      <Select
+                        value={transitionTo}
+                        onChange={(event) => setTransitionTo(event.target.value)}
+                        className="h-9 text-xs"
+                      >
+                        {workflow.states.map((state) => (
+                          <option key={state.id} value={state.id}>{localizedLabel(state, english)}</option>
+                        ))}
+                      </Select>
+                      <Select
+                        value={transitionRole}
+                        onChange={(event) => setTransitionRole(event.target.value)}
+                        className="h-9 text-xs"
+                      >
+                        <option value="field_worker">{t("roles.field_worker")}</option>
+                        <option value="supervisor">{t("roles.supervisor")}</option>
+                        <option value="org_admin">{t("roles.org_admin")}</option>
+                      </Select>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        onClick={createTransition}
+                        disabled={!transitionFrom || !transitionTo || transitionFrom === transitionTo}
+                        className="w-full"
+                      >
+                        <Plus size={14} />
+                        {t("workflow.addTransition", "Add transition")}
+                      </Button>
+                    </div>
+                  </div>
                   <div className="space-y-1">
                     {workflow.transitions.map((tr) => {
                       const from = workflow.states.find((s) => s.id === tr.fromState)

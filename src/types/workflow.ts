@@ -11,7 +11,7 @@ export interface WorkflowDefinition {
   transitions: WorkflowTransition[]
   roles: WorkflowRole[]
   offlinePolicy: OfflinePolicy
-  status: "draft" | "published"
+  status: "draft" | "published" | "archived"
   createdAt: string
   updatedAt: string
   publishedAt?: string

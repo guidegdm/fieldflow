@@ -13,13 +13,18 @@ type BeforeInstallPromptEvent = Event & {
 const DISMISSED_KEY = "fieldflow-install-dismissed"
 const LAST_NOTICE_KEY = "fieldflow-install-notice-date"
 const NOTICE_DELAY_MS = 90_000
+const INSTALLED_KEY = "fieldflow-installed"
 
 function todayKey() {
   return new Date().toISOString().slice(0, 10)
 }
 
 function isStandalone() {
-  return window.matchMedia("(display-mode: standalone)").matches
+  return window.matchMedia("(display-mode: standalone)").matches || Boolean((navigator as Navigator & { standalone?: boolean }).standalone)
+}
+
+function isMarkedInstalled() {
+  return isStandalone() || window.localStorage.getItem(INSTALLED_KEY) === "1"
 }
 
 export function InstallPrompt() {
@@ -28,29 +33,41 @@ export function InstallPrompt() {
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
-    if (isStandalone()) return
+    if (isMarkedInstalled()) return
     if (window.localStorage.getItem(DISMISSED_KEY) === "1") return
 
+    const handleInstalled = () => {
+      window.localStorage.setItem(INSTALLED_KEY, "1")
+      setVisible(false)
+      setEvent(null)
+    }
+
     const handleBeforeInstallPrompt = (promptEvent: Event) => {
+      if (isMarkedInstalled()) return
       promptEvent.preventDefault()
       setEvent(promptEvent as BeforeInstallPromptEvent)
       setVisible(true)
     }
 
+    window.addEventListener("appinstalled", handleInstalled)
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
-    return () => window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
+    return () => {
+      window.removeEventListener("appinstalled", handleInstalled)
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
+    }
   }, [])
 
   useEffect(() => {
     if (!visible || !event) return
     if (!("Notification" in window) || !("serviceWorker" in navigator)) return
-    if (isStandalone()) return
+    if (isMarkedInstalled()) return
     if (window.localStorage.getItem(DISMISSED_KEY) === "1") return
     if (window.localStorage.getItem(LAST_NOTICE_KEY) === todayKey()) return
     if (Notification.permission === "denied") return
 
     const timer = window.setTimeout(async () => {
       if (document.visibilityState !== "visible") return
+      if (isMarkedInstalled()) return
       if (window.localStorage.getItem(DISMISSED_KEY) === "1") return
       if (window.localStorage.getItem(LAST_NOTICE_KEY) === todayKey()) return
 
@@ -86,6 +103,7 @@ export function InstallPrompt() {
   const install = async () => {
     await event.prompt()
     const choice = await event.userChoice.catch(() => null)
+    if (choice?.outcome === "accepted") window.localStorage.setItem(INSTALLED_KEY, "1")
     if (!choice || choice.outcome !== "dismissed") dismiss()
   }
 

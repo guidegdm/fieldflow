@@ -81,6 +81,7 @@
     "installTitle": "Install FieldFlow",
     "installBody": "Keep the workspace one tap away and ready for low-connectivity work.",
     "install": "Install",
+    "installCta": "Install app",
     "updateTitle": "A new FieldFlow version is ready",
     "updateBody": "Refresh when convenient to load the latest app shell and offline assets.",
     "update": "Refresh"
@@ -122,6 +123,7 @@
     "publish": "Publish",
     "published": "Published",
     "draft": "Draft",
+    "archived": "Archived",
     "loading": "Loading workflow...",
     "key": "Key",
     "initial": "Initial",
@@ -142,6 +144,8 @@
     "stateDraft": "Draft",
     "stateSubmitted": "Submitted",
     "transitionSubmit": "Submit",
+    "transitionHelp": "Transitions drive the record review state. Choose the source, destination, and role allowed to perform the action.",
+    "addTransition": "Add transition",
     "fieldPalette": "Fields",
     "aiAssistant": "AI assistant",
     "aiPrompt": "Describe the workflow you need...",
@@ -297,6 +301,10 @@
     "total": "Total",
     "toResolve": "To resolve",
     "inactive": "Inactive",
+    "invited": "Invited",
+    "activate": "Activate",
+    "existingAccountLinked": "Existing account linked",
+    "userUpdateFailed": "User could not be updated.",
     "noUsers": "No users",
     "status": "Status",
     "actions": "Actions",
@@ -319,7 +327,9 @@
     "newWorkflow": "New workflow",
     "noWorkflows": "No workflows",
     "workflowRecordSummary": "v{{version}} · {{count}} record(s)",
-    "lastModified": "Last modified"
+    "lastModified": "Last modified",
+    "archiveWorkflow": "Archive workflow",
+    "archiveWorkflowConfirm": "Archive this workflow? Existing records stay available, but workers will no longer use it for new entries."
   },
   "supervisor": {
     "settings": "Settings",

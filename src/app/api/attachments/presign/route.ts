@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createHash, createHmac } from "node:crypto"
 import { z } from "zod"
 import { getAuthUser } from "@/lib/auth/middleware"
+import { getStore } from "@/lib/api/in-memory-store"
 
 const requestSchema = z.object({
   attachmentId: z.string().min(8),
@@ -87,6 +88,24 @@ export async function POST(request: NextRequest) {
   const user = await getAuthUser(request)
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
+  const parsed = requestSchema.safeParse(await request.json().catch(() => null))
+  if (!parsed.success) return NextResponse.json({ error: "Invalid attachment request" }, { status: 400 })
+
+  const body = parsed.data
+  const store = getStore()
+  const [workflow, record] = await Promise.all([
+    store.getWorkflowForOrgAsync(body.workflowId, user.orgId),
+    store.getRecordForOrg(body.recordId, user.orgId),
+  ])
+  if (!workflow) return NextResponse.json({ error: "Workflow not found" }, { status: 404 })
+  if (!record || record.workflowId !== workflow.id || record.orgId !== user.orgId) {
+    return NextResponse.json({ error: "Record not found" }, { status: 404 })
+  }
+  const field = workflow.entity.fields.find((candidate) => candidate.key === body.fieldKey)
+  if (!field || field.type !== "photo") {
+    return NextResponse.json({ error: "Attachment field not found" }, { status: 400 })
+  }
+
   const bucket = process.env.S3_BUCKET || process.env.AWS_S3_BUCKET || process.env.FIELD_FLOW_ATTACHMENTS_BUCKET
   const region = process.env.S3_REGION || process.env.AWS_REGION || "us-east-1"
   const accessKeyId = process.env.AWS_ACCESS_KEY_ID
@@ -95,10 +114,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "S3 attachments are not configured" }, { status: 503 })
   }
 
-  const parsed = requestSchema.safeParse(await request.json().catch(() => null))
-  if (!parsed.success) return NextResponse.json({ error: "Invalid attachment request" }, { status: 400 })
-
-  const body = parsed.data
   const key = [
     "orgs",
     safePart(user.orgId),

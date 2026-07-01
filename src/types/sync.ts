@@ -86,6 +86,7 @@ export interface DeviceState {
 
 export interface ConflictRecord {
   id: string; workflow_id: string; record_id: string; field: string
+  orgId?: string
   value_a: unknown; device_a: string; value_b: unknown; device_b: string
   status: "OPEN" | "RESOLVED"; resolved_by?: string; resolved_at?: number
   resolution?: "accept_a" | "accept_b" | "manual"; manual_value?: unknown; rationale?: string; created_at: number

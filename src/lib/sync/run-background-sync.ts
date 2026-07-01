@@ -54,7 +54,7 @@ async function performSync(user?: DemoUser | null, options: { retry?: boolean } 
     const result = options.retry
       ? await retryWithBackoff(() => fullSync(), 2, 600, 2500)
       : await fullSync()
-    const conflicts = await db.getConflicts()
+    const conflicts = await db.getConflicts(user?.orgId)
     syncStore.setConflicts(conflicts.filter((conflict) => conflict.status === "OPEN"))
     syncStore.setSyncSuccess(Date.now())
     syncStore.setPendingCount((await db.getPendingMutations()).length)

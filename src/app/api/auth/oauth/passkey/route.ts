@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { createOAuthStateToken, setOAuthStateCookie } from "@/lib/auth/middleware"
 
 const CLIENT_ID = process.env.COGNITO_CLIENT_ID || process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID || "7r60o7fnej4vitoksrp6e93n9g"
 const DOMAIN = process.env.COGNITO_DOMAIN || process.env.NEXT_PUBLIC_COGNITO_DOMAIN || "fieldflow-hackathon.auth.us-east-1.amazoncognito.com"
@@ -17,7 +18,7 @@ export async function GET(request: Request) {
   const url = new URL(request.url)
   const next = url.searchParams.get("next") || ""
   const redirectUri = callbackUrl(url)
-  const state = Buffer.from(JSON.stringify({ mode: "signin", next, provider: "passkey" }), "utf8").toString("base64url")
+  const state = createOAuthStateToken({ mode: "signin", next, provider: "passkey" })
 
   const authorizeUrl = new URL(`https://${DOMAIN}/oauth2/authorize`)
   authorizeUrl.searchParams.set("redirect_uri", redirectUri)
@@ -26,5 +27,7 @@ export async function GET(request: Request) {
   authorizeUrl.searchParams.set("scope", "email openid profile aws.cognito.signin.user.admin")
   authorizeUrl.searchParams.set("state", state)
 
-  return NextResponse.redirect(authorizeUrl)
+  const response = NextResponse.redirect(authorizeUrl)
+  response.headers.set("Set-Cookie", setOAuthStateCookie(state))
+  return response
 }

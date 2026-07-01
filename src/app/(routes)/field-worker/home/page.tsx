@@ -70,7 +70,7 @@ export default function FieldWorkerHome() {
         }
         if (cancelled) return
         setRecords(all)
-        const conflicts: ConflictRecord[] = await db.getConflicts()
+        const conflicts: ConflictRecord[] = await db.getConflicts(user?.orgId)
         const recordIds = new Set(all.map((record) => record.id))
         setConflictCount(conflicts.filter(c => c.status === "OPEN" && recordIds.has(c.record_id)).length)
       } catch { /* IndexedDB not ready */ }

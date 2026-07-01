@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from "next/server"
+import type { NextRequest } from "next/server"
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto"
 import { resolveWorkspaceMembership } from "@/lib/auth/workspace-membership"
 
@@ -8,8 +8,10 @@ const COGNITO_REGION = COGNITO_POOL_ID.split("_")[0] || "us-east-1"
 const COGNITO_ISSUER = `https://cognito-idp.${COGNITO_REGION}.amazonaws.com/${COGNITO_POOL_ID}`
 const DEMO_INSTALL_COOKIE = "ff_demo_install"
 const PENDING_SETUP_COOKIE = "ff_pending_setup"
+const OAUTH_STATE_COOKIE = "ff_oauth_state"
 const DEMO_INSTALL_MAX_AGE = 7 * 24 * 60 * 60
 const PENDING_SETUP_MAX_AGE = 30 * 60
+const OAUTH_STATE_MAX_AGE = 10 * 60
 const DEV_SESSION_SECRET = process.env.NODE_ENV === "production" ? "" : "fieldflow-local-dev-session-secret"
 
 function getSessionSecret(): string {
@@ -20,6 +22,7 @@ function getSessionSecret(): string {
 
 let cachedKeys: Array<{ kid: string; n: string; e: string; kty: string }> = []
 let keysLastFetched = 0
+const importedCognitoKeys = new Map<string, CryptoKey>()
 
 async function getCognitoPublicKeys(): Promise<Array<{ kid: string; n: string; e: string; kty: string }>> {
   if (Date.now() - keysLastFetched < 3600000 && cachedKeys.length > 0) return cachedKeys
@@ -45,11 +48,16 @@ function base64UrlToBytes(str: string): Uint8Array {
 async function verifyRS256Signature(payload: string, signature: string, key: { n: string; e: string }): Promise<boolean> {
   try {
     const { subtle } = globalThis.crypto
-    const keyData = {
-      kty: "RSA", n: key.n, e: key.e,
-      alg: "RS256", ext: true,
+    const cacheKey = `${key.n}.${key.e}`
+    let cryptoKey = importedCognitoKeys.get(cacheKey)
+    if (!cryptoKey) {
+      const keyData = {
+        kty: "RSA", n: key.n, e: key.e,
+        alg: "RS256", ext: true,
+      }
+      cryptoKey = await subtle.importKey("jwk", keyData as unknown as JsonWebKey, { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["verify"])
+      importedCognitoKeys.set(cacheKey, cryptoKey)
     }
-    const cryptoKey = await subtle.importKey("jwk", keyData as unknown as JsonWebKey, { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["verify"])
     const sigBytes = base64UrlToBytes(signature)
     const dataBytes = new TextEncoder().encode(payload)
     const sig = Uint8Array.from(sigBytes).buffer
@@ -204,6 +212,27 @@ export function verifyPendingSetupToken(token: string): PendingSetupUser | null 
   return { sub, email, name, username }
 }
 
+export function createOAuthStateToken(data: { mode: string; next?: string; provider?: string }, maxAgeSeconds = OAUTH_STATE_MAX_AGE): string {
+  return createSignedEnvelope({
+    type: "oauth_state",
+    nonce: randomUUID(),
+    mode: data.mode,
+    next: data.next || "",
+    provider: data.provider || "",
+  }, maxAgeSeconds)
+}
+
+export function verifyOAuthStateToken(token: string): { mode: string; next: string; provider: string } | null {
+  const decoded = verifySignedEnvelope(token)
+  if (decoded?.type !== "oauth_state") return null
+  if (typeof decoded.nonce !== "string" || !decoded.nonce) return null
+  return {
+    mode: typeof decoded.mode === "string" ? decoded.mode : "signin",
+    next: typeof decoded.next === "string" ? decoded.next : "",
+    provider: typeof decoded.provider === "string" ? decoded.provider : "",
+  }
+}
+
 export function getOrCreateDemoInstall(request: NextRequest): { installId: string; token: string; isNew: boolean } {
   const existing = request.cookies.get(DEMO_INSTALL_COOKIE)?.value
   if (existing) {
@@ -315,6 +344,10 @@ export function setPendingSetupCookie(token: string): string {
   return `${PENDING_SETUP_COOKIE}=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${PENDING_SETUP_MAX_AGE}`
 }
 
+export function setOAuthStateCookie(token: string): string {
+  return `${OAUTH_STATE_COOKIE}=${token}; HttpOnly; Secure; SameSite=Lax; Path=/api/auth/callback; Max-Age=${OAUTH_STATE_MAX_AGE}`
+}
+
 export function clearSessionCookie(): string {
   return `ff_session=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`
 }
@@ -329,4 +362,8 @@ export function clearRefreshCookie(): string {
 
 export function clearPendingSetupCookie(): string {
   return `${PENDING_SETUP_COOKIE}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`
+}
+
+export function clearOAuthStateCookie(): string {
+  return `${OAUTH_STATE_COOKIE}=; HttpOnly; Secure; SameSite=Lax; Path=/api/auth/callback; Max-Age=0`
 }

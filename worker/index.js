@@ -17,6 +17,35 @@ self.FIELD_FLOW_CORE_ROUTES = [
   "/admin/users",
 ]
 
+function isRscRequest(request) {
+  const url = new URL(request.url)
+  const accept = request.headers.get("accept") || ""
+  return url.searchParams.has("_rsc") || request.headers.get("rsc") === "1" || accept.includes("text/x-component")
+}
+
+function isHtmlResponse(response) {
+  const contentType = response?.headers?.get("content-type") || ""
+  return Boolean(response?.ok && contentType.includes("text/html") && !contentType.includes("text/x-component"))
+}
+
+async function putPageResponse(cache, request, response) {
+  if (!isHtmlResponse(response)) return false
+  await cache.put(request, response.clone())
+  await cache.put(request.url || String(request), response.clone())
+  return true
+}
+
+async function purgeBadPageResponses() {
+  const cache = await caches.open("fieldflow-pages")
+  const requests = await cache.keys()
+  await Promise.all(requests.map(async (request) => {
+    const response = await cache.match(request)
+    if (isRscRequest(request) || (response && !isHtmlResponse(response))) {
+      await cache.delete(request)
+    }
+  }))
+}
+
 async function cachePageUrls(urlsToCache) {
   const cache = await caches.open("fieldflow-pages")
   await Promise.all(urlsToCache.map(async (entry) => {
@@ -29,11 +58,14 @@ async function cachePageUrls(urlsToCache) {
         headers: { Accept: "text/html,application/xhtml+xml" },
       })
       const response = await fetch(request)
-      if (response?.ok) await cache.put(request, response.clone())
-      if (response?.ok) await cache.put(url, response.clone())
+      await putPageResponse(cache, request, response)
     } catch {}
   }))
 }
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(purgeBadPageResponses())
+})
 
 self.addEventListener("message", (event) => {
   if (event.data?.type !== "CACHE_URLS") return
@@ -95,6 +127,7 @@ self.addEventListener("periodicsync", (event) => {
 self.addEventListener("fetch", (event) => {
   const request = event.request
   if (request.method !== "GET") return
+  if (isRscRequest(request)) return
 
   const acceptsHtml = request.mode === "navigate" || request.headers.get("accept")?.includes("text/html")
   if (!acceptsHtml) return
@@ -110,17 +143,14 @@ self.addEventListener("fetch", (event) => {
 
     if (cached) {
       event.waitUntil(fetch(request).then(async (response) => {
-        if (!response?.ok) return
-        await cache.put(request, response.clone())
-        await cache.put(request.url, response.clone())
+        await putPageResponse(cache, request, response)
       }).catch(() => {}))
       return cached
     }
 
     try {
       const response = await fetch(request)
-      if (response?.ok) await cache.put(request, response.clone())
-      if (response?.ok) await cache.put(request.url, response.clone())
+      await putPageResponse(cache, request, response)
       return response
     } catch {
       const fallbackUrls = [

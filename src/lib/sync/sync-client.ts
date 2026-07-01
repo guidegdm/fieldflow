@@ -50,7 +50,7 @@ async function applyServerChanges(changes: SyncBatchResponse["server_changes"]) 
   }
 }
 
-async function saveConflicts(response: SyncBatchResponse, deviceId: string, pendingMutations = new Map<string, { workflow_id: string }>()) {
+async function saveConflicts(response: SyncBatchResponse, deviceId: string, orgId?: string, pendingMutations = new Map<string, { workflow_id: string }>()) {
   for (const c of response.conflicts) {
     if (c.auto_resolved) continue
     const mutation = pendingMutations.get(c.client_id)
@@ -65,21 +65,24 @@ async function saveConflicts(response: SyncBatchResponse, deviceId: string, pend
       device_b: "server",
       status: "OPEN",
       created_at: Date.now(),
+      orgId,
     }
-    await db.saveConflict(conflictRecord)
+    await db.saveConflict(conflictRecord, orgId)
     await db.updateMutationStatus(c.client_id, "CONFLICT")
   }
 }
 
-async function refreshOpenConflicts() {
+async function refreshOpenConflicts(orgId?: string) {
   try {
     const [records, conflicts] = await Promise.all([
-      db.getAllRecords(),
+      orgId ? db.getAllRecordsForOrg(orgId) : db.getAllRecords(),
       apiGet<ConflictRecord[]>("/api/sync/conflict"),
     ])
     const localRecordIds = records.map((record) => record.id)
-    const localConflictRecords = conflicts.filter((conflict) => localRecordIds.includes(conflict.record_id))
-    await db.replaceConflictsForRecords(localRecordIds, localConflictRecords)
+    const localConflictRecords = conflicts
+      .filter((conflict) => localRecordIds.includes(conflict.record_id))
+      .map((conflict) => ({ ...conflict, orgId: conflict.orgId || orgId }))
+    await db.replaceConflictsForRecords(localRecordIds, localConflictRecords, orgId)
   } catch {
     // Keep the last local conflict snapshot when offline or unauthenticated.
   }
@@ -92,13 +95,13 @@ function payloadRecordId(mutation: MutationEntry) {
   return mutation.record_id || (typeof payload.id === "string" ? payload.id : null)
 }
 
-async function markAcceptedRecordsSynced(response: SyncBatchResponse, mutationMap: Map<string, MutationEntry>) {
+async function markAcceptedRecordsSynced(response: SyncBatchResponse, mutationMap: Map<string, MutationEntry>, orgId?: string) {
   for (const clientId of response.acked) {
     const mutation = mutationMap.get(clientId)
     if (!mutation || !["create", "update", "attach_evidence"].includes(mutation.operation)) continue
     const recordId = payloadRecordId(mutation)
     if (!recordId) continue
-    const record = await db.getRecord(recordId)
+    const record = await db.getRecord(recordId, orgId)
     if (!record) continue
     await db.putRecord({
       ...record,
@@ -109,13 +112,13 @@ async function markAcceptedRecordsSynced(response: SyncBatchResponse, mutationMa
   }
 }
 
-async function markRejectedRecordsFailed(response: SyncBatchResponse, mutationMap: Map<string, MutationEntry>) {
+async function markRejectedRecordsFailed(response: SyncBatchResponse, mutationMap: Map<string, MutationEntry>, orgId?: string) {
   for (const failed of response.failed) {
     const mutation = mutationMap.get(failed.client_id)
     if (!mutation || !["create", "update", "attach_evidence"].includes(mutation.operation)) continue
     const recordId = payloadRecordId(mutation)
     if (!recordId) continue
-    const record = await db.getRecord(recordId)
+    const record = await db.getRecord(recordId, orgId)
     if (!record) continue
     await db.putRecord({ ...record, syncStatus: "failed" })
   }
@@ -135,7 +138,7 @@ export async function fullSync(): Promise<SyncBatchResponse> {
         const response = await pushBatch([])
         mergeSyncResponse(aggregate, response)
         await applyServerChanges(response.server_changes)
-        await saveConflicts(response, deviceState.device_id)
+        await saveConflicts(response, deviceState.device_id, deviceState.orgId)
         await db.updateDeviceState({
           last_seq: response.last_seq,
           last_sync_at: response.server_timestamp,
@@ -160,9 +163,9 @@ export async function fullSync(): Promise<SyncBatchResponse> {
     }
 
     await applyServerChanges(response.server_changes)
-    await markAcceptedRecordsSynced(response, mutationMap)
-    await markRejectedRecordsFailed(response, mutationMap)
-    await saveConflicts(response, deviceState.device_id, mutationMap)
+    await markAcceptedRecordsSynced(response, mutationMap, deviceState.orgId)
+    await markRejectedRecordsFailed(response, mutationMap, deviceState.orgId)
+    await saveConflicts(response, deviceState.device_id, deviceState.orgId, mutationMap)
 
     const remaining = await db.getPendingMutations()
     await db.updateDeviceState({
@@ -176,6 +179,6 @@ export async function fullSync(): Promise<SyncBatchResponse> {
     if (remaining.every((mutation) => attemptedThisRun.has(mutation.client_id))) break
   }
 
-  await refreshOpenConflicts()
+  await refreshOpenConflicts((await db.getDeviceState()).orgId)
   return aggregate
 }

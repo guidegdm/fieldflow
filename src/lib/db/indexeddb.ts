@@ -18,6 +18,7 @@ let instancePromise: Promise<IDBPDatabase<FieldFlowTypes>> | null = null
 
 type ScopedRecordData = RecordData & { remoteId?: string }
 type ScopedWorkflowDefinition = WorkflowDefinition & { remoteId?: string }
+type ScopedConflictRecord = ConflictRecord & { remoteId?: string }
 
 function scopedStorageKey(orgId: string, id: string) {
   return `${encodeURIComponent(orgId)}::${id}`
@@ -29,6 +30,10 @@ function originalRecordId(record: ScopedRecordData) {
 
 function originalWorkflowId(workflow: ScopedWorkflowDefinition) {
   return workflow.remoteId || workflow.id
+}
+
+function originalConflictId(conflict: ScopedConflictRecord) {
+  return conflict.remoteId || conflict.id
 }
 
 function toStoredRecord(record: RecordData): RecordData {
@@ -55,6 +60,25 @@ function fromStoredWorkflow(workflow: WorkflowDefinition): WorkflowDefinition {
   if (!scoped.remoteId) return workflow
   const { remoteId, ...rest } = scoped
   return { ...rest, id: remoteId }
+}
+
+function toStoredConflict(conflict: ConflictRecord, orgId?: string): ConflictRecord {
+  const scopedOrgId = conflict.orgId || orgId
+  if (!scopedOrgId) return conflict
+  const remoteId = originalConflictId(conflict as ScopedConflictRecord)
+  return { ...conflict, orgId: scopedOrgId, id: scopedStorageKey(scopedOrgId, remoteId), remoteId } as ConflictRecord
+}
+
+function fromStoredConflict(conflict: ConflictRecord): ConflictRecord {
+  const scoped = conflict as ScopedConflictRecord
+  if (!scoped.remoteId) return conflict
+  const { remoteId, ...rest } = scoped
+  return { ...rest, id: remoteId }
+}
+
+function conflictMatches(conflict: ConflictRecord, id: string, orgId?: string) {
+  const exposed = fromStoredConflict(conflict)
+  return exposed.id === id && (!orgId || exposed.orgId === orgId)
 }
 
 function recordMatches(record: RecordData, id: string, orgId?: string) {
@@ -303,36 +327,43 @@ export const db = {
     await d.put("device_state", updated)
   },
 
-  async saveConflict(c: ConflictRecord) {
+  async saveConflict(c: ConflictRecord, orgId?: string) {
     const d = await getDB()
-    await d.put("conflicts", c)
+    await d.put("conflicts", toStoredConflict(c, orgId))
   },
 
-  async getConflicts(): Promise<ConflictRecord[]> {
+  async getConflicts(orgId?: string): Promise<ConflictRecord[]> {
     const d = await getDB()
-    return d.getAll("conflicts")
+    const conflicts = (await d.getAll("conflicts")).map(fromStoredConflict)
+    return orgId ? conflicts.filter((conflict) => conflict.orgId === orgId) : conflicts
   },
 
-  async replaceConflictsForRecords(recordIds: string[], conflicts: ConflictRecord[]) {
+  async replaceConflictsForRecords(recordIds: string[], conflicts: ConflictRecord[], orgId?: string) {
     const d = await getDB()
     const ids = new Set(recordIds)
     const tx = d.transaction("conflicts", "readwrite")
     const existing = await tx.store.getAll()
-    await Promise.all(existing.filter((conflict) => ids.has(conflict.record_id)).map((conflict) => tx.store.delete(conflict.id)))
-    await Promise.all(conflicts.map((conflict) => tx.store.put(conflict)))
+    await Promise.all(existing.filter((conflict) => {
+      const exposed = fromStoredConflict(conflict)
+      return ids.has(exposed.record_id) && (!orgId || !exposed.orgId || exposed.orgId === orgId)
+    }).map((conflict) => tx.store.delete(conflict.id)))
+    await Promise.all(conflicts.map((conflict) => tx.store.put(toStoredConflict(conflict, orgId))))
     await tx.done
   },
 
-  async resolveConflict(id: string, resolution: ConflictRecord["resolution"], manualValue?: unknown, rationale?: string) {
+  async resolveConflict(id: string, resolution: ConflictRecord["resolution"], manualValue?: unknown, rationale?: string, orgId?: string) {
     const d = await getDB()
-    const c = await d.get("conflicts", id)
+    const scoped = orgId ? await d.get("conflicts", scopedStorageKey(orgId, id)) : undefined
+    const c = scoped || await d.get("conflicts", id)
+      || (await d.getAll("conflicts")).find((conflict) => conflictMatches(conflict, id, orgId))
     if (c) {
-      c.status = "RESOLVED"
-      c.resolution = resolution
-      if (manualValue !== undefined) c.manual_value = manualValue
-      if (rationale) c.rationale = rationale
-      c.resolved_at = Date.now()
-      await d.put("conflicts", c)
+      const next = fromStoredConflict(c)
+      next.status = "RESOLVED"
+      next.resolution = resolution
+      if (manualValue !== undefined) next.manual_value = manualValue
+      if (rationale) next.rationale = rationale
+      next.resolved_at = Date.now()
+      await d.put("conflicts", toStoredConflict(next, orgId))
     }
   },
 }

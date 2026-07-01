@@ -22,6 +22,18 @@ const securityHeaders = [
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
 ]
 
+const htmlPageCachePlugin = {
+  cacheWillUpdate: async ({ request, response }: { request: Request; response: Response }) => {
+    if (!response?.ok) return null
+    const url = new URL(request.url)
+    const accept = request.headers.get("accept") || ""
+    const contentType = response.headers.get("content-type") || ""
+    if (url.searchParams.has("_rsc") || request.headers.get("rsc") === "1") return null
+    if (accept.includes("text/x-component") || contentType.includes("text/x-component")) return null
+    return contentType.includes("text/html") ? response : null
+  },
+}
+
 const withPWA = withPWAInit({
   dest: "public",
   register: true,
@@ -39,19 +51,25 @@ const withPWA = withPWAInit({
     },
     {
       urlPattern: ({ request, url }) =>
-        request.mode === "navigate" ||
-        request.destination === "document" ||
+        !url.searchParams.has("_rsc") &&
+        request.headers.get("rsc") !== "1" &&
+        !(request.headers.get("accept") || "").includes("text/x-component") &&
         (
-          request.method === "GET" &&
-          url.origin === self.location.origin &&
-          !url.pathname.startsWith("/api/") &&
-          !url.pathname.startsWith("/_next/") &&
-          !/\.[^/]+$/.test(url.pathname)
+          request.mode === "navigate" ||
+          request.destination === "document" ||
+          (
+            request.method === "GET" &&
+            url.origin === self.location.origin &&
+            !url.pathname.startsWith("/api/") &&
+            !url.pathname.startsWith("/_next/") &&
+            !/\.[^/]+$/.test(url.pathname)
+          )
         ),
       handler: "NetworkFirst",
       options: {
         cacheName: "fieldflow-pages",
         networkTimeoutSeconds: 3,
+        plugins: [htmlPageCachePlugin],
       },
     },
     {

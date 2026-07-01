@@ -35,7 +35,7 @@ export default function SupervisorConflicts() {
       if (records.length === 0) {
         try {
           const { db } = await import("@/lib/db/indexeddb")
-          records = await db.getConflicts()
+          records = await db.getConflicts(user?.orgId)
         } catch { /* DB not ready */ }
       }
       let scopedRecordIds: Set<string> | null = null

@@ -169,6 +169,7 @@ function localConflicts(orgId: string, orgKey: DemoOrgKey): ConflictRecord[] {
     workflow_id: "wf-1",
     record_id: `local-${orgKey.toLowerCase()}-submitted`,
     field: "vulnerability_score",
+    orgId,
     value_a: 5,
     device_a: "field-device",
     value_b: 4,
@@ -225,6 +226,11 @@ export function createLocalDemoSandbox(): DemoOfflineSandbox {
   return { expiresAt, savedAt: Date.now(), workspaces, accounts }
 }
 
+function isCacheablePageResponse(response: Response) {
+  const contentType = response.headers.get("content-type") || ""
+  return response.ok && contentType.includes("text/html") && !contentType.includes("text/x-component")
+}
+
 export async function cacheOfflineRecordRoutes(workspaces?: DemoOfflineWorkspace[]) {
   if (typeof window === "undefined" || !workspaces?.length) return
 
@@ -247,8 +253,10 @@ export async function cacheOfflineRecordRoutes(workspaces?: DemoOfflineWorkspace
           headers: { Accept: "text/html,application/xhtml+xml" },
         })
         const response = await fetch(request)
-        if (response.ok) await cache.put(request, response.clone())
-        if (response.ok) await cache.put(url, response.clone())
+        if (isCacheablePageResponse(response)) {
+          await cache.put(request, response.clone())
+          await cache.put(url, response.clone())
+        }
       } catch {}
     }))
   }
@@ -298,7 +306,7 @@ async function getJson<T>(url: string, orgId?: string): Promise<T | null> {
 async function writeWorkspace(user: DemoUser | null, workspace: DemoOfflineWorkspace) {
   await db.replaceWorkflowsForOrg(workspace.orgId, workspace.workflows)
   await db.replaceRecordsForOrg(workspace.orgId, workspace.records)
-  await db.replaceConflictsForRecords(workspace.records.map((record) => record.id), Array.isArray(workspace.conflicts) ? workspace.conflicts : [])
+  await db.replaceConflictsForRecords(workspace.records.map((record) => record.id), Array.isArray(workspace.conflicts) ? workspace.conflicts : [], workspace.orgId)
 
   if (user?.orgId && workspace.orgId === user.orgId) {
     await db.updateDeviceState({

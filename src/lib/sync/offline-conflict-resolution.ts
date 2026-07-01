@@ -39,7 +39,7 @@ export async function resolveConflictsOffline({
   const record = await db.getRecord(recordId, user?.orgId)
   if (!record) throw new Error("offline_record_not_found")
 
-  const allConflicts = await db.getConflicts()
+  const allConflicts = await db.getConflicts(user?.orgId)
   const conflicts = allConflicts.filter((conflict) => (
     conflict.record_id === recordId
     && conflict.status === "OPEN"
@@ -60,6 +60,7 @@ export async function resolveConflictsOffline({
       resolution,
       resolution === "manual" ? input.value : undefined,
       rationale,
+      user?.orgId,
     )
   }
 

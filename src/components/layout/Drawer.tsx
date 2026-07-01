@@ -5,7 +5,7 @@ import { OrgSwitcher } from "@/components/layout/OrgSwitcher"
 import { WorkflowSwitcher } from "@/components/layout/WorkflowSwitcher"
 import { LanguagePreferenceSelect } from "@/components/layout/LanguagePreferenceSelect"
 import { cn } from "@/lib/utils"
-import { clearClientSessionState } from "@/lib/auth/client-session-cleanup"
+import { completeClientLogout } from "@/lib/auth/client-logout"
 import { usePathname, useRouter } from "next/navigation"
 import { useTranslation } from "react-i18next"
 import Link from "next/link"
@@ -60,10 +60,7 @@ export function Drawer({ role, open, onToggle }: DrawerProps) {
   const items = navByRole[role] ?? navByRole.field_worker
 
   const handleLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST", credentials: "include" }).catch(() => {})
-    await clearClientSessionState()
-    logout()
-    router.push("/")
+    await completeClientLogout(logout, router)
   }
 
   return (

@@ -63,6 +63,11 @@ function runWhenIdle(task: () => void) {
   return () => globalThis.clearTimeout(timeout)
 }
 
+function isCacheablePageResponse(response: Response) {
+  const contentType = response.headers.get("content-type") || ""
+  return response.ok && contentType.includes("text/html") && !contentType.includes("text/x-component")
+}
+
 async function cacheAppRoutes() {
   const urls = Array.from(new Set([...APP_ROUTES_TO_CACHE, window.location.pathname]))
 
@@ -76,8 +81,10 @@ async function cacheAppRoutes() {
           headers: { Accept: "text/html,application/xhtml+xml" },
         })
         const response = await fetch(request)
-        if (response.ok) await cache.put(request, response.clone())
-        if (response.ok) await cache.put(new URL(url, window.location.origin).href, response.clone())
+        if (isCacheablePageResponse(response)) {
+          await cache.put(request, response.clone())
+          await cache.put(new URL(url, window.location.origin).href, response.clone())
+        }
       } catch {}
     }))
   }
@@ -123,8 +130,10 @@ async function cacheUrls(urls: string[]) {
           headers: { Accept: "text/html,application/xhtml+xml" },
         })
         const response = await fetch(request)
-        if (response.ok) await cache.put(request, response.clone())
-        if (response.ok) await cache.put(new URL(url, window.location.origin).href, response.clone())
+        if (isCacheablePageResponse(response)) {
+          await cache.put(request, response.clone())
+          await cache.put(new URL(url, window.location.origin).href, response.clone())
+        }
       } catch {}
     }))
   }

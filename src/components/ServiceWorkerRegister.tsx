@@ -4,6 +4,7 @@ import { useEffect } from "react"
 import { runBackgroundSync } from "@/lib/sync/run-background-sync"
 import { registerFieldFlowPeriodicMaintenance } from "@/lib/sync/register-background-sync"
 import { useAuthStore } from "@/stores/authStore"
+import { flushPendingLogout } from "@/lib/auth/client-logout"
 
 export function ServiceWorkerRegister() {
   useEffect(() => {
@@ -26,6 +27,7 @@ export function ServiceWorkerRegister() {
     }
     const handleOnline = () => {
       if (registrationRef) void registrationRef.update()
+      void flushPendingLogout()
     }
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type !== "FIELD_FLOW_SYNC_NOW") return
@@ -41,6 +43,7 @@ export function ServiceWorkerRegister() {
       .then((registration) => {
         registrationRef = registration
         if (navigator.onLine) void registration.update().catch(() => {})
+        if (navigator.onLine) void flushPendingLogout()
         void registerFieldFlowPeriodicMaintenance()
         void navigator.serviceWorker.ready.then(() => {
           if (navigator.serviceWorker.controller) return

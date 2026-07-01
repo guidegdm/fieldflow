@@ -6,6 +6,7 @@ import { useAuthStore } from "@/stores/authStore"
 import { getCurrentMode } from "@/lib/network-simulator"
 import { hasAnyRoleAccess } from "@/lib/auth/roles"
 import { dashboardForRole } from "@/lib/auth/routes"
+import { completeClientLogout } from "@/lib/auth/client-logout"
 
 const SESSION_RECHECK_MS = 60_000
 
@@ -55,16 +56,14 @@ export function useRequireSession(allowedRoles: string[]) {
       .then(async (response) => {
         if (cancelled) return
         if (!response.ok) {
-          logout()
-          router.push("/")
+          void completeClientLogout(logout, router)
           return
         }
         const data = await response.json()
         if (data.user && data.org) setAuthFromApi(data.user, data.org, data.orgs)
         if (!data.user || !hasAnyRoleAccess(data.user.role, roles)) {
           if (!data.user) {
-            logout()
-            router.push("/")
+            void completeClientLogout(logout, router)
           } else {
             router.push(dashboardForRole(data.user.role))
           }
@@ -77,8 +76,7 @@ export function useRequireSession(allowedRoles: string[]) {
           if (user?.orgId && hasAnyRoleAccess(user.role, roles) && (getCurrentMode() === "offline" || !navigator.onLine)) {
             setAuthorizedRole(user.role)
           } else {
-            logout()
-            router.push("/")
+            void completeClientLogout(logout, router)
           }
         }
       })

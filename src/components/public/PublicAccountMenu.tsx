@@ -2,10 +2,11 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { LayoutDashboard, LogOut, Settings, User } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { useAuthStore } from "@/stores/authStore"
-import { clearClientSessionState } from "@/lib/auth/client-session-cleanup"
+import { completeClientLogout } from "@/lib/auth/client-logout"
 import { dashboardForRole } from "@/lib/auth/routes"
 import { cn } from "@/lib/utils"
 
@@ -13,6 +14,7 @@ export function PublicAccountMenu() {
   const { t } = useTranslation()
   const { user, org, logout, hasHydrated } = useAuthStore()
   const [open, setOpen] = useState(false)
+  const router = useRouter()
 
   if (!hasHydrated) {
     return <div className="h-10 w-24 rounded-md bg-graph-line/60" aria-hidden="true" />
@@ -37,10 +39,8 @@ export function PublicAccountMenu() {
   const dashboardHref = dashboardForRole(user.role)
 
   const handleLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST", credentials: "include" }).catch(() => {})
-    await clearClientSessionState()
-    logout()
     setOpen(false)
+    await completeClientLogout(logout, router)
   }
 
   return (

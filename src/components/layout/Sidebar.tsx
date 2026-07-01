@@ -5,7 +5,7 @@
 
 import { useAuthStore } from "@/stores/authStore"
 import { cn } from "@/lib/utils"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import Link from "next/link"
 import {
   LayoutDashboard,
@@ -16,7 +16,7 @@ import {
   Package,
   LogOut,
 } from "lucide-react"
-import { clearClientSessionState } from "@/lib/auth/client-session-cleanup"
+import { completeClientLogout } from "@/lib/auth/client-logout"
 
 interface SidebarProps {
   role: "admin" | "supervisor"
@@ -41,14 +41,12 @@ export function Sidebar({ role }: SidebarProps) {
   const { user, logout } = useAuthStore()
   const links = role === "admin" ? adminLinks : supervisorLinks
   const activeHref = usePathname()
+  const router = useRouter()
 
   if (!user) return null
 
   const handleLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST", credentials: "include" }).catch(() => {})
-    await clearClientSessionState()
-    logout()
-    window.location.href = "/"
+    await completeClientLogout(logout, router)
   }
 
   return (

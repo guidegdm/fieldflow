@@ -54,7 +54,7 @@ export default function AdminDashboard() {
         const [localWorkflows, localRecords, localConflicts] = await Promise.all([
           orgId ? db.getAllWorkflowsForOrg(orgId).catch(() => []) : Promise.resolve([]),
           orgId ? db.getAllRecordsForOrg(orgId).catch(() => []) : Promise.resolve([]),
-          db.getConflicts().catch(() => []),
+          orgId ? db.getConflicts(orgId).catch(() => []) : Promise.resolve([]),
         ])
         const offlineAccounts = loadOfflineDemoSandbox()?.accounts
           .filter((account) => account.org.id === orgId)

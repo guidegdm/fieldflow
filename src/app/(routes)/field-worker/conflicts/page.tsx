@@ -32,7 +32,7 @@ export default function FieldWorkerConflicts() {
       try {
         const { db } = await import("@/lib/db/indexeddb")
         const [conflicts, records] = await Promise.all([
-          db.getConflicts(),
+          db.getConflicts(user?.orgId),
           user?.orgId ? db.getAllRecordsForOrg(user.orgId) : db.getAllRecords(),
         ])
         if (cancelled) return

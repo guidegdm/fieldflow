@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { createPendingSetupToken, createSessionToken, setAccessCookie, setPendingSetupCookie, setRefreshCookie, setSessionCookie, verifyCognitoJWT } from "@/lib/auth/middleware"
+import { clearOAuthStateCookie, createPendingSetupToken, createSessionToken, setAccessCookie, setPendingSetupCookie, setRefreshCookie, setSessionCookie, verifyCognitoJWT, verifyOAuthStateToken } from "@/lib/auth/middleware"
 import { getStore } from "@/lib/api/in-memory-store"
 import { resolveWorkspaceMembership } from "@/lib/auth/workspace-membership"
 
@@ -26,11 +26,23 @@ export async function GET(request: Request) {
   const url = new URL(request.url)
   const code = url.searchParams.get("code")
   const error = url.searchParams.get("error")
+  const state = url.searchParams.get("state") || ""
+  const stateCookie = request.headers.get("cookie")?.split(";").map((part) => part.trim()).find((part) => part.startsWith("ff_oauth_state="))?.slice("ff_oauth_state=".length) || ""
 
   if (error || !code) {
     const redirectUrl = new URL("/auth/signin", url.origin)
     redirectUrl.searchParams.set("error", error || "no_code")
-    return NextResponse.redirect(redirectUrl)
+    const response = NextResponse.redirect(redirectUrl)
+    response.headers.set("Set-Cookie", clearOAuthStateCookie())
+    return response
+  }
+
+  if (!state || !stateCookie || state !== decodeURIComponent(stateCookie) || !verifyOAuthStateToken(state)) {
+    const redirectUrl = new URL("/auth/signin", url.origin)
+    redirectUrl.searchParams.set("error", "invalid_state")
+    const response = NextResponse.redirect(redirectUrl)
+    response.headers.set("Set-Cookie", clearOAuthStateCookie())
+    return response
   }
 
   const redirectUri = callbackUrl(url)
@@ -49,7 +61,9 @@ export async function GET(request: Request) {
   if (!tokenRes.ok) {
     const redirectUrl = new URL("/auth/signin", url.origin)
     redirectUrl.searchParams.set("error", "token_exchange_failed")
-    return NextResponse.redirect(redirectUrl)
+    const response = NextResponse.redirect(redirectUrl)
+    response.headers.set("Set-Cookie", clearOAuthStateCookie())
+    return response
   }
 
   const tokens = (await tokenRes.json()) as { access_token?: string; id_token?: string; refresh_token?: string }
@@ -58,14 +72,18 @@ export async function GET(request: Request) {
   if (!token || !tokens.id_token) {
     const redirectUrl = new URL("/auth/signin", url.origin)
     redirectUrl.searchParams.set("error", "no_token")
-    return NextResponse.redirect(redirectUrl)
+    const response = NextResponse.redirect(redirectUrl)
+    response.headers.set("Set-Cookie", clearOAuthStateCookie())
+    return response
   }
 
   let authUser = await verifyCognitoJWT(tokens.id_token)
   if (!authUser) {
     const redirectUrl = new URL("/auth/signin", url.origin)
     redirectUrl.searchParams.set("error", "invalid_token")
-    return NextResponse.redirect(redirectUrl)
+    const response = NextResponse.redirect(redirectUrl)
+    response.headers.set("Set-Cookie", clearOAuthStateCookie())
+    return response
   }
 
   authUser = await resolveWorkspaceMembership(authUser)
@@ -99,6 +117,7 @@ export async function GET(request: Request) {
         response.headers.set("Set-Cookie", setPendingSetupCookie(setupToken))
         response.headers.append("Set-Cookie", setAccessCookie(tokens.access_token || tokens.id_token, 3600))
         if (tokens.refresh_token) response.headers.append("Set-Cookie", setRefreshCookie(tokens.refresh_token))
+        response.headers.append("Set-Cookie", clearOAuthStateCookie())
         return response
       }
     }
@@ -107,12 +126,15 @@ export async function GET(request: Request) {
   if (!authUser.orgId) {
     const redirectUrl = new URL("/auth/signin", url.origin)
     redirectUrl.searchParams.set("error", "workspace_required")
-    return NextResponse.redirect(redirectUrl)
+    const response = NextResponse.redirect(redirectUrl)
+    response.headers.set("Set-Cookie", clearOAuthStateCookie())
+    return response
   }
 
   const response = NextResponse.redirect(new URL(dashboardForRole(authUser.role), url.origin))
   response.headers.set("Set-Cookie", setAccessCookie(token, 3600))
   if (tokens.refresh_token) response.headers.append("Set-Cookie", setRefreshCookie(tokens.refresh_token))
   response.headers.append("Set-Cookie", setSessionCookie(createSessionToken(authUser, 3600), 3600))
+  response.headers.append("Set-Cookie", clearOAuthStateCookie())
   return response
 }

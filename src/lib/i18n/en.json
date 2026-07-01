@@ -85,7 +85,8 @@
     "installCta": "Install app",
     "updateTitle": "A new FieldFlow version is ready",
     "updateBody": "Refresh when convenient to load the latest app shell and offline assets.",
-    "update": "Refresh"
+    "update": "Refresh",
+    "preparingUpdate": "Preparing update..."
   },
   "passkey": {
     "title": "Add a passkey",

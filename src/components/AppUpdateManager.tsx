@@ -7,10 +7,14 @@ import { Button } from "@/components/ui/button"
 import { usePromptQueueSlot } from "@/lib/ui/prompt-queue"
 
 const VERSION_KEY = "fieldflow-app-version"
+const UPDATE_PENDING_KEY = "fieldflow-update-pending"
+const UPDATE_RELOAD_KEY = "fieldflow-update-reload"
 const UPDATE_SNOOZE_KEY = "fieldflow-update-snooze"
 const CHECK_INTERVAL_MS = 10 * 60 * 1000
 const UPDATE_SNOOZE_MS = 24 * 60 * 60 * 1000
-const SERVICE_WORKER_UPDATE_VERSION = "service-worker"
+const UPDATE_PENDING_MS = 2 * 60 * 1000
+
+type PendingUpdate = { version: string; startedAt: number }
 
 function snoozeKey(version: string) {
   return `${UPDATE_SNOOZE_KEY}:${version}`
@@ -33,11 +37,88 @@ async function refreshServiceWorker() {
   if (!("serviceWorker" in navigator)) return
   const registration = await navigator.serviceWorker.ready.catch(() => null)
   await registration?.update().catch(() => {})
+  return registration
+}
+
+function readPendingUpdate(): PendingUpdate | null {
+  const raw = window.sessionStorage.getItem(UPDATE_PENDING_KEY)
+  if (!raw) return null
+  try {
+    const parsed = JSON.parse(raw) as PendingUpdate
+    if (!parsed.version || !Number.isFinite(parsed.startedAt)) return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+function writePendingUpdate(version: string) {
+  window.sessionStorage.setItem(UPDATE_PENDING_KEY, JSON.stringify({ version, startedAt: Date.now() }))
+}
+
+function clearPendingUpdate() {
+  window.sessionStorage.removeItem(UPDATE_PENDING_KEY)
+  window.sessionStorage.removeItem(UPDATE_RELOAD_KEY)
+}
+
+function isFreshPending(version: string) {
+  const pending = readPendingUpdate()
+  return Boolean(pending?.version === version && Date.now() - pending.startedAt < UPDATE_PENDING_MS)
+}
+
+function waitForWorkerState(worker: ServiceWorker, states: ServiceWorkerState[], timeoutMs: number) {
+  if (states.includes(worker.state)) return Promise.resolve(true)
+  return new Promise<boolean>((resolve) => {
+    const timer = window.setTimeout(() => {
+      worker.removeEventListener("statechange", onChange)
+      resolve(false)
+    }, timeoutMs)
+    const onChange = () => {
+      if (!states.includes(worker.state)) return
+      window.clearTimeout(timer)
+      worker.removeEventListener("statechange", onChange)
+      resolve(true)
+    }
+    worker.addEventListener("statechange", onChange)
+  })
+}
+
+function waitForControllerChange(timeoutMs: number) {
+  return new Promise<boolean>((resolve) => {
+    const timer = window.setTimeout(() => {
+      navigator.serviceWorker.removeEventListener("controllerchange", onChange)
+      resolve(false)
+    }, timeoutMs)
+    const onChange = () => {
+      window.clearTimeout(timer)
+      navigator.serviceWorker.removeEventListener("controllerchange", onChange)
+      resolve(true)
+    }
+    navigator.serviceWorker.addEventListener("controllerchange", onChange)
+  })
+}
+
+async function prepareServiceWorkerForReload() {
+  if (!("serviceWorker" in navigator)) return true
+  const registration = await navigator.serviceWorker.ready.catch(() => null)
+  if (!registration) return true
+
+  await registration.update().catch(() => {})
+  if (registration.installing) {
+    await waitForWorkerState(registration.installing, ["installed", "activated", "redundant"], 15000)
+  }
+  if (registration.waiting) {
+    const controllerChanged = waitForControllerChange(5000)
+    registration.waiting.postMessage({ type: "SKIP_WAITING" })
+    await controllerChanged
+  }
+  return !registration.installing
 }
 
 export function AppUpdateManager() {
   const { t } = useTranslation()
   const [updateReady, setUpdateReady] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
   const pendingVersion = useRef<string | null>(null)
   const checking = useRef(false)
   const { canShow, release } = usePromptQueueSlot("update", updateReady)
@@ -46,35 +127,60 @@ export function AppUpdateManager() {
     let mounted = true
     let registrationRef: ServiceWorkerRegistration | null = null
 
-    const markUpdateReady = (version = SERVICE_WORKER_UPDATE_VERSION) => {
-      if (!mounted || isSnoozed(version)) return
-      pendingVersion.current = version
+    const requestUpdatePrompt = async (version?: string) => {
+      const latest = version || await fetchVersion()
+      if (!latest || !mounted) return
+      const current = window.localStorage.getItem(VERSION_KEY)
+      if (!current) {
+        window.localStorage.setItem(VERSION_KEY, latest)
+        return
+      }
+      if (current === latest || isFreshPending(latest) || isSnoozed(latest)) return
+      pendingVersion.current = latest
       setUpdateReady(true)
     }
 
     const watchRegistration = (registration: ServiceWorkerRegistration) => {
       registrationRef = registration
       if (registration.waiting && navigator.serviceWorker.controller) {
-        markUpdateReady()
+        void requestUpdatePrompt()
       }
       registration.addEventListener("updatefound", () => {
         const worker = registration.installing
         if (!worker) return
         worker.addEventListener("statechange", () => {
           if (worker.state === "installed" && navigator.serviceWorker.controller) {
-            markUpdateReady()
+            void requestUpdatePrompt()
           }
         })
       })
+    }
+
+    const settleAppliedUpdate = async () => {
+      const reloadedVersion = window.sessionStorage.getItem(UPDATE_RELOAD_KEY)
+      const pending = readPendingUpdate()
+      if (!pending && !reloadedVersion) return
+      const latest = await fetchVersion()
+      if (latest && reloadedVersion && latest === reloadedVersion) {
+        window.localStorage.setItem(VERSION_KEY, latest)
+        clearPendingUpdate()
+        pendingVersion.current = null
+        setUpdateReady(false)
+        return
+      }
+      if (pending && Date.now() - pending.startedAt >= UPDATE_PENDING_MS) {
+        clearPendingUpdate()
+      }
     }
 
     const check = async () => {
       if (checking.current || !navigator.onLine) return
       checking.current = true
       try {
-        await refreshServiceWorker()
+        const registration = await refreshServiceWorker()
+        if (registration) registrationRef = registration
         if (registrationRef?.waiting && navigator.serviceWorker.controller) {
-          markUpdateReady()
+          await requestUpdatePrompt()
           return
         }
         const latest = await fetchVersion()
@@ -84,19 +190,20 @@ export function AppUpdateManager() {
           window.localStorage.setItem(VERSION_KEY, latest)
           return
         }
-        if (current !== latest) markUpdateReady(latest)
+        if (current !== latest) await requestUpdatePrompt(latest)
       } finally {
         checking.current = false
       }
     }
 
     const onOnlineOrFocus = () => void check()
-    const onServiceWorkerUpdated = () => markUpdateReady()
+    const onServiceWorkerUpdated = () => void requestUpdatePrompt()
     const interval = window.setInterval(check, CHECK_INTERVAL_MS)
     window.addEventListener("online", onOnlineOrFocus)
     window.addEventListener("focus", onOnlineOrFocus)
     window.addEventListener("fieldflow:service-worker-updated", onServiceWorkerUpdated)
     void navigator.serviceWorker?.ready.then(watchRegistration).catch(() => {})
+    void settleAppliedUpdate()
     void check()
 
     return () => {
@@ -110,10 +217,32 @@ export function AppUpdateManager() {
 
   if (!canShow) return null
 
+  const dismissForVersion = async () => {
+    const latest = await fetchVersion()
+    const version = latest || pendingVersion.current
+    if (version) window.localStorage.setItem(snoozeKey(version), String(Date.now()))
+    pendingVersion.current = null
+    setUpdateReady(false)
+    release()
+  }
+
   const reload = async () => {
     const latest = await fetchVersion()
-    if (latest) window.localStorage.setItem(VERSION_KEY, latest)
-    window.location.reload()
+    const target = latest || pendingVersion.current
+    if (!target) return
+    setRefreshing(true)
+    writePendingUpdate(target)
+    try {
+      if (!navigator.onLine) throw new Error("offline")
+      await prepareServiceWorkerForReload()
+      window.sessionStorage.setItem(UPDATE_RELOAD_KEY, target)
+      window.location.reload()
+    } catch {
+      clearPendingUpdate()
+      setRefreshing(false)
+      pendingVersion.current = target
+      setUpdateReady(true)
+    }
   }
 
   return (
@@ -126,17 +255,13 @@ export function AppUpdateManager() {
           <p className="font-medium text-ink-black">{t("pwa.updateTitle")}</p>
           <p className="mt-1 text-sm leading-5 text-pencil">{t("pwa.updateBody")}</p>
           <div className="mt-3 flex flex-wrap gap-2">
-            <Button size="sm" onClick={reload}>{t("pwa.update")}</Button>
+            <Button size="sm" loading={refreshing} disabled={refreshing} onClick={reload}>
+              {refreshing ? t("pwa.preparingUpdate", "Preparing update...") : t("pwa.update")}
+            </Button>
             <Button
               size="sm"
               variant="secondary"
-              onClick={async () => {
-                const latest = await fetchVersion()
-                const version = latest || pendingVersion.current || SERVICE_WORKER_UPDATE_VERSION
-                window.localStorage.setItem(snoozeKey(version), String(Date.now()))
-                setUpdateReady(false)
-                release()
-              }}
+              onClick={dismissForVersion}
             >
               {t("common.later")}
             </Button>
@@ -146,10 +271,7 @@ export function AppUpdateManager() {
           type="button"
           aria-label={t("common.close")}
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-pencil transition-colors hover:bg-graph-paper hover:text-ink-black"
-          onClick={() => {
-            setUpdateReady(false)
-            release()
-          }}
+          onClick={dismissForVersion}
         >
           <X className="h-4 w-4" aria-hidden="true" />
         </button>

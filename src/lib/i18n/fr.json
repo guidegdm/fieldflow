@@ -85,7 +85,8 @@
     "installCta": "Installer l'application",
     "updateTitle": "Une nouvelle version de FieldFlow est prête",
     "updateBody": "Actualisez quand vous voulez pour charger la dernière version de l'application et ses ressources hors ligne.",
-    "update": "Actualiser"
+    "update": "Actualiser",
+    "preparingUpdate": "Préparation de la mise à jour..."
   },
   "passkey": {
     "title": "Ajouter une passkey",

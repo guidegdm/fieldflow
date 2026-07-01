@@ -68,6 +68,11 @@ self.addEventListener("activate", (event) => {
 })
 
 self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") {
+    self.skipWaiting()
+    return
+  }
+
   if (event.data?.type !== "CACHE_URLS") return
 
   const urlsToCache = Array.isArray(event.data?.payload?.urlsToCache)

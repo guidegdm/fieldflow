@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { LayoutDashboard, LogOut, Settings, User } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { useAuthStore } from "@/stores/authStore"
+import { OrgSwitcher } from "@/components/layout/OrgSwitcher"
 import { completeClientLogout } from "@/lib/auth/client-logout"
 import { dashboardForRole } from "@/lib/auth/routes"
 import { cn } from "@/lib/utils"
@@ -59,10 +60,13 @@ export function PublicAccountMenu() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-12 z-50 w-64 rounded-lg border border-graph-line bg-white p-2 shadow-xl">
+        <div className="absolute right-0 top-12 z-50 w-[min(20rem,calc(100vw-1.5rem))] rounded-lg border border-graph-line bg-white p-2 shadow-xl">
           <div className="border-b border-graph-line px-2 pb-2">
             <p className="truncate text-sm font-medium text-ink-black">{user.name || user.email}</p>
             <p className="mt-0.5 truncate text-xs text-pencil">{org?.name || t("workspace.current", "Workspace")}</p>
+          </div>
+          <div className="border-b border-graph-line px-2 py-3">
+            <OrgSwitcher />
           </div>
           <div className="py-1">
             <MenuLink href={dashboardHref} icon={<LayoutDashboard size={16} />} onClick={() => setOpen(false)}>

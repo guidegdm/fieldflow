@@ -17,6 +17,7 @@ import {
   LogOut,
 } from "lucide-react"
 import { completeClientLogout } from "@/lib/auth/client-logout"
+import { OrgSwitcher } from "@/components/layout/OrgSwitcher"
 
 interface SidebarProps {
   role: "admin" | "supervisor"
@@ -53,6 +54,10 @@ export function Sidebar({ role }: SidebarProps) {
     <aside className="fixed left-0 top-0 h-screen w-64 bg-white border-r border-grid-line flex flex-col z-40">
       <div className="px-5 pt-6 pb-4">
         <h1 className="font-display text-xl text-lake-deep tracking-tight">FieldFlow</h1>
+      </div>
+
+      <div className="px-4 pb-3">
+        <OrgSwitcher />
       </div>
 
       <nav className="flex-1 px-3 space-y-1">

@@ -7,7 +7,7 @@ type BaseUser = {
   role: string
   groups: string[]
   orgId: string
-  orgs?: Array<{ id: string; name?: string }>
+  orgs?: Array<{ id: string; name?: string; role?: string }>
 }
 
 type MembershipProfile = {
@@ -63,10 +63,15 @@ export async function resolveWorkspaceMembership<T extends BaseUser>(user: T): P
   if (profiles.length === 0) return user
 
   const current = profiles.find((profile) => profile.orgId === user.orgId) ?? profiles[0]
-  const orgIds = Array.from(new Set(profiles.map((profile) => String(profile.orgId))))
-  const orgs = await Promise.all(orgIds.map(async (id) => {
+  const profilesByOrg = new Map<string, MembershipProfile>()
+  for (const profile of profiles) {
+    const orgId = String(profile.orgId)
+    if (!profilesByOrg.has(orgId)) profilesByOrg.set(orgId, profile)
+  }
+  const orgs = await Promise.all(Array.from(profilesByOrg.entries()).map(async ([id, profile]) => {
     const org = await store.getOrgAsync(id).catch(() => null) as { id?: string; name?: string } | null
-    return { id, name: org?.name || "" }
+    const role = typeof profile.role === "string" ? profile.role : "field_worker"
+    return { id, name: org?.name || "", role }
   }))
   const role = typeof current.role === "string" ? current.role : user.role || "field_worker"
   const name = typeof current.name === "string" ? current.name : user.name
@@ -82,7 +87,8 @@ export async function resolveWorkspaceMembership<T extends BaseUser>(user: T): P
 }
 
 export async function responseOrgContext(user: BaseUser) {
-  const orgs = user.orgs?.length ? user.orgs : user.orgId ? [{ id: user.orgId, name: "" }] : []
-  const org = orgs.find((candidate) => candidate.id === user.orgId) ?? orgs[0] ?? { id: user.orgId, name: "" }
-  return { org, orgs }
+  const orgs = user.orgs?.length ? user.orgs : user.orgId ? [{ id: user.orgId, name: "", role: user.role }] : []
+  const org = orgs.find((candidate) => candidate.id === user.orgId) ?? orgs[0] ?? { id: user.orgId, name: "", role: user.role }
+  const role = org.role || user.role
+  return { org: { ...org, role }, orgs: orgs.map((candidate) => candidate.id === org.id ? { ...candidate, role } : candidate) }
 }

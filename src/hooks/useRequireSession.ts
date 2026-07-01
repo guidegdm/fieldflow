@@ -6,12 +6,19 @@ import { useAuthStore } from "@/stores/authStore"
 import { getCurrentMode } from "@/lib/network-simulator"
 import { hasAnyRoleAccess } from "@/lib/auth/roles"
 
+function homeForRole(role: string | undefined | null) {
+  if (role === "org_admin") return "/admin/dashboard"
+  if (role === "supervisor") return "/supervisor/dashboard"
+  return "/field-worker/home"
+}
+
 export function useRequireSession(allowedRoles: string[]) {
   const router = useRouter()
   const hasHydrated = useAuthStore((state) => state.hasHydrated)
   const logout = useAuthStore((state) => state.logout)
   const setAuthFromApi = useAuthStore((state) => state.setAuthFromApi)
   const user = useAuthStore((state) => state.user)
+  const orgSwitching = useAuthStore((state) => state.orgSwitching)
   const [checking, setChecking] = useState(true)
   const [authorizedRole, setAuthorizedRole] = useState<string | null>(null)
   const allowedRoleKey = allowedRoles.join("|")
@@ -22,6 +29,12 @@ export function useRequireSession(allowedRoles: string[]) {
 
     let cancelled = false
     setChecking(true)
+
+    if (orgSwitching && user?.orgId) {
+      setAuthorizedRole(user.role)
+      setChecking(false)
+      return
+    }
 
     if (user?.orgId && hasAnyRoleAccess(user.role, roles) && (getCurrentMode() === "offline" || !navigator.onLine)) {
       setAuthorizedRole(user.role)
@@ -40,8 +53,12 @@ export function useRequireSession(allowedRoles: string[]) {
         const data = await response.json()
         if (data.user && data.org) setAuthFromApi(data.user, data.org, data.orgs)
         if (!data.user || !hasAnyRoleAccess(data.user.role, roles)) {
-          logout()
-          router.push("/")
+          if (!data.user) {
+            logout()
+            router.push("/")
+          } else {
+            router.push(homeForRole(data.user.role))
+          }
           return
         }
         setAuthorizedRole(data.user.role)
@@ -61,8 +78,8 @@ export function useRequireSession(allowedRoles: string[]) {
       })
 
     return () => { cancelled = true }
-  }, [allowedRoleKey, hasHydrated, logout, router, setAuthFromApi, user?.orgId, user?.role])
+  }, [allowedRoleKey, hasHydrated, logout, orgSwitching, router, setAuthFromApi, user?.orgId, user?.role])
 
   const authorized = !!authorizedRole && hasAnyRoleAccess(authorizedRole, allowedRoleKey.split("|"))
-  return { ready: hasHydrated && !checking && authorized }
+  return { ready: hasHydrated && !checking && (authorized || orgSwitching) }
 }

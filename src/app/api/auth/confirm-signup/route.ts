@@ -101,15 +101,21 @@ export async function POST(request: Request) {
   const accessToken = auth.AuthenticationResult?.AccessToken
   const refreshToken = auth.AuthenticationResult?.RefreshToken
   const tokenUser = idToken ? await verifyCognitoJWT(idToken, { orgId, role: "org_admin", email, name }) : null
-  const authUser = tokenUser ?? { sub: email, email, name, role: "org_admin", groups: ["org_admin"], orgId, orgs: [{ id: orgId, name: orgName }] }
+  const authUser = {
+    ...(tokenUser ?? { sub: email, email, name }),
+    role: "org_admin",
+    groups: ["org_admin"],
+    orgId,
+    orgs: [{ id: orgId, name: orgName, role: "org_admin" }],
+  }
   const sessionToken = createSessionToken(authUser, 3600)
 
   const response = NextResponse.json({
     success: true,
     orgId,
     user: { id: authUser.sub, email, name, role: "org_admin", deviceId: "web", token: accessToken || sessionToken, orgId },
-    org: { id: orgId, name: orgName },
-    orgs: [{ id: orgId, name: orgName }],
+    org: { id: orgId, name: orgName, role: "org_admin" },
+    orgs: [{ id: orgId, name: orgName, role: "org_admin" }],
     redirect: "/admin/dashboard",
   })
 

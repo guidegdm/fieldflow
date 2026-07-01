@@ -380,8 +380,8 @@ export async function seedIsolatedDemoOrg(
 
   const allowedMemberships = membershipsFor(persona.id)
   const selectedMembership = allowedMemberships.find((membership) => membership.orgKey === selectedOrgKey) ?? allowedMemberships[0]
-  const org = installedOrg(installId, selectedMembership.orgKey)
-  const orgs = allowedMemberships.map((membership) => installedOrg(installId, membership.orgKey))
+  const org = { ...installedOrg(installId, selectedMembership.orgKey), role: selectedMembership.role }
+  const orgs = allowedMemberships.map((membership) => ({ ...installedOrg(installId, membership.orgKey), role: membership.role }))
   const user = {
     ...persona,
     id: `${persona.id}-${suffix}-${selectedMembership.orgKey.toLowerCase()}`,
@@ -400,7 +400,7 @@ export async function seedIsolatedDemoOrg(
   const inventoryCounts = await Promise.all(allInstalledOrgs.map((workspaceOrg) => store.getInventoryItemsForOrg(workspaceOrg.id).then((items) => items.length)))
   const offlineAccounts = ORG_MEMBERSHIPS.map((membership) => {
     const demoUser = DEMO_USERS.find((candidate) => candidate.id === membership.userId)!
-    const accountOrg = installedOrg(installId, membership.orgKey)
+    const accountOrg = { ...installedOrg(installId, membership.orgKey), role: membership.role }
     return {
       email: demoUser.email,
       orgKey: membership.orgKey,
@@ -412,7 +412,7 @@ export async function seedIsolatedDemoOrg(
         deviceId: `${demoUser.deviceId}-${suffix}-${membership.orgKey.toLowerCase()}`,
       },
       org: accountOrg,
-      orgs: membershipsFor(demoUser.id).map((allowed) => installedOrg(installId, allowed.orgKey)),
+      orgs: membershipsFor(demoUser.id).map((allowed) => ({ ...installedOrg(installId, allowed.orgKey), role: allowed.role })),
     }
   })
   const seedCounts = {

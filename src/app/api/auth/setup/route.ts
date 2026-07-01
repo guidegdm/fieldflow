@@ -98,9 +98,9 @@ export async function POST(request: NextRequest) {
     email: pendingUser.email,
     name: pendingUser.name,
     role: "org_admin",
-    groups: ["Administrators"],
+    groups: ["org_admin"],
     orgId,
-    orgs: [{ id: orgId, name: orgName }],
+    orgs: [{ id: orgId, name: orgName, role: "org_admin" }],
   }, 3600)
 
   const response = NextResponse.json({
@@ -113,8 +113,8 @@ export async function POST(request: NextRequest) {
       deviceId: "web",
       orgId,
     },
-    org: { id: orgId, name: orgName },
-    orgs: [{ id: orgId, name: orgName }],
+    org: { id: orgId, name: orgName, role: "org_admin" },
+    orgs: [{ id: orgId, name: orgName, role: "org_admin" }],
     redirect: "/admin/dashboard",
   })
   response.headers.set("Set-Cookie", setSessionCookie(sessionToken, 3600))

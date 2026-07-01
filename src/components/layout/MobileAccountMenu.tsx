@@ -66,7 +66,7 @@ const mobileNavByRole: Record<AppRole, MobileNavItem[]> = {
 
 export function MobileAccountMenu({ role }: { role: AppRole }) {
   const [open, setOpen] = useState(false)
-  const { user, logout } = useAuthStore()
+  const { user, org, logout } = useAuthStore()
   const { t } = useTranslation()
   const pathname = usePathname()
   const router = useRouter()
@@ -152,7 +152,8 @@ export function MobileAccountMenu({ role }: { role: AppRole }) {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-ink-black">{user?.name ?? t("auth.demoUser", "Demo user")}</p>
-                  <p className="truncate text-[10px] uppercase tracking-wider text-pencil">{t(`roles.${role}`, role.replace("_", " "))}</p>
+                  <p className="truncate text-xs text-pencil">{org?.name || t("workspace.current", "Workspace")}</p>
+                  <p className="truncate text-[10px] uppercase tracking-wider text-pencil">{t(`roles.${user?.role || role}`, (user?.role || role).replace("_", " "))}</p>
                 </div>
                 <button
                   type="button"

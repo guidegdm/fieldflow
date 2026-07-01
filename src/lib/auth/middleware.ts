@@ -65,7 +65,7 @@ interface AuthUser {
   role: string
   groups: string[]
   orgId: string
-  orgs?: Array<{ id: string; name?: string }>
+  orgs?: Array<{ id: string; name?: string; role?: string }>
 }
 
 export interface PendingSetupUser {
@@ -113,7 +113,7 @@ export async function verifyCognitoJWT(token: string, context?: Partial<AuthUser
       role: context?.role || (payload["custom:role"] as string) || "field_worker",
       groups: context?.groups?.length ? context.groups : (payload["cognito:groups"] as string[]) || [context?.role || "field_worker"],
       orgId,
-      orgs: context?.orgs ?? (orgId ? [{ id: orgId, name: "" }] : []),
+      orgs: context?.orgs ?? (orgId ? [{ id: orgId, name: "", role: context?.role || (payload["custom:role"] as string) || "field_worker" }] : []),
     }
   } catch { return null }
 }

@@ -9,6 +9,8 @@ import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister"
 import { OfflineWarmup } from "@/components/OfflineWarmup"
 import { InstallPrompt } from "@/components/InstallPrompt"
 import { AppUpdateManager } from "@/components/AppUpdateManager"
+import { PasskeyPrompt } from "@/components/PasskeyPrompt"
+import { WorkspaceSyncManager } from "@/components/WorkspaceSyncManager"
 import { useNetworkStatus } from "@/hooks/useNetworkStatus"
 import { useAuthStore } from "@/stores/authStore"
 import { useWorkflowListStore } from "@/stores/workflowListStore"
@@ -49,6 +51,8 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
           <OfflineWarmup />
           <InstallPrompt />
           <AppUpdateManager />
+          <PasskeyPrompt />
+          <WorkspaceSyncManager />
         </>
       ) : (
         <AppLoader />

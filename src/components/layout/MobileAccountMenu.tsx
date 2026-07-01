@@ -31,7 +31,7 @@ type MobileNavItem = { labelKey: string; fallback: string; href: string; icon: R
 
 const mobileNavByRole: Record<AppRole, MobileNavItem[]> = {
   field_worker: [
-    { labelKey: "nav.home", fallback: "Home", href: "/field-worker/home", icon: <Home size={18} /> },
+    { labelKey: "nav.dashboard", fallback: "Dashboard", href: "/field-worker/home", icon: <LayoutDashboard size={18} /> },
     { labelKey: "nav.search", fallback: "Search", href: "/field-worker/search", icon: <Search size={18} /> },
     { labelKey: "nav.newRecord", fallback: "New", href: "/field-worker/register", icon: <Plus size={18} /> },
     { labelKey: "nav.conflicts", fallback: "Conflicts", href: "/field-worker/conflicts", icon: <AlertTriangle size={18} /> },

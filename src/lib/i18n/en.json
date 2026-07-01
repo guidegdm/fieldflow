@@ -86,6 +86,12 @@
     "updateBody": "Refresh when convenient to load the latest app shell and offline assets.",
     "update": "Refresh"
   },
+  "passkey": {
+    "title": "Add a passkey",
+    "body": "Use this device to sign in faster next time. Your fingerprint, face, or device PIN never leaves the device.",
+    "register": "Add passkey",
+    "error": "Passkey could not be registered on this device."
+  },
   "workspace": {
     "current": "Workspace",
     "switch": "Switch workspace",

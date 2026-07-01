@@ -86,6 +86,12 @@
     "updateBody": "Actualisez quand vous voulez pour charger la dernière version de l'application et ses ressources hors ligne.",
     "update": "Actualiser"
   },
+  "passkey": {
+    "title": "Ajouter une passkey",
+    "body": "Utilisez cet appareil pour vous connecter plus vite la prochaine fois. Votre empreinte, visage ou code appareil ne quitte jamais l'appareil.",
+    "register": "Ajouter la passkey",
+    "error": "La passkey n'a pas pu être enregistrée sur cet appareil."
+  },
   "workspace": {
     "current": "Espace de travail",
     "switch": "Changer d'espace de travail",

@@ -6,6 +6,8 @@ import { useAuthStore } from "@/stores/authStore"
 import { getCurrentMode } from "@/lib/network-simulator"
 import { hasAnyRoleAccess } from "@/lib/auth/roles"
 
+const SESSION_RECHECK_MS = 60_000
+
 function homeForRole(role: string | undefined | null) {
   if (role === "org_admin") return "/admin/dashboard"
   if (role === "supervisor") return "/supervisor/dashboard"
@@ -19,6 +21,7 @@ export function useRequireSession(allowedRoles: string[]) {
   const setAuthFromApi = useAuthStore((state) => state.setAuthFromApi)
   const user = useAuthStore((state) => state.user)
   const orgSwitching = useAuthStore((state) => state.orgSwitching)
+  const sessionVerifiedAt = useAuthStore((state) => state.sessionVerifiedAt)
   const [checking, setChecking] = useState(true)
   const [authorizedRole, setAuthorizedRole] = useState<string | null>(null)
   const allowedRoleKey = allowedRoles.join("|")
@@ -31,6 +34,17 @@ export function useRequireSession(allowedRoles: string[]) {
     setChecking(true)
 
     if (orgSwitching && user?.orgId) {
+      setAuthorizedRole(user.role)
+      setChecking(false)
+      return
+    }
+
+    if (
+      user?.orgId
+      && hasAnyRoleAccess(user.role, roles)
+      && sessionVerifiedAt
+      && Date.now() - sessionVerifiedAt < SESSION_RECHECK_MS
+    ) {
       setAuthorizedRole(user.role)
       setChecking(false)
       return
@@ -78,7 +92,7 @@ export function useRequireSession(allowedRoles: string[]) {
       })
 
     return () => { cancelled = true }
-  }, [allowedRoleKey, hasHydrated, logout, orgSwitching, router, setAuthFromApi, user?.orgId, user?.role])
+  }, [allowedRoleKey, hasHydrated, logout, orgSwitching, router, sessionVerifiedAt, setAuthFromApi, user?.orgId, user?.role])
 
   const authorized = !!authorizedRole && hasAnyRoleAccess(authorizedRole, allowedRoleKey.split("|"))
   return { ready: hasHydrated && !checking && (authorized || orgSwitching) }

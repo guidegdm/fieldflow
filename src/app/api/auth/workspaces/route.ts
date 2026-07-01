@@ -8,6 +8,7 @@ import { generateId } from "@/lib/utils"
 const createWorkspaceSchema = z.object({
   name: z.string().min(1).max(160),
   sector: z.string().min(1).max(80).optional(),
+  clientOrgId: z.string().regex(/^local-workspace-[A-Za-z0-9-]+$/).optional(),
 })
 
 export async function POST(request: NextRequest) {
@@ -18,8 +19,8 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: "Requête invalide" }, { status: 400 })
 
   const now = Date.now()
-  const orgId = generateId()
-  const { name, sector } = parsed.data
+  const { name, sector, clientOrgId } = parsed.data
+  const orgId = clientOrgId || generateId()
   const store = getStore()
 
   try {

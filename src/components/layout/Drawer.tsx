@@ -17,7 +17,7 @@ interface DrawerProps { role: "admin" | "supervisor" | "field_worker" | "enginee
 
 const navByRole: Record<string, { labelKey: string; fallback: string; href: string; icon: React.ReactNode }[]> = {
   field_worker: [
-    { labelKey: "nav.home", fallback: "Accueil", href: "/field-worker/home", icon: <Home size={20} /> },
+    { labelKey: "nav.dashboard", fallback: "Dashboard", href: "/field-worker/home", icon: <LayoutDashboard size={20} /> },
     { labelKey: "nav.search", fallback: "Rechercher", href: "/field-worker/search", icon: <Search size={20} /> },
     { labelKey: "nav.newRecord", fallback: "Nouveau", href: "/field-worker/register", icon: <Plus size={20} /> },
     { labelKey: "nav.conflicts", fallback: "Conflits", href: "/field-worker/conflicts", icon: <AlertTriangle size={20} /> },

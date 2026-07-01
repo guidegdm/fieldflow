@@ -34,7 +34,7 @@ type TabConfig = {
 const configByRole: Record<string, TabConfig> = {
   field_worker: {
     tabs: [
-      { labelKey: "nav.home", fallback: "Accueil", href: "/field-worker/home", icon: Home },
+      { labelKey: "nav.dashboard", fallback: "Dashboard", href: "/field-worker/home", icon: LayoutDashboard },
       { labelKey: "nav.search", fallback: "Rechercher", href: "/field-worker/search", icon: Search },
       { labelKey: "nav.status", fallback: "Statut", href: "/field-worker/status", icon: Activity },
     ],

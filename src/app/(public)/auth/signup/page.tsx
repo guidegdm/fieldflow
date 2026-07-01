@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useTranslation } from "react-i18next"
-import { ArrowRight, ShieldCheck, UserPlus } from "lucide-react"
+import { ArrowRight, Loader2, ShieldCheck, UserPlus } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -30,6 +30,7 @@ export default function SignUpPage() {
   const [pendingSignup, setPendingSignup] = useState<SignUpValues | null>(null)
   const [verificationCode, setVerificationCode] = useState("")
   const [confirming, setConfirming] = useState(false)
+  const [redirectingGoogle, setRedirectingGoogle] = useState(false)
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<SignUpValues>({
     resolver: zodResolver(signUpSchema),
     defaultValues: { email: "", name: "", password: "", orgName: "", orgSector: "humanitarian" },
@@ -156,6 +157,7 @@ export default function SignUpPage() {
                 onClick={confirmSignup}
                 className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-ink-blue text-sm font-semibold text-white transition-colors hover:bg-ink-blue/90 disabled:opacity-60"
               >
+                {confirming && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />}
                 {confirming ? t("signup.verifying") : t("signup.verifySubmit")}
               </button>
               <button
@@ -251,7 +253,7 @@ export default function SignUpPage() {
               disabled={isSubmitting}
               className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-ink-blue text-sm font-semibold text-white transition-colors hover:bg-ink-blue/90 disabled:opacity-60"
             >
-              <UserPlus size={16} />
+              {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : <UserPlus size={16} />}
               {isSubmitting ? t("signup.submitting") : t("signup.submit")}
             </button>
           </form>
@@ -265,9 +267,14 @@ export default function SignUpPage() {
 
           {!pendingSignup && <button
             type="button"
-            onClick={() => { window.location.href = "/api/auth/oauth/google?mode=signup" }}
-            className="flex h-11 w-full items-center justify-center rounded-md border border-graph-line text-sm font-semibold text-ink-black transition-colors hover:bg-graph-paper"
+            disabled={redirectingGoogle}
+            onClick={() => {
+              setRedirectingGoogle(true)
+              window.location.href = "/api/auth/oauth/google?mode=signup"
+            }}
+            className="flex h-11 w-full items-center justify-center gap-2 rounded-md border border-graph-line text-sm font-semibold text-ink-black transition-colors hover:bg-graph-paper disabled:opacity-60"
           >
+            {redirectingGoogle && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />}
             {t("signup.google")}
           </button>}
 

@@ -485,8 +485,7 @@
     "submitting": "Signing in...",
     "forgotPassword": "Forgot password?",
     "google": "Continue with Google",
-    "passkey": "Secure login",
-    "passkeyComingSoon": "Passkey login is coming soon.",
+      "passkey": "Sign in with passkey",
     "noAccount": "No account yet?",
     "createAccount": "Create an account",
     "otp": {

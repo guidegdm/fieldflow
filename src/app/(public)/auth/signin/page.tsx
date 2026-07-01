@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useTranslation } from "react-i18next"
-import { ArrowRight, LogIn, ShieldCheck } from "lucide-react"
+import { ArrowRight, Loader2, LogIn, ShieldCheck } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -35,6 +35,7 @@ export default function SignInPage() {
   const setAuthFromApi = useAuthStore((s) => s.setAuthFromApi)
   const [error, setError] = useState("")
   const [challenge, setChallenge] = useState<AuthChallenge>(null)
+  const [redirectingProvider, setRedirectingProvider] = useState<"google" | "passkey" | null>(null)
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<SignInValues>({
     resolver: zodResolver(signInSchema),
     defaultValues: { email: "", password: "" },
@@ -175,7 +176,7 @@ export default function SignInPage() {
               disabled={isSubmitting}
               className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-ink-blue text-sm font-semibold text-white transition-colors hover:bg-ink-blue/90 disabled:opacity-60"
             >
-              <LogIn size={16} />
+              {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : <LogIn size={16} />}
               {isSubmitting ? t("signin.submitting") : t("signin.submit")}
             </button>
           </form>
@@ -198,10 +199,10 @@ export default function SignInPage() {
               </div>
               <button
                 type="submit"
-                disabled={otpSubmitting}
+              disabled={otpSubmitting}
                 className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-ink-blue text-sm font-semibold text-white transition-colors hover:bg-ink-blue/90 disabled:opacity-60"
-              >
-                <LogIn size={16} />
+            >
+                {otpSubmitting ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : <LogIn size={16} />}
                 {otpSubmitting ? t("signin.otp.verifying") : t("signin.otp.verify")}
               </button>
               <button
@@ -222,15 +223,27 @@ export default function SignInPage() {
 
           <div className="mt-6 space-y-3">
             <button
-              onClick={() => { window.location.href = "/api/auth/oauth/google?mode=signin" }}
-              className="h-11 w-full rounded-md border border-graph-line text-sm font-semibold text-ink-black transition-colors hover:bg-graph-paper"
+              type="button"
+              disabled={!!redirectingProvider}
+              onClick={() => {
+                setRedirectingProvider("google")
+                window.location.href = "/api/auth/oauth/google?mode=signin"
+              }}
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-md border border-graph-line text-sm font-semibold text-ink-black transition-colors hover:bg-graph-paper disabled:opacity-60"
             >
+              {redirectingProvider === "google" && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />}
               {t("signin.google")}
             </button>
             <button
-              onClick={() => alert(t("signin.passkeyComingSoon"))}
-              className="h-11 w-full rounded-md border border-graph-line text-sm font-semibold text-ink-black transition-colors hover:bg-graph-paper"
+              type="button"
+              disabled={!!redirectingProvider}
+              onClick={() => {
+                setRedirectingProvider("passkey")
+                window.location.href = "/api/auth/oauth/passkey"
+              }}
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-md border border-graph-line text-sm font-semibold text-ink-black transition-colors hover:bg-graph-paper disabled:opacity-60"
             >
+              {redirectingProvider === "passkey" && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />}
               {t("signin.passkey")}
             </button>
           </div>

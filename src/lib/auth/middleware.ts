@@ -218,7 +218,21 @@ export function getOrCreateDemoInstall(request: NextRequest): { installId: strin
   return { installId, token, isNew: true }
 }
 
-export async function getAuthUser(request: NextRequest): Promise<AuthUser | null> {
+interface AuthLookupOptions {
+  refreshMembership?: boolean
+}
+
+function mergeTokenIdentityWithSession(tokenUser: AuthUser, sessionUser?: AuthUser | null): AuthUser {
+  if (!sessionUser) return tokenUser
+  return {
+    ...sessionUser,
+    sub: tokenUser.sub || sessionUser.sub,
+    email: tokenUser.email || sessionUser.email,
+    name: tokenUser.name || sessionUser.name,
+  }
+}
+
+export async function getAuthUser(request: NextRequest, options: AuthLookupOptions = {}): Promise<AuthUser | null> {
   const contextToken = request.cookies.get("ff_session")?.value
   let contextUser = contextToken ? verifySessionToken(contextToken) : null
   const middlewareOrgId = request.headers.get("x-fieldflow-org-id")
@@ -227,19 +241,36 @@ export async function getAuthUser(request: NextRequest): Promise<AuthUser | null
     if (allowed) contextUser = { ...contextUser, orgId: middlewareOrgId }
   }
 
+  if (contextUser && !options.refreshMembership && contextUser.orgId && contextUser.orgs?.length) {
+    return contextUser
+  }
+
   const accessToken = request.cookies.get("ff_access")?.value
   if (accessToken) {
     const user = await verifyCognitoJWT(accessToken, contextUser ?? undefined)
-    if (user) return resolveWorkspaceMembership(user)
+    if (user) {
+      const merged = mergeTokenIdentityWithSession(user, contextUser)
+      return options.refreshMembership || !merged.orgId || !merged.orgs?.length
+        ? resolveWorkspaceMembership(merged)
+        : merged
+    }
   }
 
   const cookieToken = request.cookies.get("ff_session")?.value
   if (cookieToken) {
     const signedSessionUser = verifySessionToken(cookieToken)
-    if (signedSessionUser) return resolveWorkspaceMembership(signedSessionUser)
+    if (signedSessionUser) {
+      return options.refreshMembership || !signedSessionUser.orgId || !signedSessionUser.orgs?.length
+        ? resolveWorkspaceMembership(signedSessionUser)
+        : signedSessionUser
+    }
 
     const sessionUser = sessionTokens.get(cookieToken)
-    if (sessionUser) return resolveWorkspaceMembership(sessionUser)
+    if (sessionUser) {
+      return options.refreshMembership || !sessionUser.orgId || !sessionUser.orgs?.length
+        ? resolveWorkspaceMembership(sessionUser)
+        : sessionUser
+    }
 
     if (!cookieToken.startsWith("demo-") && !cookieToken.startsWith("session-")) {
       const user = await verifyCognitoJWT(cookieToken)
@@ -251,7 +282,11 @@ export async function getAuthUser(request: NextRequest): Promise<AuthUser | null
   const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null
   if (bearerToken) {
     const signedSessionUser = verifySessionToken(bearerToken)
-    if (signedSessionUser) return resolveWorkspaceMembership(signedSessionUser)
+    if (signedSessionUser) {
+      return options.refreshMembership || !signedSessionUser.orgId || !signedSessionUser.orgs?.length
+        ? resolveWorkspaceMembership(signedSessionUser)
+        : signedSessionUser
+    }
 
     const user = await verifyCognitoJWT(bearerToken)
     if (user) return resolveWorkspaceMembership(user)

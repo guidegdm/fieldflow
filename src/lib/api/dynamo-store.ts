@@ -106,15 +106,18 @@ function indexSk(entityType: string, attrs: Record<string, unknown>, entityId?: 
   if (entityType === "conflict") return `${String(attrs.status || "OPEN")}#${String(Number(attrs.created_at || Date.now())).padStart(13, "0")}#${entityId || ""}`
   if (entityType === "audit") return `RECORD#${String(attrs.recordId || attrs.record_id || "")}#${String(Number(attrs.timestamp || Date.now())).padStart(13, "0")}#${entityId || ""}`
   if (entityType === "inventory_ledger") return `TS#${String(Number(attrs.timestamp || Date.now())).padStart(13, "0")}#${entityId || ""}`
+  if (entityType === "demo_sandbox_metric") return `TS#${String(Number(attrs.timestamp || Date.now())).padStart(13, "0")}#${String(attrs.installId || entityId || "")}`
   return `${entityId || attrs.id || attrs.device_id || attrs.client_id || ""}`
 }
 
 function accessPaths(entityType: string, attrs: Record<string, unknown>, entityId?: string) {
   const orgId = typeof attrs.orgId === "string" ? attrs.orgId : typeof attrs.org_id === "string" ? attrs.org_id : ""
   const email = typeof attrs.email === "string" ? attrs.email.toLowerCase() : ""
+  const gsi1sk = indexSk(entityType, attrs, entityId)
+  const gsi2sk = `ORG#${orgId}#USER#${entityId || email}`
   return {
-    ...(orgId ? { gsi1pk: `ORG#${orgId}#${entityType}`, gsi1sk: indexSk(entityType, attrs, entityId) } : {}),
-    ...(entityType === "user" && email ? { gsi2pk: `EMAIL#${email}`, gsi2sk: `ORG#${orgId}#USER#${entityId || email}` } : {}),
+    ...(orgId && gsi1sk ? { gsi1pk: `ORG#${orgId}#${entityType}`, gsi1sk } : {}),
+    ...(entityType === "user" && email && orgId && gsi2sk ? { gsi2pk: `EMAIL#${email}`, gsi2sk } : {}),
   }
 }
 

@@ -1,17 +1,11 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import { setAppLanguage, type AppLanguage } from "@/lib/i18n/i18n"
-
-const LANGUAGES = [
-  { value: "fr", label: "Français" },
-  { value: "en", label: "English" },
-]
+import { LanguagePreferenceSelect } from "@/components/layout/LanguagePreferenceSelect"
 
 const SYNC_INTERVALS = [
   { value: "30", label: "30 secondes" },
@@ -21,20 +15,14 @@ const SYNC_INTERVALS = [
 ]
 
 export default function SupervisorSettingsPage() {
-  const { t, i18n } = useTranslation()
-  const [language, setLanguage] = useState(i18n.language)
+  const { t } = useTranslation()
   const [syncInterval, setSyncInterval] = useState("60")
   const [offlineMode, setOfflineMode] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
-  useEffect(() => {
-    setLanguage(i18n.resolvedLanguage?.startsWith("en") ? "en" : "fr")
-  }, [i18n.resolvedLanguage])
-
   const handleSave = async () => {
     setSaving(true)
-    await setAppLanguage(language as AppLanguage)
     await new Promise((r) => setTimeout(r, 600))
     setSaving(false)
     setSaved(true)
@@ -50,17 +38,7 @@ export default function SupervisorSettingsPage() {
           <CardTitle>{t("supervisor.preferences", "Préférences")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div>
-            <Select
-              label={t("supervisor.language", "Langue")}
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-            >
-              {LANGUAGES.map((l) => (
-                <option key={l.value} value={l.value}>{l.label}</option>
-              ))}
-            </Select>
-          </div>
+          <LanguagePreferenceSelect />
 
           <div>
             <Select

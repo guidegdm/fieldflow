@@ -5,14 +5,9 @@ import { useRouter } from "next/navigation"
 import { useAuthStore } from "@/stores/authStore"
 import { getCurrentMode } from "@/lib/network-simulator"
 import { hasAnyRoleAccess } from "@/lib/auth/roles"
+import { dashboardForRole } from "@/lib/auth/routes"
 
 const SESSION_RECHECK_MS = 60_000
-
-function homeForRole(role: string | undefined | null) {
-  if (role === "org_admin") return "/admin/dashboard"
-  if (role === "supervisor") return "/supervisor/dashboard"
-  return "/field-worker/home"
-}
 
 export function useRequireSession(allowedRoles: string[]) {
   const router = useRouter()
@@ -71,7 +66,7 @@ export function useRequireSession(allowedRoles: string[]) {
             logout()
             router.push("/")
           } else {
-            router.push(homeForRole(data.user.role))
+            router.push(dashboardForRole(data.user.role))
           }
           return
         }

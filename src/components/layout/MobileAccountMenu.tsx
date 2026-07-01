@@ -22,6 +22,7 @@ import {
 } from "lucide-react"
 import { OrgSwitcher } from "@/components/layout/OrgSwitcher"
 import { WorkflowSwitcher } from "@/components/layout/WorkflowSwitcher"
+import { LanguagePreferenceSelect } from "@/components/layout/LanguagePreferenceSelect"
 import { useAuthStore } from "@/stores/authStore"
 import { clearClientSessionState } from "@/lib/auth/client-session-cleanup"
 import { cn } from "@/lib/utils"
@@ -36,6 +37,7 @@ const mobileNavByRole: Record<AppRole, MobileNavItem[]> = {
     { labelKey: "nav.newRecord", fallback: "New", href: "/field-worker/register", icon: <Plus size={18} /> },
     { labelKey: "nav.conflicts", fallback: "Conflicts", href: "/field-worker/conflicts", icon: <AlertTriangle size={18} /> },
     { labelKey: "nav.status", fallback: "Status", href: "/field-worker/status", icon: <Activity size={18} /> },
+    { labelKey: "nav.settings", fallback: "Settings", href: "/account/settings", icon: <Settings size={18} /> },
   ],
   supervisor: [
     { labelKey: "nav.dashboard", fallback: "Dashboard", href: "/supervisor/dashboard", icon: <LayoutDashboard size={18} /> },
@@ -44,7 +46,7 @@ const mobileNavByRole: Record<AppRole, MobileNavItem[]> = {
     { labelKey: "nav.reviewQueue", fallback: "Review", href: "/supervisor/review", icon: <Inbox size={18} /> },
     { labelKey: "nav.conflicts", fallback: "Conflicts", href: "/supervisor/conflicts", icon: <AlertTriangle size={18} /> },
     { labelKey: "nav.inventory", fallback: "Inventory", href: "/supervisor/inventory", icon: <Package size={18} /> },
-    { labelKey: "nav.settings", fallback: "Settings", href: "/supervisor/settings", icon: <Settings size={18} /> },
+    { labelKey: "nav.settings", fallback: "Settings", href: "/account/settings", icon: <Settings size={18} /> },
   ],
   admin: [
     { labelKey: "nav.dashboard", fallback: "Dashboard", href: "/admin/dashboard", icon: <LayoutDashboard size={18} /> },
@@ -56,7 +58,7 @@ const mobileNavByRole: Record<AppRole, MobileNavItem[]> = {
     { labelKey: "nav.inventory", fallback: "Inventory", href: "/supervisor/inventory", icon: <Package size={18} /> },
     { labelKey: "nav.conflicts", fallback: "Conflicts", href: "/supervisor/conflicts", icon: <AlertTriangle size={18} /> },
     { labelKey: "nav.users", fallback: "Users", href: "/admin/users", icon: <Users size={18} /> },
-    { labelKey: "nav.settings", fallback: "Settings", href: "/admin/settings", icon: <Settings size={18} /> },
+    { labelKey: "nav.settings", fallback: "Settings", href: "/account/settings", icon: <Settings size={18} /> },
   ],
   engineering: [
     { labelKey: "nav.engineering", fallback: "Engineering", href: "/engineering", icon: <Activity size={18} /> },
@@ -145,7 +147,8 @@ export function MobileAccountMenu({ role }: { role: AppRole }) {
               })}
             </nav>
 
-            <div className="border-t border-graph-line px-4 py-4">
+            <div className="space-y-4 border-t border-graph-line px-4 py-4">
+              <LanguagePreferenceSelect compact />
               <div className="flex items-center gap-3">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-clay text-sm font-semibold text-white">
                   {user?.name?.charAt(0) ?? "U"}

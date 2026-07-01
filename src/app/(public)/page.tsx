@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { ArrowRight, Boxes, GitBranch, RadioTower, ShieldCheck } from "lucide-react"
 import { LandingInstallCta } from "@/components/public/LandingInstallCta"
+import { LandingWorkspaceCta } from "@/components/public/LandingWorkspaceCta"
 
 const metrics = [
   { label: "Local-first records", value: "IndexedDB" },
@@ -67,12 +68,7 @@ export default function LandingPage() {
               Try the live demo
               <ArrowRight size={16} />
             </Link>
-            <Link
-              href="/auth/signup"
-              className="inline-flex h-11 items-center rounded-md border border-ink-blue px-5 text-sm font-semibold text-ink-blue transition-colors hover:bg-ink-blue/5"
-            >
-              Create workspace
-            </Link>
+            <LandingWorkspaceCta />
             <LandingInstallCta />
           </div>
 

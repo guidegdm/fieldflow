@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useTranslation } from "react-i18next"
 import { LanguageToggle } from "@/components/layout/LanguageToggle"
+import { PublicAccountMenu } from "@/components/public/PublicAccountMenu"
 
 export function Header() {
   const { t } = useTranslation()
@@ -17,15 +18,7 @@ export function Header() {
         <Link href="/demo" className="hidden text-pencil transition-colors hover:text-ink-black sm:inline">
           {t("publicHeader.demo")}
         </Link>
-        <Link href="/auth/signin" className="hidden text-pencil transition-colors hover:text-ink-black min-[430px]:inline">
-          {t("publicHeader.signin")}
-        </Link>
-        <Link
-          href="/auth/signup"
-          className="rounded-md bg-ink-blue px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-ink-blue/90 sm:px-4"
-        >
-          {t("publicHeader.start")}
-        </Link>
+        <PublicAccountMenu />
         <LanguageToggle />
       </nav>
     </header>

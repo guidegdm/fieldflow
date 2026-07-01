@@ -6,6 +6,7 @@
   },
   "language": {
     "select": "Language",
+    "preference": "App language",
     "english": "English",
     "french": "French"
   },
@@ -104,6 +105,14 @@
     "createError": "Unable to create workspace",
     "localOnly": "local",
     "offlineCreateNote": "Offline workspaces stay on this device until you create a cloud workspace online."
+  },
+  "account": {
+    "settings": "Account settings",
+    "settingsHelp": "These preferences follow this browser/PWA across every workspace you use.",
+    "preferences": "Preferences",
+    "currentContext": "Current context",
+    "user": "User",
+    "workspace": "Workspace"
   },
   "roles": {
     "field_worker": "Field Agent",
@@ -612,7 +621,8 @@
   "publicHeader": {
     "demo": "Demo",
     "signin": "Sign in",
-    "start": "Start"
+    "start": "Start",
+    "goWorkspace": "Go to workspace"
   },
   "ai": {
     "status": {

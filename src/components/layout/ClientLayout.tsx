@@ -55,10 +55,12 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
   }, [authHydrated, languageReady, loadWorkflowsForOrg, orgId])
 
   return (
-    <I18nextProvider i18n={i18n} key={language}>
+    <I18nextProvider i18n={i18n}>
       {languageReady ? (
         <>
-          {children}
+          <div key={language} className="contents">
+            {children}
+          </div>
           <Toaster />
           <ServiceWorkerRegister />
           <OfflineWarmup />

@@ -3,6 +3,7 @@
 import { useAuthStore } from "@/stores/authStore"
 import { OrgSwitcher } from "@/components/layout/OrgSwitcher"
 import { WorkflowSwitcher } from "@/components/layout/WorkflowSwitcher"
+import { LanguagePreferenceSelect } from "@/components/layout/LanguagePreferenceSelect"
 import { cn } from "@/lib/utils"
 import { clearClientSessionState } from "@/lib/auth/client-session-cleanup"
 import { usePathname, useRouter } from "next/navigation"
@@ -22,6 +23,7 @@ const navByRole: Record<string, { labelKey: string; fallback: string; href: stri
     { labelKey: "nav.newRecord", fallback: "Nouveau", href: "/field-worker/register", icon: <Plus size={20} /> },
     { labelKey: "nav.conflicts", fallback: "Conflits", href: "/field-worker/conflicts", icon: <AlertTriangle size={20} /> },
     { labelKey: "nav.status", fallback: "Statut", href: "/field-worker/status", icon: <Activity size={20} /> },
+    { labelKey: "nav.settings", fallback: "Paramètres", href: "/account/settings", icon: <Settings size={20} /> },
   ],
   supervisor: [
     { labelKey: "nav.dashboard", fallback: "Tableau de bord", href: "/supervisor/dashboard", icon: <LayoutDashboard size={20} /> },
@@ -30,7 +32,7 @@ const navByRole: Record<string, { labelKey: string; fallback: string; href: stri
     { labelKey: "nav.reviewQueue", fallback: "File d'attente", href: "/supervisor/review", icon: <Inbox size={20} /> },
     { labelKey: "nav.conflicts", fallback: "Conflits", href: "/supervisor/conflicts", icon: <AlertTriangle size={20} /> },
     { labelKey: "nav.inventory", fallback: "Inventaire", href: "/supervisor/inventory", icon: <Package size={20} /> },
-    { labelKey: "nav.settings", fallback: "Paramètres", href: "/supervisor/settings", icon: <Settings size={20} /> },
+    { labelKey: "nav.settings", fallback: "Paramètres", href: "/account/settings", icon: <Settings size={20} /> },
   ],
   admin: [
     { labelKey: "nav.dashboard", fallback: "Tableau de bord", href: "/admin/dashboard", icon: <LayoutDashboard size={20} /> },
@@ -42,7 +44,7 @@ const navByRole: Record<string, { labelKey: string; fallback: string; href: stri
     { labelKey: "nav.inventory", fallback: "Inventaire", href: "/supervisor/inventory", icon: <Package size={20} /> },
     { labelKey: "nav.conflicts", fallback: "Conflits", href: "/supervisor/conflicts", icon: <AlertTriangle size={20} /> },
     { labelKey: "nav.users", fallback: "Utilisateurs", href: "/admin/users", icon: <Users size={20} /> },
-    { labelKey: "nav.settings", fallback: "Paramètres", href: "/admin/settings", icon: <Settings size={20} /> },
+    { labelKey: "nav.settings", fallback: "Paramètres", href: "/account/settings", icon: <Settings size={20} /> },
   ],
   engineering: [
     { labelKey: "nav.engineering", fallback: "Engineering", href: "/engineering", icon: <Activity size={20} /> },
@@ -101,7 +103,8 @@ export function Drawer({ role, open, onToggle }: DrawerProps) {
       </nav>
 
       {user && (
-        <div className="border-t border-graph-line px-4 py-4">
+        <div className="space-y-3 border-t border-graph-line px-4 py-4">
+          <LanguagePreferenceSelect compact />
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded bg-clay flex items-center justify-center text-white text-sm font-semibold shrink-0">
               {user.name?.charAt(0) ?? "U"}

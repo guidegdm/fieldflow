@@ -5,7 +5,6 @@ import { useMediaQuery } from "@/hooks/useMediaQuery"
 import { ConnectivityBar } from "@/components/layout/ConnectivityBar"
 import { TabBar } from "@/components/layout/TabBar"
 import { Drawer } from "@/components/layout/Drawer"
-import { LanguageToggle } from "@/components/layout/LanguageToggle"
 import { MobileAccountMenu } from "@/components/layout/MobileAccountMenu"
 import { useAuthStore } from "@/stores/authStore"
 import { cn } from "@/lib/utils"
@@ -122,9 +121,6 @@ export function AppShell({ children, role }: AppShellProps) {
       {isDesktop ? <Drawer role={activeRole} open onToggle={() => {}} /> : <TabBar role={activeRole} />}
       {!isDesktop && <MobileAccountMenu role={activeRole} />}
       <main className={cn("min-h-[calc(100vh-28px)] pb-24 lg:pb-0", isDesktop && "lg:pl-64")}>
-        <div className="fixed right-3 top-9 z-30 sm:right-4 lg:right-6">
-          <LanguageToggle />
-        </div>
         <div className="mx-auto w-full max-w-7xl px-4 pb-5 pt-16 sm:px-6 sm:pb-6 sm:pt-16 lg:px-8 lg:pb-8 lg:pt-20">
           {orgSwitching ? <WorkspaceSwitchSkeleton /> : <AppShellErrorBoundary>{children}</AppShellErrorBoundary>}
         </div>

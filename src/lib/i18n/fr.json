@@ -6,6 +6,7 @@
   },
   "language": {
     "select": "Langue",
+    "preference": "Langue de l'application",
     "english": "Anglais",
     "french": "Français"
   },
@@ -104,6 +105,14 @@
     "createError": "Impossible de créer l'espace",
     "localOnly": "local",
     "offlineCreateNote": "Les espaces créés hors ligne restent sur cet appareil jusqu'à la création d'un espace cloud en ligne."
+  },
+  "account": {
+    "settings": "Paramètres du compte",
+    "settingsHelp": "Ces préférences suivent ce navigateur/PWA dans tous les espaces de travail que vous utilisez.",
+    "preferences": "Préférences",
+    "currentContext": "Contexte actuel",
+    "user": "Utilisateur",
+    "workspace": "Espace de travail"
   },
   "roles": {
     "field_worker": "Agent terrain",
@@ -612,7 +621,8 @@
   "publicHeader": {
     "demo": "Démo",
     "signin": "Connexion",
-    "start": "Commencer"
+    "start": "Commencer",
+    "goWorkspace": "Aller à l'espace"
   },
   "ai": {
     "status": {

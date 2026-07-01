@@ -2,6 +2,7 @@
 
 import { useEffect } from "react"
 import { runBackgroundSync } from "@/lib/sync/run-background-sync"
+import { registerFieldFlowPeriodicMaintenance } from "@/lib/sync/register-background-sync"
 import { useAuthStore } from "@/stores/authStore"
 
 export function ServiceWorkerRegister() {
@@ -35,6 +36,7 @@ export function ServiceWorkerRegister() {
       .then((registration) => {
         registrationRef = registration
         if (navigator.onLine) void registration.update().catch(() => {})
+        void registerFieldFlowPeriodicMaintenance()
         void navigator.serviceWorker.ready.then(() => {
           if (navigator.serviceWorker.controller) return
           if (window.sessionStorage.getItem(CONTROL_RELOAD_KEY)) return

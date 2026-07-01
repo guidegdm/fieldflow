@@ -1,3 +1,40 @@
+self.FIELD_FLOW_CORE_ROUTES = [
+  "/",
+  "/demo",
+  "/auth/signin",
+  "/auth/signup",
+  "/auth/setup",
+  "/field-worker/home",
+  "/field-worker/pick-workflow",
+  "/field-worker/register",
+  "/field-worker/search",
+  "/supervisor/dashboard",
+  "/supervisor/review",
+  "/supervisor/inventory",
+  "/admin/dashboard",
+  "/admin/workflows",
+  "/admin/workflows/new",
+  "/admin/users",
+]
+
+async function cachePageUrls(urlsToCache) {
+  const cache = await caches.open("fieldflow-pages")
+  await Promise.all(urlsToCache.map(async (entry) => {
+    const [url, init] = Array.isArray(entry) ? entry : [entry, undefined]
+    if (!url) return
+    try {
+      const request = new Request(url, {
+        credentials: init?.credentials || "include",
+        cache: "reload",
+        headers: { Accept: "text/html,application/xhtml+xml" },
+      })
+      const response = await fetch(request)
+      if (response?.ok) await cache.put(request, response.clone())
+      if (response?.ok) await cache.put(url, response.clone())
+    } catch {}
+  }))
+}
+
 self.addEventListener("message", (event) => {
   if (event.data?.type !== "CACHE_URLS") return
 
@@ -6,20 +43,7 @@ self.addEventListener("message", (event) => {
     : []
 
   event.waitUntil((async () => {
-    const cache = await caches.open("fieldflow-pages")
-    await Promise.all(urlsToCache.map(async (entry) => {
-      const [url, init] = Array.isArray(entry) ? entry : [entry, undefined]
-      if (!url) return
-      try {
-        const request = new Request(url, {
-          credentials: init?.credentials || "include",
-          cache: "reload",
-        })
-        const response = await fetch(request)
-        if (response?.ok) await cache.put(request, response.clone())
-        if (response?.ok) await cache.put(url, response.clone())
-      } catch {}
-    }))
+    await cachePageUrls(urlsToCache)
     event.ports?.[0]?.postMessage({ ok: true, cached: urlsToCache.length })
   })())
 })
@@ -39,6 +63,25 @@ self.addEventListener("sync", (event) => {
   if (event.tag !== "fieldflow-sync") return
 
   event.waitUntil((async () => {
+    const clientsList = await self.clients.matchAll({
+      type: "window",
+      includeUncontrolled: true,
+    })
+    await Promise.all(clientsList.map(async (client) => {
+      client.postMessage({ type: "FIELD_FLOW_SYNC_NOW" })
+    }))
+  })())
+})
+
+self.addEventListener("periodicsync", (event) => {
+  if (event.tag !== "fieldflow-maintenance") return
+
+  event.waitUntil((async () => {
+    await cachePageUrls(self.FIELD_FLOW_CORE_ROUTES.map((url) => [
+      new URL(url, self.location.origin).href,
+      { credentials: "include" },
+    ]))
+
     const clientsList = await self.clients.matchAll({
       type: "window",
       includeUncontrolled: true,

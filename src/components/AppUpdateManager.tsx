@@ -6,7 +6,19 @@ import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 
 const VERSION_KEY = "fieldflow-app-version"
+const UPDATE_SNOOZE_KEY = "fieldflow-update-snooze"
 const CHECK_INTERVAL_MS = 10 * 60 * 1000
+const UPDATE_SNOOZE_MS = 24 * 60 * 60 * 1000
+
+function snoozeKey(version: string) {
+  return `${UPDATE_SNOOZE_KEY}:${version}`
+}
+
+function isSnoozed(version: string) {
+  const raw = window.localStorage.getItem(snoozeKey(version))
+  const value = raw ? Number(raw) : 0
+  return Number.isFinite(value) && Date.now() - value < UPDATE_SNOOZE_MS
+}
 
 async function fetchVersion() {
   const response = await fetch("/api/app-version", { cache: "no-store" })
@@ -41,7 +53,7 @@ export function AppUpdateManager() {
           window.localStorage.setItem(VERSION_KEY, latest)
           return
         }
-        if (current !== latest) setUpdateReady(true)
+        if (current !== latest && !isSnoozed(latest)) setUpdateReady(true)
       } finally {
         checking.current = false
       }
@@ -80,7 +92,17 @@ export function AppUpdateManager() {
           <p className="mt-1 text-sm leading-5 text-pencil">{t("pwa.updateBody")}</p>
           <div className="mt-3 flex flex-wrap gap-2">
             <Button size="sm" onClick={reload}>{t("pwa.update")}</Button>
-            <Button size="sm" variant="secondary" onClick={() => setUpdateReady(false)}>{t("common.later")}</Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={async () => {
+                const latest = await fetchVersion()
+                if (latest) window.localStorage.setItem(snoozeKey(latest), String(Date.now()))
+                setUpdateReady(false)
+              }}
+            >
+              {t("common.later")}
+            </Button>
           </div>
         </div>
         <button

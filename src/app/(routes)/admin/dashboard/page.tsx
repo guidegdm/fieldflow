@@ -33,15 +33,53 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    let cancelled = false
+    async function loadLocal(orgId: string) {
+      const [localWorkflows, localRecords, localConflicts, cachedUsers] = await Promise.all([
+        db.getAllWorkflowsForOrg(orgId).catch(() => []),
+        db.getAllRecordsForOrg(orgId).catch(() => []),
+        db.getConflicts(orgId).catch(() => []),
+        db.getProjection<UserRow[]>(`admin-users:${orgId}`).catch(() => undefined),
+      ])
+      if (cancelled) return
+      const projectedUsers = cachedUsers?.length ? cachedUsers : loadOfflineDemoSandbox()?.accounts
+        .filter((account) => account.org.id === orgId)
+        .map((account) => ({
+          id: account.user.id,
+          name: account.user.name,
+          email: account.user.email,
+          role: account.user.role,
+        })) ?? []
+      setWorkflows(localWorkflows.map((wf) => ({
+        id: wf.id,
+        name: wf.name,
+        version: wf.version,
+        status: wf.status,
+        count: localRecords.filter((record) => record.workflowId === wf.id).length,
+      })))
+      setUsers(projectedUsers)
+      setData({
+        workflows: localWorkflows.filter((workflow) => workflow.status !== "archived").length,
+        records: localRecords.length,
+        users: projectedUsers.length,
+        conflicts: localConflicts.filter((conflict) => conflict.status === "OPEN").length,
+      })
+      setLoading(false)
+    }
+
     async function load() {
+      const orgId = user?.orgId
+      if (orgId) void loadLocal(orgId)
       try {
         const [statsRes, workflowsRes, usersRes] = await Promise.all([
           fetch("/api/admin/stats", { credentials: "include" }).then(r => r.json()),
           fetch("/api/workflows", { credentials: "include" }).then(r => r.json()),
           fetch("/api/admin/users", { credentials: "include" }).then(r => r.ok ? r.json() : []),
         ])
+        if (cancelled) return
         setData({ workflows: statsRes.workflows ?? 0, records: statsRes.records ?? 0, users: usersRes.length, conflicts: statsRes.conflicts ?? 0 })
         setUsers(usersRes)
+        if (orgId) void db.putProjection(`admin-users:${orgId}`, usersRes, orgId)
         setWorkflows((Array.isArray(workflowsRes) ? workflowsRes : []).map((wf: { id: string; name: string; version: number; status: string; recordCount?: number }) => ({
           id: wf.id,
           name: wf.name,
@@ -50,6 +88,7 @@ export default function AdminDashboard() {
           count: wf.recordCount ?? 0,
         })))
       } catch {
+        if (cancelled) return
         const orgId = user?.orgId
         const [localWorkflows, localRecords, localConflicts] = await Promise.all([
           orgId ? db.getAllWorkflowsForOrg(orgId).catch(() => []) : Promise.resolve([]),
@@ -79,9 +118,10 @@ export default function AdminDashboard() {
           conflicts: localConflicts.filter((conflict) => conflict.status === "OPEN").length,
         })
       }
-      setLoading(false)
+      if (!cancelled) setLoading(false)
     }
     load()
+    return () => { cancelled = true }
   }, [user?.orgId])
 
   return (

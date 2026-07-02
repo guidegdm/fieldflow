@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 import { apiPost, apiGet } from "@/lib/api/client"
 import { useAuthStore } from "@/stores/authStore"
+import { db } from "@/lib/db/indexeddb"
 
 type InventoryItem = {
   itemId: string
@@ -26,28 +27,33 @@ export default function SupervisorInventory() {
   const [feedback, setFeedback] = useState<{ type: "success" | "danger"; message: string } | null>(null)
 
   useEffect(() => {
+    let cancelled = false
     async function load() {
+      if (user?.orgId) {
+        const cached = await db.getProjection<InventoryItem[]>(`inventory:${user.orgId}`).catch(() => undefined)
+        if (!cancelled && cached) {
+          setItems(cached)
+          setPageLoading(false)
+        }
+      }
       try {
         const data = await apiGet<InventoryItem[]>("/api/critical/inventory")
+        if (cancelled) return
         setItems(data)
         if (user?.orgId) {
-          window.localStorage.setItem(`fieldflow-inventory-${user.orgId}`, JSON.stringify({ savedAt: Date.now(), items: data }))
+          void db.putProjection(`inventory:${user.orgId}`, data, user.orgId)
         }
         setPageLoading(false)
         return
       } catch {
-        if (user?.orgId) {
-          try {
-            const cached = JSON.parse(window.localStorage.getItem(`fieldflow-inventory-${user.orgId}`) || "null") as { items?: InventoryItem[] } | null
-            setItems(Array.isArray(cached?.items) ? cached.items : [])
-          } catch { setItems([]) }
-        } else {
+        if (!user?.orgId) {
           setItems([])
         }
       }
-      setPageLoading(false)
+      if (!cancelled) setPageLoading(false)
     }
     load()
+    return () => { cancelled = true }
   }, [user?.orgId])
 
   const handleReserve = async (itemId: string) => {
@@ -61,7 +67,9 @@ export default function SupervisorInventory() {
         quantity: 1,
       })
       if (res.success) {
-        setItems((prev) => prev.map((i) => (i.itemId === itemId ? { ...i, available: i.available - 1 } : i)))
+        const nextItems = items.map((i) => (i.itemId === itemId ? { ...i, available: i.available - 1 } : i))
+        setItems(nextItems)
+        if (user?.orgId) void db.putProjection(`inventory:${user.orgId}`, nextItems, user.orgId)
         setFeedback({ type: "success", message: t("inventory.reserveSuccess") })
       } else {
         setFeedback({ type: "danger", message: res.error || t("inventory.reserveFailed") })

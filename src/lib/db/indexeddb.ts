@@ -11,10 +11,18 @@ interface FieldFlowTypes {
   attachments: LocalAttachment
   device_state: DeviceState
   conflicts: ConflictRecord
+  projections: ProjectionEntry
 }
 
 let instance: IDBPDatabase<FieldFlowTypes> | null = null
 let instancePromise: Promise<IDBPDatabase<FieldFlowTypes>> | null = null
+
+type ProjectionEntry = {
+  key: string
+  value: unknown
+  updatedAt: number
+  orgId?: string
+}
 
 type ScopedRecordData = RecordData & { remoteId?: string }
 type ScopedWorkflowDefinition = WorkflowDefinition & { remoteId?: string }
@@ -107,7 +115,7 @@ function defaultDeviceState(): DeviceState {
 
 async function getDB(): Promise<IDBPDatabase<FieldFlowTypes>> {
   if (instance) return instance
-  instancePromise ??= openDB<FieldFlowTypes>("fieldflow", 2, {
+  instancePromise ??= openDB<FieldFlowTypes>("fieldflow", 3, {
       upgrade(db) {
         if (!db.objectStoreNames.contains("mutations")) db.createObjectStore("mutations", { keyPath: "client_id" })
         if (!db.objectStoreNames.contains("records")) db.createObjectStore("records", { keyPath: "id" })
@@ -115,6 +123,7 @@ async function getDB(): Promise<IDBPDatabase<FieldFlowTypes>> {
         if (!db.objectStoreNames.contains("attachments")) db.createObjectStore("attachments", { keyPath: "id" })
         if (!db.objectStoreNames.contains("device_state")) db.createObjectStore("device_state", { keyPath: "key" })
         if (!db.objectStoreNames.contains("conflicts")) db.createObjectStore("conflicts", { keyPath: "id" })
+        if (!db.objectStoreNames.contains("projections")) db.createObjectStore("projections", { keyPath: "key" })
       },
     }).then((db) => {
       instance = db
@@ -138,7 +147,19 @@ export const db = {
       d.clear("attachments"),
       d.clear("device_state"),
       d.clear("conflicts"),
+      d.clear("projections"),
     ])
+  },
+
+  async putProjection<T>(key: string, value: T, orgId?: string) {
+    const d = await getDB()
+    await d.put("projections", { key, value, orgId, updatedAt: Date.now() })
+  },
+
+  async getProjection<T>(key: string): Promise<T | undefined> {
+    const d = await getDB()
+    const entry = await d.get("projections", key)
+    return entry?.value as T | undefined
   },
 
   async enqueueMutation(m: MutationEntry) {

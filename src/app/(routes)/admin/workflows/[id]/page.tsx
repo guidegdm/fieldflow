@@ -20,7 +20,11 @@ import { QuestionCard } from "@/components/ai/QuestionCard"
 import { useAgentStore } from "@/stores/agentStore"
 import { db } from "@/lib/db/indexeddb"
 import { invalidate } from "@/lib/invalidation"
+import { requestPipelineSync } from "@/lib/sync/pipeline-coordinator"
+import { registerFieldFlowBackgroundSync } from "@/lib/sync/register-background-sync"
+import { useSyncStore } from "@/stores/syncStore"
 import type { DemoUser } from "@/types/auth"
+import type { MutationEntry } from "@/types/sync"
 import type { WorkflowDefinition } from "@/types/workflow"
 
 const MODE_TABS = [
@@ -171,7 +175,7 @@ export default function WorkflowBuilder() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
   const { user } = useAuthStore()
-  const { workflow, setWorkflow, updateWorkflow, addState, removeState, addTransition, removeTransition, publish } = useWorkflowStore()
+  const { workflow, setWorkflow, updateWorkflow, addState, removeState, addTransition, removeTransition } = useWorkflowStore()
   const agentPhase = useAgentStore((s) => s.phase)
   const startGeneration = useAgentStore((s) => s.startGeneration)
 
@@ -229,28 +233,41 @@ export default function WorkflowBuilder() {
 
   const stateColor = (key: string) => STATE_COLORS[key] ?? "#6B7280"
 
+  const queueWorkflowDefinition = async (nextWorkflow: WorkflowDefinition, reason: string) => {
+    if (!user?.orgId) return nextWorkflow
+    const deviceId = user.deviceId || "workflow-builder"
+    const mutation: MutationEntry = {
+      client_id: `workflow-${nextWorkflow.id}-${nextWorkflow.status}-${nextWorkflow.version}-${Date.now()}`,
+      device_id: deviceId,
+      operation: "workflow_definition",
+      resource: "workflow",
+      workflow_id: nextWorkflow.id,
+      record_id: null,
+      payload: nextWorkflow,
+      client_timestamp: Date.now(),
+      base_version: Math.max(0, nextWorkflow.version - (nextWorkflow.status === "published" ? 1 : 0)),
+      base_fields: {},
+      status: "PENDING",
+      retry_count: 0,
+      last_error: null,
+      enqueued_at: Date.now(),
+    }
+    await db.saveWorkflow(nextWorkflow)
+    await db.enqueueMutation(mutation)
+    void registerFieldFlowBackgroundSync()
+    useSyncStore.getState().setPendingCount((await db.getPendingMutations()).length)
+    setWorkflow(nextWorkflow)
+    invalidate(["workflows", "sync"])
+    setLastSaved(new Date())
+    void requestPipelineSync(user, { reason, retry: true })
+    return nextWorkflow
+  }
+
   const persistWorkflow = async () => {
     const currentWorkflow = useWorkflowStore.getState().workflow
     if (!currentWorkflow) return null
-    const updatedWorkflow = { ...currentWorkflow, updatedAt: new Date().toISOString() }
-    const res = await fetch(`/api/workflows/${updatedWorkflow.id}/definition`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(updatedWorkflow),
-    })
-    if (!res.ok) {
-      await db.saveWorkflow(updatedWorkflow)
-      setWorkflow(updatedWorkflow)
-      setLastSaved(new Date())
-      return updatedWorkflow as WorkflowDefinition
-    }
-    const saved = await res.json()
-    await db.saveWorkflow(saved)
-    setWorkflow(saved)
-    invalidate(["workflows"])
-    setLastSaved(new Date())
-    return saved as WorkflowDefinition
+    const updatedWorkflow = { ...currentWorkflow, orgId: user?.orgId || currentWorkflow.orgId, updatedAt: new Date().toISOString() }
+    return queueWorkflowDefinition(updatedWorkflow as WorkflowDefinition, "workflow-save")
   }
 
   const handleSave = async () => {
@@ -267,8 +284,18 @@ export default function WorkflowBuilder() {
   }
 
   const handlePublish = async () => {
-    await persistWorkflow()
-    await publish()
+    const currentWorkflow = useWorkflowStore.getState().workflow
+    if (!currentWorkflow) return
+    const now = new Date().toISOString()
+    const publishedWorkflow: WorkflowDefinition = {
+      ...currentWorkflow,
+      orgId: user?.orgId || currentWorkflow.orgId,
+      status: "published",
+      version: currentWorkflow.version + 1,
+      updatedAt: now,
+      publishedAt: now,
+    }
+    await queueWorkflowDefinition(publishedWorkflow, "workflow-publish")
     invalidate(["workflows"])
     setPublishConfirm(false)
     setLastSaved(new Date())

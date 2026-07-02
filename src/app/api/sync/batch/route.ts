@@ -7,6 +7,7 @@ import type { ConflictRecord } from "@/types/sync"
 import type { RecordData } from "@/types/record"
 import type { WorkflowDefinition, WorkflowField } from "@/types/workflow"
 import { hasAnyRoleAccess } from "@/lib/auth/roles"
+import { validateWorkflowDefinition } from "@/lib/workflows/validate-definition"
 
 const mutationSchema = z.object({
   client_id: z.string().min(1),
@@ -187,6 +188,12 @@ export async function POST(request: NextRequest) {
           failed.push({ client_id: op.client_id, reason: "INVALID_WORKFLOW_DEFINITION" })
           continue
         }
+        const workflowDefinition = op.payload as WorkflowDefinition
+        const workflowErrors = validateWorkflowDefinition(workflowDefinition)
+        if (workflowErrors.length > 0) {
+          failed.push({ client_id: op.client_id, reason: `INVALID_WORKFLOW_DEFINITION:${workflowErrors[0]?.message || "validation_failed"}` })
+          continue
+        }
         const existingWorkflow = await store.getWorkflowForOrgAsync(op.workflow_id, user.orgId)
         if ((existingWorkflow as (WorkflowDefinition & { lastMutationId?: string }) | undefined)?.lastMutationId === op.client_id) {
           await store.completeMutationForOrg({ ...op, payload: existingWorkflow, expiresAt: demoExpiresAt }, user.orgId)
@@ -197,8 +204,8 @@ export async function POST(request: NextRequest) {
           acked.push(op.client_id)
           continue
         }
-        await store.putWorkflowForOrg(withMutationStamp(op.payload as WorkflowDefinition & Record<string, unknown>, op.client_id) as unknown as WorkflowDefinition)
-        await store.completeMutationForOrg({ ...op, payload: withMutationStamp(op.payload as Record<string, unknown>, op.client_id), expiresAt: demoExpiresAt }, user.orgId)
+        await store.putWorkflowForOrg(withMutationStamp(workflowDefinition as WorkflowDefinition & Record<string, unknown>, op.client_id) as unknown as WorkflowDefinition)
+        await store.completeMutationForOrg({ ...op, payload: withMutationStamp(workflowDefinition as unknown as Record<string, unknown>, op.client_id), expiresAt: demoExpiresAt }, user.orgId)
         acked.push(op.client_id)
         continue
       }

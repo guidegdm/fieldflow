@@ -42,7 +42,7 @@ const Tabs = forwardRef<HTMLDivElement, TabsProps>(
 )
 Tabs.displayName = "Tabs"
 
-interface TabsListProps extends React.HTMLAttributes<HTMLDivElement> {}
+type TabsListProps = React.HTMLAttributes<HTMLDivElement>
 
 const TabsList = forwardRef<HTMLDivElement, TabsListProps>(({ className, ...props }, ref) => (
   <div ref={ref} className={cn("inline-flex h-10 items-center gap-0 border-b border-graph-line", className)} {...props} />

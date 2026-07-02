@@ -520,6 +520,7 @@
     "subtitle": "Access your secure field workspace.",
     "email": "Email address",
     "password": "Password",
+    "passwordHelp": "Use at least 8 characters with uppercase, lowercase, number, and symbol.",
     "submit": "Sign in",
     "submitting": "Signing in...",
     "forgotPassword": "Forgot password?",
@@ -568,7 +569,8 @@
     "errors": {
       "default": "Unable to create the account",
       "network": "Network error",
-      "confirm": "Invalid or expired verification code"
+      "confirm": "Invalid or expired verification code",
+      "passwordPolicy": "Use at least 8 characters with uppercase, lowercase, number, and symbol."
     },
     "sectors": {
       "humanitarian": "Humanitarian",
@@ -595,6 +597,7 @@
     "confirmSubtitle": "Enter the code from your inbox and choose a new password.",
     "code": "Reset code",
     "newPassword": "New password",
+    "passwordHelp": "Use at least 8 characters with uppercase, lowercase, number, and symbol.",
     "sendCode": "Send reset code",
     "savePassword": "Save new password",
     "resend": "Resend code",

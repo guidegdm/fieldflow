@@ -520,6 +520,7 @@
     "subtitle": "Accédez à votre espace terrain sécurisé.",
     "email": "Adresse email",
     "password": "Mot de passe",
+    "passwordHelp": "Utilisez au moins 8 caractères avec une majuscule, une minuscule, un chiffre et un symbole.",
     "submit": "Se connecter",
     "submitting": "Connexion...",
     "forgotPassword": "Mot de passe oublié ?",
@@ -568,7 +569,8 @@
     "errors": {
       "default": "Impossible de créer le compte",
       "network": "Erreur réseau",
-      "confirm": "Code de vérification invalide ou expiré"
+      "confirm": "Code de vérification invalide ou expiré",
+      "passwordPolicy": "Utilisez au moins 8 caractères avec une majuscule, une minuscule, un chiffre et un symbole."
     },
     "sectors": {
       "humanitarian": "Humanitaire",
@@ -595,6 +597,7 @@
     "confirmSubtitle": "Entrez le code reçu puis choisissez un nouveau mot de passe.",
     "code": "Code de réinitialisation",
     "newPassword": "Nouveau mot de passe",
+    "passwordHelp": "Utilisez au moins 8 caractères avec une majuscule, une minuscule, un chiffre et un symbole.",
     "sendCode": "Envoyer le code",
     "savePassword": "Enregistrer le nouveau mot de passe",
     "resend": "Renvoyer le code",

@@ -135,7 +135,7 @@ export default function FieldWorkerStatus() {
             <p className="text-xs text-ink-red">Espace de stockage faible. Synchronisez puis libérez de l&apos;espace.</p>
           ) : (
             <p className="text-xs text-pencil">
-              {quota.quota > 0 ? `${formatBytes(quota.quota)} disponibles au total` : "Estimation indisponible"}
+              FieldFlow utilise {formatBytes(quota.usage)} dans le stockage local de ce navigateur.
             </p>
           )}
         </div>

@@ -11,12 +11,13 @@ import { z } from "zod"
 import { useAuthStore } from "@/stores/authStore"
 import { Select } from "@/components/ui/select"
 import { WORKSPACE_SECTORS } from "@/lib/workspaces/sectors"
+import { COGNITO_PASSWORD_REQUIREMENT } from "@/lib/auth/password-policy"
 
 const signUpSchema = z.object({
-  email: z.string().min(1),
-  name: z.string().min(1),
-  password: z.string().min(8),
-  orgName: z.string().min(1),
+  email: z.string().trim().toLowerCase().email(),
+  name: z.string().trim().min(1),
+  password: z.string().regex(COGNITO_PASSWORD_REQUIREMENT, "passwordPolicy"),
+  orgName: z.string().trim().min(1),
   orgSector: z.enum(WORKSPACE_SECTORS),
 })
 
@@ -48,7 +49,8 @@ export default function SignUpPage() {
       })
 
       if (!res.ok) {
-        setError(t("signup.errors.default"))
+        const data = await res.json().catch(() => null) as { error?: string } | null
+        setError(data?.error || t("signup.errors.default"))
         return
       }
 
@@ -213,7 +215,14 @@ export default function SignUpPage() {
                 aria-invalid={!!errors.password}
                 className="h-11 w-full rounded-md border border-graph-line px-3 text-base focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ink-blue sm:text-sm"
               />
-              {errors.password && <p className="mt-1 text-sm text-danger-500">{t("common.required")}</p>}
+              <p className="mt-1 text-xs leading-5 text-pencil">
+                {t("signup.passwordHelp")}
+              </p>
+              {errors.password && (
+                <p className="mt-1 text-sm text-danger-500">
+                  {errors.password.message === "passwordPolicy" ? t("signup.errors.passwordPolicy") : t("common.required")}
+                </p>
+              )}
             </div>
 
             <hr className="border-grid-line" />

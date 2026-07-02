@@ -4,6 +4,7 @@ import { z } from "zod"
 import { createSessionToken, setAccessCookie, setRefreshCookie, setSessionCookie, verifyCognitoJWT } from "@/lib/auth/middleware"
 import { checkRateLimit } from "@/lib/auth/rate-limit"
 import { resolveWorkspaceMembership, responseOrgContext } from "@/lib/auth/workspace-membership"
+import { COGNITO_PASSWORD_REQUIREMENT } from "@/lib/auth/password-policy"
 
 const CLIENT_ID = process.env.COGNITO_CLIENT_ID || "7r60o7fnej4vitoksrp6e93n9g"
 const REGION = process.env.AWS_REGION || "us-east-1"
@@ -15,6 +16,8 @@ const otpSchema = z.object({
   session: z.string().min(1),
   challengeName: z.enum(["EMAIL_OTP", "SMS_MFA", "SOFTWARE_TOKEN_MFA", "NEW_PASSWORD_REQUIRED"]),
 })
+
+const passwordPolicyError = "Le mot de passe doit contenir au moins 8 caractères, une majuscule, une minuscule, un chiffre et un symbole."
 
 function getCognitoClient() {
   return new CognitoIdentityProviderClient({ region: REGION })
@@ -42,6 +45,9 @@ export async function POST(request: NextRequest) {
   const { email, code, newPassword, session, challengeName } = parsed.data
   const challengeValue = challengeName === "NEW_PASSWORD_REQUIRED" ? newPassword : code
   if (!challengeValue) return NextResponse.json({ error: "Code invalide" }, { status: 400 })
+  if (challengeName === "NEW_PASSWORD_REQUIRED" && !COGNITO_PASSWORD_REQUIREMENT.test(challengeValue)) {
+    return NextResponse.json({ error: passwordPolicyError }, { status: 400 })
+  }
 
   try {
     const result = await getCognitoClient().send(new RespondToAuthChallengeCommand({
@@ -75,7 +81,10 @@ export async function POST(request: NextRequest) {
     if (refreshToken) response.headers.append("Set-Cookie", setRefreshCookie(refreshToken))
     response.headers.append("Set-Cookie", setSessionCookie(contextToken, 3600))
     return response
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.name === "InvalidPasswordException") {
+      return NextResponse.json({ error: passwordPolicyError }, { status: 400 })
+    }
     return NextResponse.json({ error: "Code invalide" }, { status: 401 })
   }
 }

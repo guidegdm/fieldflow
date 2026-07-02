@@ -9,6 +9,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { useAuthStore } from "@/stores/authStore"
+import { COGNITO_PASSWORD_REQUIREMENT } from "@/lib/auth/password-policy"
 
 const signInSchema = z.object({
   email: z.string().min(1),
@@ -91,6 +92,10 @@ export default function SignInPage() {
   const onOtpSubmit = async ({ code }: OtpValues) => {
     if (!challenge) return
     setError("")
+    if (challenge.challengeName === "NEW_PASSWORD_REQUIRED" && !COGNITO_PASSWORD_REQUIREMENT.test(code)) {
+      setError(t("signup.errors.passwordPolicy"))
+      return
+    }
 
     try {
       const res = await fetch("/api/auth/otp", {
@@ -210,6 +215,9 @@ export default function SignInPage() {
                   aria-invalid={!!otpErrors.code}
                   className="h-11 w-full rounded-md border border-graph-line px-3 text-base focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ink-blue sm:text-sm"
                 />
+                {challenge.challengeName === "NEW_PASSWORD_REQUIRED" && (
+                  <p className="mt-1 text-xs leading-5 text-pencil">{t("signup.passwordHelp")}</p>
+                )}
                 {otpErrors.code && <p className="mt-1 text-sm text-danger-500">{t("common.required")}</p>}
               </div>
               <button

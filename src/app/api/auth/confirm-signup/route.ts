@@ -10,6 +10,7 @@ import { createSessionToken, setAccessCookie, setRefreshCookie, setSessionCookie
 import { checkRateLimit } from "@/lib/auth/rate-limit"
 import { getStore } from "@/lib/api/in-memory-store"
 import { generateId } from "@/lib/utils"
+import { COGNITO_PASSWORD_REQUIREMENT } from "@/lib/auth/password-policy"
 
 const CLIENT_ID = process.env.COGNITO_CLIENT_ID || "7r60o7fnej4vitoksrp6e93n9g"
 const POOL_ID = process.env.COGNITO_POOL_ID || process.env.NEXT_PUBLIC_COGNITO_POOL_ID || "us-east-1_kpjmcFVqD"
@@ -18,11 +19,13 @@ const REGION = process.env.AWS_REGION || "us-east-1"
 const confirmSchema = z.object({
   email: z.string().min(1),
   code: z.string().min(4).max(12),
-  password: z.string().min(8).max(128),
+  password: z.string().regex(COGNITO_PASSWORD_REQUIREMENT),
   name: z.string().min(1).max(120),
   orgName: z.string().min(1).max(160),
   orgSector: z.string().min(1).max(80).optional(),
 })
+
+const passwordPolicyError = "Le mot de passe doit contenir au moins 8 caractères, une majuscule, une minuscule, un chiffre et un symbole."
 
 function getCognitoClient() {
   return new CognitoIdentityProviderClient({
@@ -43,8 +46,14 @@ export async function POST(request: Request) {
     )
   }
 
-  const parsed = confirmSchema.safeParse(await request.json())
-  if (!parsed.success) return NextResponse.json({ error: "Requête invalide" }, { status: 400 })
+  const body = await request.json()
+  const parsed = confirmSchema.safeParse(body)
+  if (!parsed.success) {
+    if (typeof body?.password === "string" && !COGNITO_PASSWORD_REQUIREMENT.test(body.password)) {
+      return NextResponse.json({ error: passwordPolicyError }, { status: 400 })
+    }
+    return NextResponse.json({ error: "Requête invalide" }, { status: 400 })
+  }
 
   const { email, code, password, name, orgName, orgSector } = parsed.data
   const cognito = getCognitoClient()

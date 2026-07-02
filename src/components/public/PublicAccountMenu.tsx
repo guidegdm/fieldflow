@@ -60,7 +60,7 @@ export function PublicAccountMenu() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-12 z-50 w-[min(20rem,calc(100vw-1.5rem))] rounded-lg border border-graph-line bg-white p-2 shadow-xl">
+        <div className="fixed left-1/2 top-16 z-50 max-h-[calc(100dvh-5rem)] w-[min(22rem,calc(100vw-1.5rem))] -translate-x-1/2 overflow-y-auto overscroll-contain rounded-lg border border-graph-line bg-white p-2 shadow-xl sm:absolute sm:left-auto sm:right-0 sm:top-12 sm:max-h-[calc(100dvh-5.5rem)] sm:w-80 sm:translate-x-0">
           <div className="border-b border-graph-line px-2 pb-2">
             <p className="truncate text-sm font-medium text-ink-black">{user.name || user.email}</p>
             <p className="mt-0.5 truncate text-xs text-pencil">{org?.name || t("workspace.current", "Workspace")}</p>

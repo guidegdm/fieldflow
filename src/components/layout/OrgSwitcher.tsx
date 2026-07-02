@@ -144,14 +144,14 @@ export function OrgSwitcher() {
       </button>
 
       {createOpen && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center px-4 py-6">
+        <div className="fixed inset-0 z-[80] flex items-start justify-center overflow-y-auto overscroll-contain px-3 py-4 sm:items-center sm:px-4 sm:py-6">
           <button
             type="button"
             className="absolute inset-0 bg-ink-black/35 backdrop-blur-sm"
             aria-label={t("common.close", "Close")}
             onClick={() => !creating && setCreateOpen(false)}
           />
-          <div className="relative w-full max-w-md rounded-2xl border border-graph-line bg-white p-5 shadow-2xl">
+          <div className="relative max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-graph-line bg-white p-5 shadow-2xl sm:max-h-[calc(100dvh-3rem)]">
             <div>
               <p className="font-display text-2xl font-semibold tracking-tight text-lake-deep">
                 {t("workspace.createTitle", "Create workspace")}

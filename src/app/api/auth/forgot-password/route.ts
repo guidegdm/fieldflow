@@ -8,6 +8,7 @@ import {
   ForgotPasswordCommand,
 } from "@aws-sdk/client-cognito-identity-provider"
 import { checkRateLimit } from "@/lib/auth/rate-limit"
+import { createTemporaryPassword } from "@/lib/auth/password-policy"
 
 const CLIENT_ID = process.env.COGNITO_CLIENT_ID || "7r60o7fnej4vitoksrp6e93n9g"
 const POOL_ID = process.env.COGNITO_POOL_ID || process.env.NEXT_PUBLIC_COGNITO_POOL_ID || "us-east-1_kpjmcFVqD"
@@ -57,6 +58,7 @@ export async function POST(request: Request) {
         UserPoolId: POOL_ID,
         Username: username,
         MessageAction: "RESEND",
+        TemporaryPassword: createTemporaryPassword(),
         DesiredDeliveryMediums: ["EMAIL"],
       }))
       return NextResponse.json({ success: true, mode: "temporary_password" })

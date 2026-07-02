@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next"
 import { ArrowLeft, KeyRound, MailCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { COGNITO_PASSWORD_REQUIREMENT } from "@/lib/auth/password-policy"
 
 export default function ResetPasswordPage() {
   const { t } = useTranslation()
@@ -50,7 +51,7 @@ export default function ResetPasswordPage() {
   }
 
   async function confirmReset() {
-    if (!email.trim() || !code.trim() || password.length < 8) return
+    if (!email.trim() || !code.trim() || !COGNITO_PASSWORD_REQUIREMENT.test(password)) return
     setBusy(true)
     setError("")
     try {
@@ -133,6 +134,7 @@ export default function ResetPasswordPage() {
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                 />
+                <p className="text-xs leading-5 text-pencil">{t("reset.passwordHelp")}</p>
               </>
             )}
 
@@ -145,7 +147,7 @@ export default function ResetPasswordPage() {
                 type="button"
                 className="w-full"
                 loading={busy}
-                disabled={step === "request" ? !email.trim() : !email.trim() || !code.trim() || password.length < 8}
+                disabled={step === "request" ? !email.trim() : !email.trim() || !code.trim() || !COGNITO_PASSWORD_REQUIREMENT.test(password)}
                 onClick={step === "request" ? requestReset : confirmReset}
               >
                 {step === "request" ? t("reset.sendCode") : t("reset.savePassword")}

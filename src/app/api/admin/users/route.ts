@@ -10,6 +10,7 @@ import { getStore } from "@/lib/api/in-memory-store"
 import { getAuthUser } from "@/lib/auth/middleware"
 import type { UserRole } from "@/types/auth"
 import { generateId } from "@/lib/utils"
+import { createTemporaryPassword } from "@/lib/auth/password-policy"
 
 const POOL_ID = process.env.COGNITO_POOL_ID || process.env.NEXT_PUBLIC_COGNITO_POOL_ID || "us-east-1_kpjmcFVqD"
 const REGION = process.env.AWS_REGION || "us-east-1"
@@ -94,6 +95,7 @@ export async function POST(request: NextRequest) {
         await cognito.send(new AdminCreateUserCommand({
           UserPoolId: POOL_ID,
           Username: email,
+          TemporaryPassword: createTemporaryPassword(),
           DesiredDeliveryMediums: ["EMAIL"],
           UserAttributes: [
             { Name: "email", Value: email },

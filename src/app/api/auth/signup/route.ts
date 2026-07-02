@@ -81,6 +81,7 @@ export async function POST(request: Request) {
               requiresConfirmation: true,
               email,
               resent: true,
+              passwordRetained: true,
               delivery: resent.CodeDeliveryDetails ?? null,
               message: "Verification code resent",
             })

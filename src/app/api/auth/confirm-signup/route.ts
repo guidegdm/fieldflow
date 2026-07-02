@@ -101,11 +101,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Impossible de créer l'organisation. Vérifiez la configuration DynamoDB." }, { status: 503 })
   }
 
-  const auth = await cognito.send(new InitiateAuthCommand({
-    AuthFlow: "USER_PASSWORD_AUTH",
-    ClientId: CLIENT_ID,
-    AuthParameters: { USERNAME: email, PASSWORD: password },
-  }))
+  let auth
+  try {
+    auth = await cognito.send(new InitiateAuthCommand({
+      AuthFlow: "USER_PASSWORD_AUTH",
+      ClientId: CLIENT_ID,
+      AuthParameters: { USERNAME: email, PASSWORD: password },
+    }))
+  } catch (error) {
+    if (error instanceof Error && error.name === "NotAuthorizedException") {
+      return NextResponse.json({
+        success: true,
+        verified: true,
+        signinRequired: true,
+        redirect: `/auth/signin?email=${encodeURIComponent(email)}&verified=1`,
+      })
+    }
+    throw error
+  }
   const idToken = auth.AuthenticationResult?.IdToken
   const accessToken = auth.AuthenticationResult?.AccessToken
   const refreshToken = auth.AuthenticationResult?.RefreshToken

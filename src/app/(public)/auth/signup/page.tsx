@@ -22,6 +22,16 @@ const signUpSchema = z.object({
 })
 
 type SignUpValues = z.infer<typeof signUpSchema>
+type PendingSignUp = SignUpValues & { passwordRetained?: boolean }
+type SetAuthFromApi = ReturnType<typeof useAuthStore.getState>["setAuthFromApi"]
+type SignupResponse = {
+  requiresConfirmation?: boolean
+  passwordRetained?: boolean
+  user?: Parameters<SetAuthFromApi>[0]
+  org?: Parameters<SetAuthFromApi>[1]
+  orgs?: Parameters<SetAuthFromApi>[2]
+  redirect?: string
+}
 
 const signupErrorKeys: Record<string, string> = {
   email_exists: "signup.errors.emailExists",
@@ -38,7 +48,8 @@ export default function SignUpPage() {
   const router = useRouter()
   const setAuthFromApi = useAuthStore((s) => s.setAuthFromApi)
   const [error, setError] = useState("")
-  const [pendingSignup, setPendingSignup] = useState<SignUpValues | null>(null)
+  const [info, setInfo] = useState("")
+  const [pendingSignup, setPendingSignup] = useState<PendingSignUp | null>(null)
   const [verificationCode, setVerificationCode] = useState("")
   const [confirming, setConfirming] = useState(false)
   const [redirectingGoogle, setRedirectingGoogle] = useState(false)
@@ -49,6 +60,7 @@ export default function SignUpPage() {
 
   const onSubmit = async ({ email, name, password, orgName, orgSector }: SignUpValues) => {
     setError("")
+    setInfo("")
 
     try {
       const res = await fetch("/api/auth/signup", {
@@ -65,9 +77,10 @@ export default function SignUpPage() {
         return
       }
 
-      const data = await res.json()
+      const data = await res.json() as SignupResponse
       if (data.requiresConfirmation) {
-        setPendingSignup({ email, name, password, orgName, orgSector })
+        setPendingSignup({ email, name, password, orgName, orgSector, passwordRetained: data.passwordRetained })
+        if (data.passwordRetained) setInfo(t("signup.originalPasswordNotice"))
         return
       }
       if (data.user && data.org) setAuthFromApi(data.user, data.org, data.orgs)
@@ -81,6 +94,7 @@ export default function SignUpPage() {
     if (!pendingSignup || !verificationCode.trim()) return
     setConfirming(true)
     setError("")
+    setInfo("")
     try {
       const res = await fetch("/api/auth/confirm-signup", {
         method: "POST",
@@ -89,10 +103,15 @@ export default function SignUpPage() {
         body: JSON.stringify({ ...pendingSignup, code: verificationCode.trim() }),
       })
       if (!res.ok) {
-        setError(t("signup.errors.confirm"))
+        const data = await res.json().catch(() => null) as { error?: string } | null
+        setError(data?.error || t("signup.errors.confirm"))
         return
       }
-      const data = await res.json()
+      const data = await res.json() as SignupResponse & { signinRequired?: boolean }
+      if (data.signinRequired) {
+        router.push(data.redirect || `/auth/signin?email=${encodeURIComponent(pendingSignup.email)}&verified=1`)
+        return
+      }
       if (data.user && data.org) setAuthFromApi(data.user, data.org, data.orgs)
       router.push(data.redirect || "/admin/dashboard")
     } catch {
@@ -147,6 +166,11 @@ export default function SignUpPage() {
               {error}
             </div>
           )}
+          {info && (
+            <div className="mt-4 rounded-md border border-ink-blue/20 bg-ink-blue/5 px-4 py-2 text-sm text-ink-blue">
+              {info}
+            </div>
+          )}
 
           {pendingSignup ? (
             <div className="mt-6 space-y-4">
@@ -178,6 +202,7 @@ export default function SignUpPage() {
                 onClick={() => {
                   setPendingSignup(null)
                   setVerificationCode("")
+                  setInfo("")
                 }}
                 className="h-10 w-full rounded-md border border-graph-line text-sm font-medium text-pencil transition-colors hover:bg-graph-paper hover:text-ink-black"
               >

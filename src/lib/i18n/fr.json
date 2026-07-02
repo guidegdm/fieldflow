@@ -570,6 +570,7 @@
     "google": "Continuer avec Google",
     "hasAccount": "Déjà un compte ?",
     "signin": "Se connecter",
+    "originalPasswordNotice": "Ce compte existait déjà mais n'était pas vérifié. Cognito garde le mot de passe original. Vérifiez l'email, puis connectez-vous avec le mot de passe utilisé la première fois ou réinitialisez-le.",
     "errors": {
       "default": "Impossible de créer le compte",
       "network": "Erreur réseau",

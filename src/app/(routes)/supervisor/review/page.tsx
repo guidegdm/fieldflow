@@ -33,17 +33,17 @@ function fieldValue(record: RecordData | null, keys: string[], fallback = "-") {
   return fallback
 }
 
-function buildTimeline(record: RecordData): Array<{ label: string; timestamp: number; actor: string; status: TimelineStatus }> {
+function buildTimeline(record: RecordData, translate: (key: string, fallback: string) => string): Array<{ label: string; timestamp: number; actor: string; status: TimelineStatus }> {
   const events: Array<{ label: string; timestamp: number; actor: string; status: TimelineStatus }> = [
-    { label: "Créé", timestamp: record.createdAt, actor: record.createdBy || record.deviceId, status: "success" },
+    { label: translate("record.timelineCreated", "Created"), timestamp: record.createdAt, actor: record.createdBy || record.deviceId, status: "success" },
   ]
 
   if (record.syncedAt) {
-    events.push({ label: "Synchronisé", timestamp: record.syncedAt, actor: "Système", status: "default" as const })
+    events.push({ label: translate("record.timelineSynced", "Synced"), timestamp: record.syncedAt, actor: translate("record.timelineSystem", "System"), status: "default" as const })
   }
 
   events.push({
-    label: record.status === "approved" ? "Approuvé" : record.status === "rejected" ? "Rejeté" : "En revue",
+    label: record.status === "approved" ? translate("record.timelineApproved", "Approved") : record.status === "rejected" ? translate("record.timelineRejected", "Rejected") : translate("record.timelineInReview", "In review"),
     timestamp: record.updatedAt,
     actor: record.createdBy || record.deviceId,
     status: record.status === "approved" ? "success" : record.status === "rejected" ? "danger" : "warning",
@@ -64,6 +64,7 @@ export default function SupervisorReview() {
   const [selectedTransitionId, setSelectedTransitionId] = useState<string | null>(null)
   const [reason, setReason] = useState("")
   const [submitting, setSubmitting] = useState(false)
+  const language = i18n.resolvedLanguage || i18n.language
 
   useEffect(() => {
     const id = searchParams.get("id")
@@ -93,7 +94,7 @@ export default function SupervisorReview() {
       .finally(() => setLoading(false))
   }, [activeWorkflow, activeWorkflowId, searchParams, user?.orgId, user?.role])
 
-  const timeline = useMemo(() => record ? buildTimeline(record) : [], [record])
+  const timeline = useMemo(() => record ? buildTimeline(record, (key, fallback) => t(key, fallback)) : [], [record, t])
   const availableTransitions = useMemo(() => {
     if (!record || !workflow) return []
     const current = normalizeStateId(workflow, record.state)
@@ -229,9 +230,9 @@ export default function SupervisorReview() {
           )}
           {sections.length > 0 ? sections.map(({ section, fields }) => (
             <section key={section} className="space-y-2">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-chart-gray">{sectionLabel(section)}</h2>
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-chart-gray">{sectionLabel(section, language)}</h2>
               {fields.map((field) => (
-                <FieldRenderer key={field.id || field.key} field={field} value={record.fields[field.key]} readOnly language={i18n.language} />
+                <FieldRenderer key={field.id || field.key} field={field} value={record.fields[field.key]} readOnly language={language} />
               ))}
             </section>
           )) : (
@@ -260,7 +261,7 @@ export default function SupervisorReview() {
               }}
             >
               {danger ? <ShieldX size={16} /> : warning ? <AlertTriangle size={16} /> : <ShieldCheck size={16} />}
-              {i18n.language?.startsWith("en") ? transition.labelEn || transition.label : transition.label || transition.labelEn}
+              {language?.startsWith("en") ? transition.labelEn || transition.label : transition.label || transition.labelEn}
             </Button>
           )
         })}
@@ -286,7 +287,7 @@ export default function SupervisorReview() {
           <div className="flex justify-end gap-2">
             <Button variant="ghost" size="sm" onClick={() => { setSelectedTransitionId(null); setReason("") }}>{t("common.cancel")}</Button>
             <Button variant={danger ? "danger" : warning ? "secondary" : "primary"} size="sm" loading={submitting} onClick={() => handleSubmit(transition)}>
-              {i18n.language?.startsWith("en") ? transition.labelEn || transition.label : transition.label || transition.labelEn}
+              {language?.startsWith("en") ? transition.labelEn || transition.label : transition.label || transition.labelEn}
             </Button>
           </div>
         </div>

@@ -19,18 +19,18 @@ import { generateId } from "@/lib/utils"
 import { useSyncStore } from "@/stores/syncStore"
 import type { MutationEntry } from "@/types/sync"
 
-const statusConfig: Record<string, { label: string; color: string; border: string; bg: string; icon: typeof AlertTriangle }> = {
-  draft: { label: "Brouillon", color: "text-pencil", border: "border-pencil", bg: "bg-pencil/5", icon: Clock },
-  pending_sync: { label: "En attente", color: "text-warning-500", border: "border-warning-500", bg: "bg-warning-500/5", icon: Clock },
-  submitted: { label: "Soumis", color: "text-warning-500", border: "border-warning-500", bg: "bg-warning-500/5", icon: Clock },
-  pending: { label: "En revue", color: "text-warning-500", border: "border-warning-500", bg: "bg-warning-500/5", icon: Clock },
-  synced: { label: "Synchronisé", color: "text-success-500", border: "border-success-500", bg: "bg-success-500/5", icon: CheckCircle },
-  approved: { label: "Approuvé", color: "text-success-500", border: "border-success-500", bg: "bg-success-500/5", icon: ShieldCheck },
-  rejected: { label: "Rejeté", color: "text-danger-500", border: "border-danger-500", bg: "bg-danger-500/5", icon: XCircle },
-  in_conflict: { label: "Conflit", color: "text-warning-500", border: "border-warning-500", bg: "bg-warning-500/5", icon: AlertTriangle },
-  conflict_resolved: { label: "Conflit résolu", color: "text-success-500", border: "border-success-500", bg: "bg-success-500/5", icon: GitMerge },
-  distributed: { label: "Distribué", color: "text-success-500", border: "border-success-500", bg: "bg-success-500/5", icon: PackageCheck },
-  blocked: { label: "Bloqué", color: "text-danger-500", border: "border-danger-500", bg: "bg-danger-500/5", icon: ShieldOff },
+const statusConfig: Record<string, { labelKey: string; fallback: string; color: string; border: string; bg: string; icon: typeof AlertTriangle }> = {
+  draft: { labelKey: "status.draft", fallback: "Draft", color: "text-pencil", border: "border-pencil", bg: "bg-pencil/5", icon: Clock },
+  pending_sync: { labelKey: "status.pendingSync", fallback: "Pending sync", color: "text-warning-500", border: "border-warning-500", bg: "bg-warning-500/5", icon: Clock },
+  submitted: { labelKey: "status.submitted", fallback: "Submitted", color: "text-warning-500", border: "border-warning-500", bg: "bg-warning-500/5", icon: Clock },
+  pending: { labelKey: "status.inReview", fallback: "In review", color: "text-warning-500", border: "border-warning-500", bg: "bg-warning-500/5", icon: Clock },
+  synced: { labelKey: "status.synced", fallback: "Synced", color: "text-success-500", border: "border-success-500", bg: "bg-success-500/5", icon: CheckCircle },
+  approved: { labelKey: "status.approved", fallback: "Approved", color: "text-success-500", border: "border-success-500", bg: "bg-success-500/5", icon: ShieldCheck },
+  rejected: { labelKey: "status.rejected", fallback: "Rejected", color: "text-danger-500", border: "border-danger-500", bg: "bg-danger-500/5", icon: XCircle },
+  in_conflict: { labelKey: "status.conflict", fallback: "Conflict", color: "text-warning-500", border: "border-warning-500", bg: "bg-warning-500/5", icon: AlertTriangle },
+  conflict_resolved: { labelKey: "status.conflictResolved", fallback: "Conflict resolved", color: "text-success-500", border: "border-success-500", bg: "bg-success-500/5", icon: GitMerge },
+  distributed: { labelKey: "status.distributed", fallback: "Distributed", color: "text-success-500", border: "border-success-500", bg: "bg-success-500/5", icon: PackageCheck },
+  blocked: { labelKey: "status.blocked", fallback: "Blocked", color: "text-danger-500", border: "border-danger-500", bg: "bg-danger-500/5", icon: ShieldOff },
 }
 
 interface AuditEvent {
@@ -87,6 +87,7 @@ export default function RecordDetailPage() {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState("")
+  const language = i18n.resolvedLanguage || i18n.language
 
   const id = params.id as string
 
@@ -247,7 +248,7 @@ export default function RecordDetailPage() {
       <div className="flex items-center gap-3">
         <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded border rotate-[-2deg] ${statusCfg.border} ${statusCfg.bg}`}>
           <StatusIcon size={18} className={statusCfg.color} />
-          <span className={`text-xs font-semibold ${statusCfg.color}`}>{statusCfg.label}</span>
+          <span className={`text-xs font-semibold ${statusCfg.color}`}>{t(statusCfg.labelKey, statusCfg.fallback)}</span>
         </div>
         <span className="text-xs font-mono text-pencil">{record.id.slice(0, 8)}</span>
       </div>
@@ -282,7 +283,7 @@ export default function RecordDetailPage() {
       <div className="space-y-4 mb-8">
         {sections.length > 0 ? sections.map(({ section, fields }) => (
           <section key={section} className="space-y-2">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-pencil">{sectionLabel(section, i18n.language)}</h2>
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-pencil">{sectionLabel(section, language)}</h2>
             {fields.map((field) => (
               <FieldRenderer
                 key={field.id || field.key}
@@ -290,7 +291,7 @@ export default function RecordDetailPage() {
                 value={editing ? draftFields[field.key] : record.fields[field.key]}
                 error={errors[field.key]}
                 readOnly={!editing}
-                language={i18n.language}
+                language={language}
                 attachmentContext={{ orgId: user?.orgId, workflowId: record.workflowId, recordId: record.id }}
                 onChange={(value) => setFieldValue(field.key, value)}
               />

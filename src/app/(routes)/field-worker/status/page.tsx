@@ -6,24 +6,27 @@ import { useStorageQuota } from "@/hooks/useStorageQuota"
 import { SyncButton } from "@/components/sync/SyncButton"
 import { Wifi, WifiOff, Database, AlertTriangle, CheckCircle2, Clock } from "lucide-react"
 import { useAuthStore } from "@/stores/authStore"
+import { useTranslation } from "react-i18next"
 
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return "0 o"
-  const units = ["o", "Ko", "Mo", "Go"]
+function formatBytes(bytes: number, language?: string): string {
+  if (bytes === 0) return language?.startsWith("en") ? "0 B" : "0 o"
+  const units = language?.startsWith("en") ? ["B", "KB", "MB", "GB"] : ["o", "Ko", "Mo", "Go"]
   const i = Math.floor(Math.log(bytes) / Math.log(1024))
   return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${units[i]}`
 }
 
-function formatTime(ts: number | null): string {
-  if (!ts) return "Jamais"
-  return new Date(ts).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+function formatTime(ts: number | null, language?: string, never = "Never"): string {
+  if (!ts) return never
+  return new Date(ts).toLocaleTimeString(language?.startsWith("en") ? "en-US" : "fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
 }
 
 export default function FieldWorkerStatus() {
+  const { t, i18n } = useTranslation()
   const { isOnline, isSyncing, pendingCount, lastAttemptAt, lastSuccessfulSyncAt, lastError, conflicts } = useSyncStore()
   const user = useAuthStore((s) => s.user)
   const quota = useStorageQuota()
   const [recordCount, setRecordCount] = useState<number | null>(null)
+  const language = i18n.resolvedLanguage || i18n.language
 
   useEffect(() => {
     let cancelled = false
@@ -45,7 +48,7 @@ export default function FieldWorkerStatus() {
   return (
     <div className="py-4 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="font-display text-2xl font-bold text-ink-black tracking-tight">État de synchronisation</h1>
+        <h1 className="font-display text-2xl font-bold text-ink-black tracking-tight">{t("statusPage.title")}</h1>
         <SyncButton />
       </div>
 
@@ -61,11 +64,11 @@ export default function FieldWorkerStatus() {
           <WifiOff size={20} className="text-pencil shrink-0" />
         )}
         <div className="flex-1">
-          <p className="text-sm font-semibold text-ink-black">{isOnline ? "En ligne" : "Hors ligne"}</p>
+          <p className="text-sm font-semibold text-ink-black">{isOnline ? t("common.online") : t("common.offline")}</p>
           <p className="text-xs text-pencil">
             {isOnline
-              ? "Les données se synchronisent automatiquement."
-              : "Vos enregistrements sont sauvegardés localement."}
+              ? t("statusPage.onlineBody")
+              : t("statusPage.offlineBody")}
           </p>
         </div>
         {isSyncing ? (
@@ -77,50 +80,50 @@ export default function FieldWorkerStatus() {
       <dl className="border border-grid-line rounded-md divide-y divide-grid-line bg-white">
         <StatRow
           icon={<Clock size={16} className="text-warning-500" />}
-          label="En attente de synchronisation"
+          label={t("statusPage.pendingSync")}
           value={String(pendingCount)}
           accent={pendingCount > 0 ? "text-warning-500" : "text-ink-black"}
         />
         <StatRow
           icon={<CheckCircle2 size={16} className="text-success-500" />}
-          label="Dernière synchronisation"
-          value={formatTime(lastSuccessfulSyncAt)}
+          label={t("statusPage.lastSuccessfulSync")}
+          value={formatTime(lastSuccessfulSyncAt, language, t("statusPage.never"))}
           mono
         />
         <StatRow
           icon={<Clock size={16} className="text-pencil" />}
-          label="Dernière tentative"
-          value={formatTime(lastAttemptAt)}
+          label={t("statusPage.lastAttempt")}
+          value={formatTime(lastAttemptAt, language, t("statusPage.never"))}
           mono
         />
         {lastError ? (
           <StatRow
             icon={<AlertTriangle size={16} className="text-danger-500" />}
-            label="Dernière erreur"
+            label={t("statusPage.lastError")}
             value={lastError}
             accent="text-danger-500"
           />
         ) : null}
         <StatRow
           icon={<AlertTriangle size={16} className={conflicts.length > 0 ? "text-clay" : "text-pencil"} />}
-          label="Conflits à résoudre"
+          label={t("statusPage.conflictsToResolve")}
           value={String(conflicts.length)}
           accent={conflicts.length > 0 ? "text-clay" : "text-ink-black"}
         />
         <StatRow
           icon={<Database size={16} className="text-ink-blue" />}
-          label="Enregistrements locaux"
-          value={recordCount === null ? "…" : String(recordCount)}
+          label={t("statusPage.localRecords")}
+          value={recordCount === null ? "..." : String(recordCount)}
           mono
         />
       </dl>
 
       {/* Storage quota */}
       <section className="space-y-2">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-pencil">Stockage de l&apos;appareil</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-pencil">{t("statusPage.deviceStorage")}</h2>
         <div className="border border-grid-line rounded-md bg-white p-4 space-y-2">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-ink-black">{formatBytes(quota.usage)} utilisés</span>
+            <span className="text-ink-black">{t("statusPage.used", { value: formatBytes(quota.usage, language) })}</span>
             <span className="font-mono text-pencil">
               {quota.quota > 0 ? `${quota.percentageUsed.toFixed(1)} %` : "—"}
             </span>
@@ -132,10 +135,10 @@ export default function FieldWorkerStatus() {
             />
           </div>
           {quota.isNearLimit ? (
-            <p className="text-xs text-ink-red">Espace de stockage faible. Synchronisez puis libérez de l&apos;espace.</p>
+            <p className="text-xs text-ink-red">{t("statusPage.storageLow")}</p>
           ) : (
             <p className="text-xs text-pencil">
-              FieldFlow utilise {formatBytes(quota.usage)} dans le stockage local de ce navigateur.
+              {t("statusPage.storageUse", { value: formatBytes(quota.usage, language) })}
             </p>
           )}
         </div>

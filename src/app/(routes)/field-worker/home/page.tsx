@@ -38,6 +38,7 @@ export default function FieldWorkerHome() {
   const [conflictCount, setConflictCount] = useState(0)
   const [scope, setScope] = useState<"current" | "all">("current")
   const [refreshKey, setRefreshKey] = useState(0)
+  const language = i18n.resolvedLanguage || i18n.language
 
   useEffect(() => onInvalidation(["records", "sync", "conflicts"], () => setRefreshKey((value) => value + 1)), [])
 
@@ -101,8 +102,8 @@ export default function FieldWorkerHome() {
         <span className="flex-1 min-w-0">
           <span className="text-sm font-medium text-ink-black truncate block">{recordTitle(r, rowWorkflow)}</span>
           <span className="text-xs text-pencil">
-            {scope === "all" && rowWorkflow ? `${workflowLabel(rowWorkflow, i18n.language)} · ` : ""}
-            {recordSubtitle(r, rowWorkflow, i18n.language)}
+            {scope === "all" && rowWorkflow ? `${workflowLabel(rowWorkflow, language)} · ` : ""}
+            {recordSubtitle(r, rowWorkflow, language)}
           </span>
         </span>
         <ChevronRight size={16} className="text-pencil shrink-0" />
@@ -126,7 +127,7 @@ export default function FieldWorkerHome() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-2xl font-bold text-ink-black tracking-tight">{t("dashboard.fieldWorker")}</h1>
-          {activeWorkflow && <p className="mt-0.5 text-xs text-pencil">{workflowLabel(activeWorkflow, i18n.language)}</p>}
+          {activeWorkflow && <p className="mt-0.5 text-xs text-pencil">{workflowLabel(activeWorkflow, language)}</p>}
         </div>
         <SyncButton />
       </div>

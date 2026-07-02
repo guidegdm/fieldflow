@@ -34,6 +34,7 @@ export default function SupervisorDashboard() {
   const [records, setRecords] = useState<RecordData[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshKey, setRefreshKey] = useState(0)
+  const language = i18n.resolvedLanguage || i18n.language
 
   useEffect(() => onInvalidation(["records", "review", "sync", "conflicts"], () => setRefreshKey((value) => value + 1)), [])
 
@@ -97,7 +98,7 @@ export default function SupervisorDashboard() {
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="font-display text-2xl font-bold text-ink-black">{t("nav.dashboard")}</h1>
-          {activeWorkflow && <p className="mt-0.5 text-xs text-pencil">{workflowLabel(activeWorkflow, i18n.language)}</p>}
+          {activeWorkflow && <p className="mt-0.5 text-xs text-pencil">{workflowLabel(activeWorkflow, language)}</p>}
         </div>
         <div className="flex gap-2 overflow-x-auto pb-1">
           {(["current", "all"] as const).map((key) => (
@@ -164,8 +165,8 @@ export default function SupervisorDashboard() {
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-ink-black">{recordTitle(r, rowWorkflow)}</p>
                         <p className="text-xs text-pencil">
-                          {scope === "all" && rowWorkflow ? `${workflowLabel(rowWorkflow, i18n.language)} · ` : ""}
-                          {t("dashboard.submitter")} {r.createdBy} · {new Date(r.updatedAt).toLocaleTimeString(i18n.language?.startsWith("en") ? "en-US" : "fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                          {scope === "all" && rowWorkflow ? `${workflowLabel(rowWorkflow, language)} · ` : ""}
+                          {t("dashboard.submitter")} {r.createdBy} · {new Date(r.updatedAt).toLocaleTimeString(language?.startsWith("en") ? "en-US" : "fr-FR", { hour: "2-digit", minute: "2-digit" })}
                         </p>
                       </div>
                     </div>

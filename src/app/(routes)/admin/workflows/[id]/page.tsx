@@ -23,6 +23,7 @@ import { invalidate } from "@/lib/invalidation"
 import { requestPipelineSync } from "@/lib/sync/pipeline-coordinator"
 import { registerFieldFlowBackgroundSync } from "@/lib/sync/register-background-sync"
 import { useSyncStore } from "@/stores/syncStore"
+import { workflowLabel } from "@/lib/workflows/runtime"
 import type { DemoUser } from "@/types/auth"
 import type { MutationEntry } from "@/types/sync"
 import type { WorkflowDefinition } from "@/types/workflow"
@@ -134,7 +135,8 @@ function StatePropertiesPanel() {
   const { t, i18n } = useTranslation()
   const { workflow, selectedStateId, updateState } = useWorkflowStore()
   const state = workflow?.states.find((s) => s.id === selectedStateId)
-  const english = isEnglish(i18n.resolvedLanguage || i18n.language)
+  const language = i18n.resolvedLanguage || i18n.language
+  const english = isEnglish(language)
 
   if (!state) {
     return (
@@ -191,7 +193,8 @@ export default function WorkflowBuilder() {
   const [transitionFrom, setTransitionFrom] = useState("")
   const [transitionTo, setTransitionTo] = useState("")
   const [transitionRole, setTransitionRole] = useState("supervisor")
-  const english = isEnglish(i18n.resolvedLanguage || i18n.language)
+  const language = i18n.resolvedLanguage || i18n.language
+  const english = isEnglish(language)
 
   useEffect(() => {
     if (!params.id || !user || user.role !== "org_admin") return
@@ -343,7 +346,7 @@ export default function WorkflowBuilder() {
     )
   }
 
-  const workflowName = workflow.name || workflow.nameEn
+  const workflowName = workflowLabel(workflow, language)
 
   return (
     <div className="flex min-h-[calc(100dvh-9rem)] flex-col overflow-hidden rounded-lg border border-graph-line bg-slate-50 shadow-sm lg:h-[calc(100vh-6.5rem)] lg:min-h-[620px]">

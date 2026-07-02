@@ -36,6 +36,7 @@ export default function RegisterPage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [saveError, setSaveError] = useState("")
+  const language = i18n.resolvedLanguage || i18n.language
 
   const fields = useMemo(() => activeWorkflow?.entity.fields ?? [], [activeWorkflow])
   const sections = useMemo(() => groupFieldsBySection(fields), [fields])
@@ -183,10 +184,10 @@ export default function RegisterPage() {
             </span>
             <div className="min-w-0">
               <h1 className="font-display text-2xl font-semibold tracking-tight text-ink-black sm:text-3xl">
-                {workflowLabel(activeWorkflow, i18n.language)}
+                {workflowLabel(activeWorkflow, language)}
               </h1>
               <p className="mt-1 max-w-2xl text-sm leading-6 text-pencil">
-                {i18n.language?.startsWith("en") ? activeWorkflow.descriptionEn || activeWorkflow.description : activeWorkflow.description || activeWorkflow.descriptionEn}
+                {language?.startsWith("en") ? activeWorkflow.descriptionEn || activeWorkflow.description : activeWorkflow.description || activeWorkflow.descriptionEn}
               </p>
             </div>
           </div>
@@ -208,7 +209,7 @@ export default function RegisterPage() {
         {sections.map(({ section, fields }) => (
           <section key={section} className="rounded-lg border border-graph-line bg-white p-4 shadow-sm sm:p-5">
             <div className="mb-4 border-b border-graph-line pb-3">
-              <h2 className="font-display text-lg font-semibold tracking-tight text-ink-black">{sectionLabel(section, i18n.language)}</h2>
+              <h2 className="font-display text-lg font-semibold tracking-tight text-ink-black">{sectionLabel(section, language)}</h2>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               {fields.map((field) => (
@@ -217,7 +218,7 @@ export default function RegisterPage() {
                   field={field}
                   value={values[field.key]}
                   error={errors[field.key]}
-                  language={i18n.language}
+                  language={language}
                   attachmentContext={{ orgId: user?.orgId, workflowId: activeWorkflow.id, recordId: recordId }}
                   onChange={(value) => setFieldValue(field.key, value)}
                 />

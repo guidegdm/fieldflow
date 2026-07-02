@@ -2,6 +2,7 @@
 
 import { useTranslation } from "react-i18next"
 import { useWorkflowStore } from "@/stores/workflowStore"
+import { fieldLabel, workflowLabel } from "@/lib/workflows/runtime"
 
 export function FormPreview() {
   const { t, i18n } = useTranslation()
@@ -9,8 +10,8 @@ export function FormPreview() {
 
   if (!workflow) return null
 
-  const english = (i18n.resolvedLanguage || i18n.language)?.startsWith("en")
-  const workflowName = workflow.name || workflow.nameEn
+  const language = i18n.resolvedLanguage || i18n.language
+  const workflowName = workflowLabel(workflow, language)
   const fields = [...workflow.entity.fields].sort((a, b) => a.order - b.order)
 
   return (
@@ -33,7 +34,7 @@ export function FormPreview() {
           fields.map((field) => (
             <div key={field.id}>
               <label className="text-xs font-medium text-pencil mb-1 block">
-                {english ? field.labelEn || field.label : field.label}
+                {fieldLabel(field, language)}
                 {field.required && <span className="text-danger-500 ml-0.5">*</span>}
               </label>
               {field.type === "textarea" ? (

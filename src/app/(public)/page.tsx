@@ -1,47 +1,49 @@
+"use client"
+
 import Link from "next/link"
 import { ArrowRight, Boxes, GitBranch, RadioTower, ShieldCheck } from "lucide-react"
+import { useTranslation } from "react-i18next"
 import { LandingInstallCta } from "@/components/public/LandingInstallCta"
 import { LandingWorkspaceCta } from "@/components/public/LandingWorkspaceCta"
 
-const metrics = [
-  { label: "Local-first records", value: "IndexedDB" },
-  { label: "Primary backend", value: "DynamoDB" },
-  { label: "Demo isolation", value: "TTL workspaces" },
-]
-
-const workflow = [
-  "Design workflow",
-  "Install PWA",
-  "Work offline",
-  "Sync operations",
-  "Resolve conflicts",
-  "Audit decisions",
-]
-
-const capabilities = [
-  {
-    icon: RadioTower,
-    title: "Keep the mission open",
-    body: "When the signal drops, the work continues. Teams can keep serving people, recording proof, and moving the day forward.",
-  },
-  {
-    icon: GitBranch,
-    title: "No more lost fieldwork",
-    body: "Every change comes back with context. Supervisors see the story behind the data instead of guessing which version survived.",
-  },
-  {
-    icon: Boxes,
-    title: "Protect scarce supplies",
-    body: "Food, medicine, kits, vouchers: FieldFlow helps teams reserve what exists, prevent double allocation, and account for every decision.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "A real demo, safely isolated",
-    body: "Visitors can try the full product without sharing a sandbox. Their workspace is theirs, and the next person gets a clean one.",
-  },
-]
-
 export default function LandingPage() {
+  const { t } = useTranslation()
+  const metrics = [
+    { label: t("landing.metricLocal"), value: "IndexedDB" },
+    { label: t("landing.metricBackend"), value: "DynamoDB" },
+    { label: t("landing.metricDemo"), value: t("landing.metricDemoValue") },
+  ]
+  const workflow = [
+    t("landing.loopStepDesign"),
+    t("landing.loopStepInstall"),
+    t("landing.loopStepOffline"),
+    t("landing.loopStepSync"),
+    t("landing.loopStepConflicts"),
+    t("landing.loopStepAudit"),
+  ]
+  const capabilities = [
+    {
+      icon: RadioTower,
+      title: t("landing.capabilityMissionTitle"),
+      body: t("landing.capabilityMissionBody"),
+    },
+    {
+      icon: GitBranch,
+      title: t("landing.capabilityFieldworkTitle"),
+      body: t("landing.capabilityFieldworkBody"),
+    },
+    {
+      icon: Boxes,
+      title: t("landing.capabilitySuppliesTitle"),
+      body: t("landing.capabilitySuppliesBody"),
+    },
+    {
+      icon: ShieldCheck,
+      title: t("landing.capabilityDemoTitle"),
+      body: t("landing.capabilityDemoBody"),
+    },
+  ]
+
   return (
     <div className="bg-graph-paper text-ink-black">
       <section className="relative isolate overflow-hidden border-b border-grid-line">
@@ -54,18 +56,17 @@ export default function LandingPage() {
 
         <div className="relative z-10 mx-auto flex min-h-[78vh] max-w-6xl flex-col justify-center px-6 py-20">
           <h1 className="max-w-4xl font-display text-5xl font-bold leading-[1.02] tracking-tight text-lake-deep md:text-7xl">
-            The field does not wait.
+            {t("landing.mainTitle")}
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-soil">
-            FieldFlow keeps registrations, approvals, supplies, and accountability moving when the
-            signal drops. Teams work now, sync later, and never lose the trail of what happened.
+            {t("landing.mainBody")}
           </p>
           <div className="mt-9 flex flex-wrap gap-3">
             <Link
               href="/demo"
               className="inline-flex h-11 items-center gap-2 rounded-md bg-ink-blue px-5 text-sm font-semibold text-white transition-colors hover:bg-ink-blue/90"
             >
-              Try the live demo
+              {t("landing.tryDemo")}
               <ArrowRight size={16} />
             </Link>
             <LandingWorkspaceCta />
@@ -86,9 +87,9 @@ export default function LandingPage() {
       <section className="border-b border-grid-line bg-white">
         <div className="mx-auto grid max-w-6xl gap-10 px-6 py-16 lg:grid-cols-[0.8fr_1.2fr]">
           <div>
-            <p className="font-mono text-xs uppercase tracking-[0.16em] text-chart-gray">Operational loop</p>
+            <p className="font-mono text-xs uppercase tracking-[0.16em] text-chart-gray">{t("landing.loopEyebrow")}</p>
             <h2 className="mt-3 font-display text-3xl font-bold tracking-tight text-lake-deep">
-              One workflow, many unreliable devices, one auditable truth.
+              {t("landing.loopTitle")}
             </h2>
           </div>
           <ol className="grid gap-px border border-grid-line bg-grid-line md:grid-cols-3">
@@ -119,14 +120,14 @@ export default function LandingPage() {
       <section className="border-t border-grid-line bg-ink-black text-white">
         <div className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-12 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="font-mono text-xs uppercase tracking-[0.16em] text-starlight">Walk into the product</p>
-            <h2 className="mt-2 font-display text-3xl font-bold tracking-tight">Try a full field operation without waiting for access.</h2>
+            <p className="font-mono text-xs uppercase tracking-[0.16em] text-starlight">{t("landing.bottomEyebrow")}</p>
+            <h2 className="mt-2 font-display text-3xl font-bold tracking-tight">{t("landing.bottomTitle")}</h2>
           </div>
           <Link
             href="/demo"
             className="inline-flex h-11 w-fit items-center gap-2 rounded-md bg-white px-5 text-sm font-semibold text-ink-black transition-colors hover:bg-starlight"
           >
-            Open demo workspace
+            {t("landing.openDemo")}
             <ArrowRight size={16} />
           </Link>
         </div>

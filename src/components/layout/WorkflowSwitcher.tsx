@@ -19,6 +19,7 @@ export function WorkflowSwitcher({ compact = false }: { compact?: boolean }) {
   const loadForOrg = useWorkflowListStore((state) => state.loadForOrg)
   const activeWorkflowId = useActiveWorkflowStore((state) => orgId ? state.byOrgId[orgId]?.workflowId ?? "" : "")
   const setActiveWorkflow = useActiveWorkflowStore((state) => state.setActiveWorkflow)
+  const language = i18n.resolvedLanguage || i18n.language
 
   useEffect(() => {
     if (orgId && workflows.length === 0 && !loading) void loadForOrg(orgId).catch(() => {})
@@ -51,7 +52,7 @@ export function WorkflowSwitcher({ compact = false }: { compact?: boolean }) {
         ) : (
           workflows.map((workflow) => (
             <option key={workflow.id} value={workflow.id}>
-              {workflowLabel(workflow, i18n.language)}
+              {workflowLabel(workflow, language)}
             </option>
           ))
         )}

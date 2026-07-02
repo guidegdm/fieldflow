@@ -120,7 +120,7 @@ export function FieldRenderer({ field, value, onChange, error, language, readOnl
     return (
       <div className="grid gap-1 rounded-md border border-graph-line bg-white px-3 py-2 sm:grid-cols-[12rem_1fr] sm:items-baseline">
         <span className="text-[11px] font-semibold uppercase tracking-wider text-pencil">{label}</span>
-        <span className="min-w-0 text-sm text-ink-black">{formatFieldValue(value, field)}</span>
+        <span className="min-w-0 text-sm text-ink-black">{formatFieldValue(value, field, t, language)}</span>
       </div>
     )
   }

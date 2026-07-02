@@ -12,6 +12,7 @@ export default function PickWorkflowPage() {
   const router = useRouter()
   const { orgId, workflows, loading, error, setActiveWorkflow } = useWorkflowContext()
   const [query, setQuery] = useState("")
+  const language = i18n.resolvedLanguage || i18n.language
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -75,10 +76,10 @@ export default function PickWorkflowPage() {
               className="rounded-md border border-graph-line bg-white p-4 text-left shadow-sm transition-colors hover:border-ink-blue/40 hover:bg-graph-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-blue"
             >
               <span className="block font-display text-xl font-semibold text-ink-black">
-                {workflowLabel(workflow, i18n.language)}
+                {workflowLabel(workflow, language)}
               </span>
               <span className="mt-1 line-clamp-2 block text-sm leading-6 text-pencil">
-                {i18n.language?.startsWith("en") ? workflow.descriptionEn || workflow.description : workflow.description || workflow.descriptionEn}
+                {language?.startsWith("en") ? workflow.descriptionEn || workflow.description : workflow.description || workflow.descriptionEn}
               </span>
               <span className="mt-3 inline-flex rounded-md bg-kivu-paper px-2 py-1 text-xs font-medium text-pencil">
                 {workflow.entity.fields.length} {t("workflow.fields", "fields")} · v{workflow.version}

@@ -39,15 +39,15 @@ export function submittedStateId(workflow: WorkflowDefinition | null | undefined
   return transition?.toState || initial
 }
 
-export function formatFieldValue(value: unknown, field?: WorkflowField, t?: TFunction) {
+export function formatFieldValue(value: unknown, field?: WorkflowField, t?: TFunction, language?: string) {
   if (value === undefined || value === null || value === "") return "-"
   if (Array.isArray(value)) {
     return value
-      .map((item) => optionLabel(field, String(item)) || String(item))
+      .map((item) => optionLabel(field, String(item), language) || String(item))
       .join(", ")
   }
   if (typeof value === "boolean") return value ? (t?.("common.yes", "Yes") ?? "Yes") : (t?.("common.no", "No") ?? "No")
-  if (field?.type === "select") return optionLabel(field, String(value)) || String(value)
+  if (field?.type === "select") return optionLabel(field, String(value), language) || String(value)
   if (field?.type === "date") {
     const date = new Date(String(value))
     if (!Number.isNaN(date.getTime())) return date.toLocaleDateString()
@@ -92,7 +92,7 @@ export function recordSubtitle(record: RecordData, workflow?: WorkflowDefinition
   const parts = fields
     .filter((field) => field.key !== key)
     .slice(0, 2)
-    .map((field) => formatFieldValue(record.fields?.[field.key] ?? record.fieldValues?.[field.key], field))
+    .map((field) => formatFieldValue(record.fields?.[field.key] ?? record.fieldValues?.[field.key], field, undefined, language))
     .filter((value) => value && value !== "-")
   if (parts.length) return parts.join(" · ")
   const legacy = [record.fields?.household_size ? `${record.fields.household_size} pers.` : "", record.fields?.shelter_type]
@@ -115,7 +115,10 @@ export function sectionLabel(section: string, language?: string) {
   const labels: Record<string, { en: string; fr: string }> = {
     "identification": { en: "Identification", fr: "Identification" },
     "conditions de vie": { en: "Living conditions", fr: "Conditions de vie" },
+    "living conditions": { en: "Living conditions", fr: "Conditions de vie" },
     "besoins": { en: "Priority needs", fr: "Besoins" },
+    "priority needs": { en: "Priority needs", fr: "Besoins" },
+    "needs": { en: "Priority needs", fr: "Besoins" },
     "stock": { en: "Stock", fr: "Stock" },
     "intake": { en: "Intake", fr: "Collecte" },
     "triage": { en: "Triage", fr: "Triage" },

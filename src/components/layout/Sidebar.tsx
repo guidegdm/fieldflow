@@ -18,27 +18,29 @@ import {
 } from "lucide-react"
 import { completeClientLogout } from "@/lib/auth/client-logout"
 import { OrgSwitcher } from "@/components/layout/OrgSwitcher"
+import { useTranslation } from "react-i18next"
 
 interface SidebarProps {
   role: "admin" | "supervisor"
 }
 
-type NavItem = { label: string; href: string; icon: React.ReactNode }
+type NavItem = { labelKey: string; fallback: string; href: string; icon: React.ReactNode }
 
 const adminLinks: NavItem[] = [
-  { label: "Tableau de bord", href: "/admin/dashboard", icon: <LayoutDashboard size={18} /> },
-  { label: "Workflows", href: "/admin/workflows", icon: <Workflow size={18} /> },
-  { label: "Records", href: "/field-worker/home", icon: <Home size={18} /> },
+  { labelKey: "nav.dashboard", fallback: "Dashboard", href: "/admin/dashboard", icon: <LayoutDashboard size={18} /> },
+  { labelKey: "nav.workflows", fallback: "Workflows", href: "/admin/workflows", icon: <Workflow size={18} /> },
+  { labelKey: "nav.records", fallback: "Records", href: "/field-worker/home", icon: <Home size={18} /> },
 ]
 
 const supervisorLinks: NavItem[] = [
-  { label: "Tableau de bord", href: "/supervisor/dashboard", icon: <LayoutDashboard size={18} /> },
-  { label: "File d'attente", href: "/supervisor/review", icon: <Inbox size={18} /> },
-  { label: "Conflits", href: "/supervisor/conflicts", icon: <AlertTriangle size={18} /> },
-  { label: "Inventaire", href: "/supervisor/inventory", icon: <Package size={18} /> },
+  { labelKey: "nav.dashboard", fallback: "Dashboard", href: "/supervisor/dashboard", icon: <LayoutDashboard size={18} /> },
+  { labelKey: "nav.reviewQueue", fallback: "Review", href: "/supervisor/review", icon: <Inbox size={18} /> },
+  { labelKey: "nav.conflicts", fallback: "Conflicts", href: "/supervisor/conflicts", icon: <AlertTriangle size={18} /> },
+  { labelKey: "nav.inventory", fallback: "Inventory", href: "/supervisor/inventory", icon: <Package size={18} /> },
 ]
 
 export function Sidebar({ role }: SidebarProps) {
+  const { t } = useTranslation()
   const { user, logout } = useAuthStore()
   const links = role === "admin" ? adminLinks : supervisorLinks
   const activeHref = usePathname()
@@ -76,7 +78,7 @@ export function Sidebar({ role }: SidebarProps) {
               )}
             >
               {link.icon}
-              <span>{link.label}</span>
+              <span>{t(link.labelKey, link.fallback)}</span>
             </Link>
           )
         })}
@@ -96,7 +98,7 @@ export function Sidebar({ role }: SidebarProps) {
           <button
             onClick={() => void handleLogout()}
             className="p-1.5 text-pencil hover:text-rebar hover:bg-graph-paper rounded-md transition-colors"
-            aria-label="Déconnexion"
+            aria-label={t("auth.logout")}
           >
             <LogOut size={16} />
           </button>

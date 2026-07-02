@@ -6,6 +6,7 @@ import { useWorkflowStore } from "@/stores/workflowStore"
 import { useAgentStore } from "@/stores/agentStore"
 import { GripVertical, Plus, X } from "lucide-react"
 import type { WorkflowField } from "@/types/workflow"
+import { fieldLabel, workflowLabel } from "@/lib/workflows/runtime"
 
 const FIELD_PREVIEWS: Record<string, string> = {
   text: "workflow.previews.text",
@@ -35,8 +36,8 @@ export function FormCanvas() {
 
   if (!workflow) return null
 
-  const english = (i18n.resolvedLanguage || i18n.language)?.startsWith("en")
-  const workflowName = workflow.name || workflow.nameEn
+  const language = i18n.resolvedLanguage || i18n.language
+  const workflowName = workflowLabel(workflow, language)
   const renameWorkflow = (value: string) => {
     const name = value.trim()
     if (!name) return
@@ -138,7 +139,7 @@ export function FormCanvas() {
                 >
                   <GripVertical size={16} />
                 </span>
-                <span className="text-sm font-medium text-ink-black">{english ? field.labelEn || field.label : field.label}</span>
+                <span className="text-sm font-medium text-ink-black">{fieldLabel(field, language)}</span>
                 {field.required && <span className="text-danger-500 text-sm font-medium">*</span>}
                 <span className="text-[10px] uppercase tracking-wider text-volcanic-ash ml-1">
                   {field.type}
@@ -174,13 +175,13 @@ export function FormCanvas() {
         <Plus size={16} /> {t("workflow.addField", "Ajouter un champ")}
       </button>
 
-      <GhostFields english={english} />
+      <GhostFields language={language} />
       </div>
     </div>
   )
 }
 
-function GhostFields({ english }: { english: boolean }) {
+function GhostFields({ language }: { language?: string }) {
   const { t } = useTranslation()
   const proposals = useAgentStore((s) => s.proposals)
 
@@ -205,7 +206,7 @@ function GhostFields({ english }: { english: boolean }) {
                 {t("ai.ghost.badge", "AI")}
               </span>
               <span className="text-sm text-ink-black/70">
-                {english ? pf.field.labelEn || pf.field.label : pf.field.label}
+                {fieldLabel(pf.field, language)}
               </span>
               <span className="text-[10px] uppercase text-volcanic-ash">{pf.field.type}</span>
               {pf.conflicts.length > 0 && (

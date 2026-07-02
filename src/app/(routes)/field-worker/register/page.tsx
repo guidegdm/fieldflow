@@ -9,7 +9,7 @@ import { FieldRenderer } from "@/components/fields/FieldRenderer"
 import { useWorkflowContext } from "@/hooks/useWorkflowContext"
 import { generateId } from "@/lib/utils"
 import { db } from "@/lib/db/indexeddb"
-import { runBackgroundSync } from "@/lib/sync/run-background-sync"
+import { requestPipelineSync } from "@/lib/sync/pipeline-coordinator"
 import { registerFieldFlowBackgroundSync } from "@/lib/sync/register-background-sync"
 import { groupFieldsBySection, sectionLabel, submittedStateId, workflowLabel } from "@/lib/workflows/runtime"
 import { useAuthStore } from "@/stores/authStore"
@@ -125,9 +125,9 @@ export default function RegisterPage() {
       void registerFieldFlowBackgroundSync()
       useSyncStore.getState().setPendingCount((await db.getPendingMutations()).length)
       if (typeof navigator !== "undefined" && navigator.onLine) {
-        await runBackgroundSync(user)
+        await requestPipelineSync(user, { reason: "record-create", retry: true })
       } else {
-        void runBackgroundSync(user)
+        void requestPipelineSync(user, { reason: "record-create-offline", retry: true })
       }
       setSaved(true)
       setRecordId(generateId())

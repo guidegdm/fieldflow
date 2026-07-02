@@ -1,5 +1,5 @@
 import { useCallback } from "react"
-import { runBackgroundSync } from "@/lib/sync/run-background-sync"
+import { requestPipelineSync } from "@/lib/sync/pipeline-coordinator"
 import { useSyncStore } from "@/stores/syncStore"
 import { useAuthStore } from "@/stores/authStore"
 
@@ -9,7 +9,7 @@ export function useSync() {
 
   const sync = useCallback(async () => {
     if (isSyncing) return
-    await runBackgroundSync(user, { retry: true })
+    await requestPipelineSync(user, { reason: "manual", retry: true })
   }, [isSyncing, user])
 
   return { sync, isSyncing, pendingCount }

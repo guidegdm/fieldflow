@@ -2,6 +2,7 @@
 
 import { db } from "@/lib/db/indexeddb"
 import { registerFieldFlowBackgroundSync } from "@/lib/sync/register-background-sync"
+import { requestPipelineSync } from "@/lib/sync/pipeline-coordinator"
 import { useSyncStore } from "@/stores/syncStore"
 import { invalidate } from "@/lib/invalidation"
 import type { DemoUser } from "@/types/auth"
@@ -131,6 +132,7 @@ export async function resolveConflictsOffline({
   await db.putRecord(updated)
   await db.enqueueMutation(mutation)
   void registerFieldFlowBackgroundSync()
+  void requestPipelineSync(user, { reason: "offline-conflict-resolution", retry: true })
   useSyncStore.getState().setPendingCount((await db.getPendingMutations()).length)
   invalidate(["conflicts", "records", "review", "sync"])
   return { record: updated, conflicts }

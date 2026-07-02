@@ -5,7 +5,7 @@ import { DEMO_USERS, ORG_MEMBERSHIPS } from "@/types/auth"
 import { createSessionToken, getOrCreateDemoInstall, setAccessCookie, setDemoInstallCookie, setRefreshCookie, setSessionCookie, verifyCognitoJWT } from "@/lib/auth/middleware"
 import { checkRateLimit } from "@/lib/auth/rate-limit"
 import { seedIsolatedDemoOrg } from "@/lib/demo/seed-demo-org"
-import { InitiateAuthCommand, CognitoIdentityProviderClient } from "@aws-sdk/client-cognito-identity-provider"
+import { InitiateAuthCommand, CognitoIdentityProviderClient, ResendConfirmationCodeCommand } from "@aws-sdk/client-cognito-identity-provider"
 import { resolveWorkspaceMembership, responseOrgContext } from "@/lib/auth/workspace-membership"
 
 const CLIENT_ID = process.env.COGNITO_CLIENT_ID || "7r60o7fnej4vitoksrp6e93n9g"
@@ -22,8 +22,10 @@ function getCognitoClient() {
 }
 
 export async function POST(request: NextRequest) {
+  let requestBody: unknown = null
   try {
-    const parsed = loginSchema.safeParse(await request.json())
+    requestBody = await request.json()
+    const parsed = loginSchema.safeParse(requestBody)
     if (!parsed.success) return NextResponse.json({ error: "Requête invalide" }, { status: 400 })
 
     const { email, password, demoOrgKey } = parsed.data
@@ -130,6 +132,19 @@ export async function POST(request: NextRequest) {
     }
     if (error instanceof Error && error.name === "UserNotFoundException") {
       return NextResponse.json({ error: "Utilisateur non trouvé" }, { status: 401 })
+    }
+    if (error instanceof Error && error.name === "UserNotConfirmedException") {
+      const email = requestBody && typeof requestBody === "object" && "email" in requestBody && typeof requestBody.email === "string"
+        ? requestBody.email
+        : ""
+      if (email) {
+        try {
+          await getCognitoClient().send(new ResendConfirmationCodeCommand({ ClientId: CLIENT_ID, Username: email }))
+        } catch (resendError) {
+          console.warn("[login] resend confirmation failed", resendError instanceof Error ? resendError.name : "UnknownError")
+        }
+      }
+      return NextResponse.json({ errorCode: "email_unconfirmed", error: "email_unconfirmed", email }, { status: 403 })
     }
     return NextResponse.json({ error: "Requête invalide" }, { status: 400 })
   }

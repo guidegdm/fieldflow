@@ -533,6 +533,7 @@
       "sms": "SMS code",
       "authenticator": "Authenticator code",
       "newPassword": "Choose a new password",
+      "verifyEmail": "Email verification code",
       "verifying": "Verifying...",
       "verify": "Verify",
       "back": "Back"
@@ -541,6 +542,7 @@
       "default": "Unable to sign in",
       "network": "Network error",
       "invalidCode": "Invalid code",
+      "emailUnconfirmed": "This email still needs verification. We sent a new code.",
       "oauthConfig": "Google sign-in is temporarily misconfigured. Please try again.",
       "workspaceRequired": "Your account needs a workspace before you can continue."
     }
@@ -559,6 +561,8 @@
     "email": "Email address",
     "name": "Full name",
     "password": "Password",
+    "passwordHelp": "Use at least 8 characters with uppercase, lowercase, number, and symbol.",
+    "passwrordHelp": "Use at least 8 characters with uppercase, lowercase, number, and symbol.",
     "orgName": "First workspace name",
     "orgSector": "Workspace sector",
     "submit": "Create account and workspace",
@@ -570,7 +574,11 @@
       "default": "Unable to create the account",
       "network": "Network error",
       "confirm": "Invalid or expired verification code",
-      "passwordPolicy": "Use at least 8 characters with uppercase, lowercase, number, and symbol."
+      "emailExists": "An account already exists with this email.",
+      "invalidParameters": "Check the name, email, and password.",
+      "passwordPolicy": "Use at least 8 characters with uppercase, lowercase, number, and symbol.",
+      "rateLimited": "Too many attempts. Try again later.",
+      "verificationDeliveryFailed": "Unable to send the verification code. Try again in a moment."
     },
     "sectors": {
       "humanitarian": "Humanitarian",
@@ -594,19 +602,23 @@
   "reset": {
     "title": "Reset password",
     "subtitle": "Enter your email and Cognito will send a reset code.",
+    "verifyEmailSubtitle": "This account needs email verification first. Enter the verification code from your inbox, then request a password reset.",
     "confirmSubtitle": "Enter the code from your inbox and choose a new password.",
     "code": "Reset code",
+    "emailVerificationCode": "Email verification code",
     "newPassword": "New password",
     "passwordHelp": "Use at least 8 characters with uppercase, lowercase, number, and symbol.",
     "sendCode": "Send reset code",
     "savePassword": "Save new password",
+    "verifyEmail": "Verify email",
     "resend": "Resend code",
     "sent": "If the account exists, a reset code has been sent.",
     "temporaryPasswordSent": "This invited account still needs its first sign-in. We sent a new temporary password; use it on the sign-in page, then choose your password.",
     "backToSignin": "Back to sign in",
     "errors": {
       "request": "Unable to send the reset code.",
-      "confirm": "Invalid or expired reset code."
+      "confirm": "Invalid or expired reset code.",
+      "confirmEmail": "Invalid or expired email verification code."
     }
   },
   "setup": {

@@ -23,6 +23,16 @@ const signUpSchema = z.object({
 
 type SignUpValues = z.infer<typeof signUpSchema>
 
+const signupErrorKeys: Record<string, string> = {
+  email_exists: "signup.errors.emailExists",
+  invalid_parameters: "signup.errors.invalidParameters",
+  invalid_request: "signup.errors.default",
+  password_policy: "signup.errors.passwordPolicy",
+  rate_limited: "signup.errors.rateLimited",
+  signup_failed: "signup.errors.default",
+  verification_delivery_failed: "signup.errors.verificationDeliveryFailed",
+}
+
 export default function SignUpPage() {
   const { t } = useTranslation()
   const router = useRouter()
@@ -49,8 +59,9 @@ export default function SignUpPage() {
       })
 
       if (!res.ok) {
-        const data = await res.json().catch(() => null) as { error?: string } | null
-        setError(data?.error || t("signup.errors.default"))
+        const data = await res.json().catch(() => null) as { error?: string; errorCode?: string } | null
+        const key = data?.errorCode ? signupErrorKeys[data.errorCode] : null
+        setError(key ? t(key) : data?.error || t("signup.errors.default"))
         return
       }
 

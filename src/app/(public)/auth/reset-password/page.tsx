@@ -15,7 +15,7 @@ export default function ResetPasswordPage() {
   const [email, setEmail] = useState("")
   const [code, setCode] = useState("")
   const [password, setPassword] = useState("")
-  const [step, setStep] = useState<"request" | "confirm">("request")
+  const [step, setStep] = useState<"request" | "verify-email" | "confirm">("request")
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
   const [sent, setSent] = useState(false)
@@ -39,6 +39,11 @@ export default function ResetPasswordPage() {
       setSent(true)
       if (data?.mode === "temporary_password") {
         setTemporaryPasswordSent(true)
+        return
+      }
+      if (data?.mode === "confirm_email") {
+        setTemporaryPasswordSent(false)
+        setStep("verify-email")
         return
       }
       setTemporaryPasswordSent(false)
@@ -73,6 +78,38 @@ export default function ResetPasswordPage() {
     }
   }
 
+  async function confirmEmailThenRequestReset() {
+    if (!email.trim() || !code.trim()) return
+    setBusy(true)
+    setError("")
+    try {
+      const res = await fetch("/api/auth/confirm-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email: email.trim(), code: code.trim() }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => null) as { error?: string } | null
+        throw new Error(data?.error || "confirm_failed")
+      }
+      const resetRes = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email: email.trim() }),
+      })
+      if (!resetRes.ok) throw new Error("request_failed")
+      setCode("")
+      setSent(true)
+      setStep("confirm")
+    } catch (err) {
+      setError(err instanceof Error && err.message !== "confirm_failed" ? err.message : t("reset.errors.confirmEmail"))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div className="min-h-dvh bg-[#F8FAFC] px-4 py-8 sm:px-6 lg:px-8">
       <main className="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-md items-center">
@@ -86,7 +123,7 @@ export default function ResetPasswordPage() {
             <div>
               <h1 className="font-display text-2xl font-bold tracking-tight text-lake-deep">{t("reset.title")}</h1>
               <p className="mt-1 text-sm leading-6 text-pencil">
-                {step === "request" ? t("reset.subtitle") : t("reset.confirmSubtitle")}
+                {step === "request" ? t("reset.subtitle") : step === "verify-email" ? t("reset.verifyEmailSubtitle") : t("reset.confirmSubtitle")}
               </p>
             </div>
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink-blue/10 text-ink-blue">
@@ -116,25 +153,29 @@ export default function ResetPasswordPage() {
               onChange={(event) => setEmail(event.target.value)}
             />
 
-            {step === "confirm" && (
+            {(step === "verify-email" || step === "confirm") && (
               <>
                 <Input
                   id="code"
                   inputMode="numeric"
                   autoComplete="one-time-code"
-                  label={t("reset.code")}
+                  label={step === "verify-email" ? t("reset.emailVerificationCode") : t("reset.code")}
                   value={code}
                   onChange={(event) => setCode(event.target.value)}
                 />
-                <Input
-                  id="new-password"
-                  type="password"
-                  autoComplete="new-password"
-                  label={t("reset.newPassword")}
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                />
-                <p className="text-xs leading-5 text-pencil">{t("reset.passwordHelp")}</p>
+                {step === "confirm" && (
+                  <>
+                    <Input
+                      id="new-password"
+                      type="password"
+                      autoComplete="new-password"
+                      label={t("reset.newPassword")}
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                    />
+                    <p className="text-xs leading-5 text-pencil">{t("reset.passwordHelp")}</p>
+                  </>
+                )}
               </>
             )}
 
@@ -147,14 +188,20 @@ export default function ResetPasswordPage() {
                 type="button"
                 className="w-full"
                 loading={busy}
-                disabled={step === "request" ? !email.trim() : !email.trim() || !code.trim() || !COGNITO_PASSWORD_REQUIREMENT.test(password)}
-                onClick={step === "request" ? requestReset : confirmReset}
+                disabled={
+                  step === "request"
+                    ? !email.trim()
+                    : step === "verify-email"
+                      ? !email.trim() || !code.trim()
+                      : !email.trim() || !code.trim() || !COGNITO_PASSWORD_REQUIREMENT.test(password)
+                }
+                onClick={step === "request" ? requestReset : step === "verify-email" ? confirmEmailThenRequestReset : confirmReset}
               >
-                {step === "request" ? t("reset.sendCode") : t("reset.savePassword")}
+                {step === "request" ? t("reset.sendCode") : step === "verify-email" ? t("reset.verifyEmail") : t("reset.savePassword")}
               </Button>
             )}
 
-            {step === "confirm" && !temporaryPasswordSent && (
+            {step !== "request" && !temporaryPasswordSent && (
               <Button type="button" variant="ghost" className="w-full" onClick={requestReset} disabled={busy || !email.trim()}>
                 {t("reset.resend")}
               </Button>

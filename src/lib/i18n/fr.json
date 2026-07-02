@@ -533,6 +533,7 @@
       "sms": "Code SMS",
       "authenticator": "Code authenticator",
       "newPassword": "Choisissez un nouveau mot de passe",
+      "verifyEmail": "Code de vérification email",
       "verifying": "Vérification...",
       "verify": "Vérifier",
       "back": "Retour"
@@ -541,6 +542,7 @@
       "default": "Impossible de se connecter",
       "network": "Erreur réseau",
       "invalidCode": "Code invalide",
+      "emailUnconfirmed": "Cet email doit encore être vérifié. Nous avons envoyé un nouveau code.",
       "oauthConfig": "La connexion Google est temporairement mal configurée. Réessayez.",
       "workspaceRequired": "Votre compte doit être lié à un espace de travail avant de continuer."
     }
@@ -559,6 +561,8 @@
     "email": "Adresse email",
     "name": "Nom complet",
     "password": "Mot de passe",
+    "passwordHelp": "Utilisez au moins 8 caractères avec une majuscule, une minuscule, un chiffre et un symbole.",
+    "passwrordHelp": "Utilisez au moins 8 caractères avec une majuscule, une minuscule, un chiffre et un symbole.",
     "orgName": "Nom du premier espace",
     "orgSector": "Secteur de l'espace",
     "submit": "Créer le compte et l'espace",
@@ -570,7 +574,11 @@
       "default": "Impossible de créer le compte",
       "network": "Erreur réseau",
       "confirm": "Code de vérification invalide ou expiré",
-      "passwordPolicy": "Utilisez au moins 8 caractères avec une majuscule, une minuscule, un chiffre et un symbole."
+      "emailExists": "Un compte existe déjà avec cet email.",
+      "invalidParameters": "Vérifiez le nom, l'email et le mot de passe.",
+      "passwordPolicy": "Utilisez au moins 8 caractères avec une majuscule, une minuscule, un chiffre et un symbole.",
+      "rateLimited": "Trop de tentatives. Réessayez plus tard.",
+      "verificationDeliveryFailed": "Impossible d'envoyer le code de vérification. Réessayez dans un instant."
     },
     "sectors": {
       "humanitarian": "Humanitaire",
@@ -594,19 +602,23 @@
   "reset": {
     "title": "Réinitialiser le mot de passe",
     "subtitle": "Entrez votre email et Cognito enverra un code de réinitialisation.",
+    "verifyEmailSubtitle": "Ce compte doit d'abord vérifier son email. Entrez le code reçu, puis demandez une réinitialisation du mot de passe.",
     "confirmSubtitle": "Entrez le code reçu puis choisissez un nouveau mot de passe.",
     "code": "Code de réinitialisation",
+    "emailVerificationCode": "Code de vérification email",
     "newPassword": "Nouveau mot de passe",
     "passwordHelp": "Utilisez au moins 8 caractères avec une majuscule, une minuscule, un chiffre et un symbole.",
     "sendCode": "Envoyer le code",
     "savePassword": "Enregistrer le nouveau mot de passe",
+    "verifyEmail": "Vérifier l'email",
     "resend": "Renvoyer le code",
     "sent": "Si le compte existe, un code de réinitialisation a été envoyé.",
     "temporaryPasswordSent": "Ce compte invité doit encore faire sa première connexion. Nous avons envoyé un nouveau mot de passe temporaire; utilisez-le sur la page de connexion, puis choisissez votre mot de passe.",
     "backToSignin": "Retour à la connexion",
     "errors": {
       "request": "Impossible d'envoyer le code.",
-      "confirm": "Code invalide ou expiré."
+      "confirm": "Code invalide ou expiré.",
+      "confirmEmail": "Code de vérification email invalide ou expiré."
     }
   },
   "setup": {

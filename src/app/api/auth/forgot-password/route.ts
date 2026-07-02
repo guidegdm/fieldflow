@@ -6,6 +6,7 @@ import {
   AdminResetUserPasswordCommand,
   CognitoIdentityProviderClient,
   ForgotPasswordCommand,
+  ResendConfirmationCodeCommand,
 } from "@aws-sdk/client-cognito-identity-provider"
 import { checkRateLimit } from "@/lib/auth/rate-limit"
 import { createTemporaryPassword } from "@/lib/auth/password-policy"
@@ -52,6 +53,14 @@ export async function POST(request: Request) {
     })
 
     if (!user) return NextResponse.json({ success: true })
+
+    if (user.UserStatus === "UNCONFIRMED") {
+      const resent = await cognito.send(new ResendConfirmationCodeCommand({
+        ClientId: CLIENT_ID,
+        Username: username,
+      }))
+      return NextResponse.json({ success: true, mode: "confirm_email", delivery: resent.CodeDeliveryDetails ?? null })
+    }
 
     if (user.UserStatus === "FORCE_CHANGE_PASSWORD") {
       await cognito.send(new AdminCreateUserCommand({

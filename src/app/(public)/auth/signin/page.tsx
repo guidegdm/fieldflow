@@ -22,7 +22,12 @@ const otpSchema = z.object({
 
 type SignInValues = z.infer<typeof signInSchema>
 type OtpValues = z.infer<typeof otpSchema>
-type AuthChallenge = { challengeName: "EMAIL_OTP" | "SMS_MFA" | "SOFTWARE_TOKEN_MFA" | "NEW_PASSWORD_REQUIRED"; session: string; email: string } | null
+type AuthChallenge = {
+  challengeName: "EMAIL_OTP" | "SMS_MFA" | "SOFTWARE_TOKEN_MFA" | "NEW_PASSWORD_REQUIRED" | "EMAIL_VERIFICATION_REQUIRED"
+  session: string
+  email: string
+  password?: string
+} | null
 
 function routeForRole(role: string) {
   if (role === "field_worker") return "/field-worker/home"
@@ -73,6 +78,12 @@ export default function SignInPage() {
       })
 
       if (!res.ok) {
+        const data = await res.json().catch(() => null) as { errorCode?: string; email?: string } | null
+        if (data?.errorCode === "email_unconfirmed") {
+          setChallenge({ challengeName: "EMAIL_VERIFICATION_REQUIRED", session: "", email: data.email || email, password })
+          setError(t("signin.errors.emailUnconfirmed"))
+          return
+        }
         setError(t("signin.errors.default"))
         return
       }
@@ -98,11 +109,17 @@ export default function SignInPage() {
     }
 
     try {
-      const res = await fetch("/api/auth/otp", {
+      const res = await fetch(challenge.challengeName === "EMAIL_VERIFICATION_REQUIRED" ? "/api/auth/confirm-email" : "/api/auth/otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(challenge.challengeName === "NEW_PASSWORD_REQUIRED" ? { ...challenge, newPassword: code } : { ...challenge, code }),
+        body: JSON.stringify(
+          challenge.challengeName === "EMAIL_VERIFICATION_REQUIRED"
+            ? { email: challenge.email, code, password: challenge.password }
+            : challenge.challengeName === "NEW_PASSWORD_REQUIRED"
+              ? { ...challenge, newPassword: code }
+              : { ...challenge, code },
+        ),
       })
 
       if (!res.ok) {
@@ -111,6 +128,10 @@ export default function SignInPage() {
       }
 
       const data = await res.json()
+      if (data.setupRequired || data.redirect === "/auth/setup") {
+        router.push("/auth/setup")
+        return
+      }
       setAuthFromApi(data.user, data.org, data.orgs)
       router.push(routeForRole(data.user.role))
     } catch {
@@ -204,7 +225,7 @@ export default function SignInPage() {
             <form className="mt-6 space-y-4" onSubmit={handleOtpSubmit(onOtpSubmit)}>
               <div>
                 <label htmlFor="code" className="block text-sm font-medium text-soil mb-1">
-                  {challenge.challengeName === "NEW_PASSWORD_REQUIRED" ? t("signin.otp.newPassword") : challenge.challengeName === "EMAIL_OTP" ? t("signin.otp.email") : challenge.challengeName === "SMS_MFA" ? t("signin.otp.sms") : t("signin.otp.authenticator")}
+                  {challenge.challengeName === "NEW_PASSWORD_REQUIRED" ? t("signin.otp.newPassword") : challenge.challengeName === "EMAIL_VERIFICATION_REQUIRED" ? t("signin.otp.verifyEmail") : challenge.challengeName === "EMAIL_OTP" ? t("signin.otp.email") : challenge.challengeName === "SMS_MFA" ? t("signin.otp.sms") : t("signin.otp.authenticator")}
                 </label>
                 <input
                   id="code"

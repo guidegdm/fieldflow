@@ -68,11 +68,27 @@ function isCacheablePageResponse(response: Response) {
   return response.ok && contentType.includes("text/html") && !contentType.includes("text/x-component")
 }
 
+function pageCacheName(version?: string | null) {
+  return version ? `fieldflow-pages-${encodeURIComponent(version)}` : "fieldflow-pages"
+}
+
+async function fetchAppVersion() {
+  try {
+    const response = await fetch("/api/app-version", { cache: "no-store" })
+    if (!response.ok) return null
+    const body = await response.json() as { version?: unknown }
+    return typeof body.version === "string" ? body.version : null
+  } catch {
+    return null
+  }
+}
+
 async function cacheAppRoutes() {
   const urls = Array.from(new Set([...APP_ROUTES_TO_CACHE, window.location.pathname]))
+  const version = await fetchAppVersion()
 
   if ("caches" in window) {
-    const cache = await caches.open("fieldflow-pages")
+    const cache = await caches.open(pageCacheName(version))
     await Promise.all(urls.map(async (url) => {
       try {
         const request = new Request(new URL(url, window.location.origin).href, {
@@ -109,6 +125,8 @@ async function cacheAppRoutes() {
             new URL(url, window.location.origin).href,
             { credentials: "include" },
           ]),
+          version,
+          promote: true,
         },
       },
       [channel.port2],
@@ -119,9 +137,10 @@ async function cacheAppRoutes() {
 async function cacheUrls(urls: string[]) {
   const unique = Array.from(new Set(urls.filter(Boolean)))
   if (!unique.length) return
+  const version = await fetchAppVersion()
 
   if ("caches" in window) {
-    const cache = await caches.open("fieldflow-pages")
+    const cache = await caches.open(pageCacheName(version))
     await Promise.all(unique.map(async (url) => {
       try {
         const request = new Request(new URL(url, window.location.origin).href, {
@@ -158,6 +177,8 @@ async function cacheUrls(urls: string[]) {
             new URL(url, window.location.origin).href,
             { credentials: "include" },
           ]),
+          version,
+          promote: true,
         },
       },
       [channel.port2],
@@ -209,10 +230,7 @@ async function cacheInventory(user?: DemoUser | null) {
         headers: { "x-fieldflow-org-id": org.id },
       })
       if (!response.ok) continue
-      window.localStorage.setItem(`fieldflow-inventory-${org.id}`, JSON.stringify({
-        savedAt: Date.now(),
-        items: await response.json(),
-      }))
+      await db.putProjection(`inventory:${org.id}`, await response.json(), org.id)
     } catch {}
   }
 }

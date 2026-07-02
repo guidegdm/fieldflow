@@ -17,6 +17,29 @@ self.FIELD_FLOW_CORE_ROUTES = [
   "/admin/users",
 ]
 
+const FIELD_FLOW_PAGE_CACHE_PREFIX = "fieldflow-pages"
+const FIELD_FLOW_META_CACHE = "fieldflow-meta"
+const FIELD_FLOW_ACTIVE_VERSION_REQUEST = "/__fieldflow_active_page_cache_version__"
+
+function pageCacheName(version) {
+  return version ? `${FIELD_FLOW_PAGE_CACHE_PREFIX}-${encodeURIComponent(version)}` : FIELD_FLOW_PAGE_CACHE_PREFIX
+}
+
+async function activePageCacheName() {
+  const meta = await caches.open(FIELD_FLOW_META_CACHE)
+  const response = await meta.match(FIELD_FLOW_ACTIVE_VERSION_REQUEST)
+  const version = response ? await response.text() : ""
+  return pageCacheName(version)
+}
+
+async function promotePageCacheVersion(version) {
+  if (!version) return
+  const meta = await caches.open(FIELD_FLOW_META_CACHE)
+  await meta.put(FIELD_FLOW_ACTIVE_VERSION_REQUEST, new Response(version, {
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
+  }))
+}
+
 function isRscRequest(request) {
   const url = new URL(request.url)
   const accept = request.headers.get("accept") || ""
@@ -36,7 +59,7 @@ async function putPageResponse(cache, request, response) {
 }
 
 async function purgeBadPageResponses() {
-  const cache = await caches.open("fieldflow-pages")
+  const cache = await caches.open(await activePageCacheName())
   const requests = await cache.keys()
   await Promise.all(requests.map(async (request) => {
     const response = await cache.match(request)
@@ -46,8 +69,19 @@ async function purgeBadPageResponses() {
   }))
 }
 
-async function cachePageUrls(urlsToCache) {
-  const cache = await caches.open("fieldflow-pages")
+async function purgeOldPageCaches(activeName) {
+  const names = await caches.keys()
+  await Promise.all(names.map((name) => {
+    if (!name.startsWith(`${FIELD_FLOW_PAGE_CACHE_PREFIX}-`) || name === activeName) return Promise.resolve(false)
+    return caches.delete(name)
+  }))
+}
+
+async function cachePageUrls(urlsToCache, options = {}) {
+  const cacheName = pageCacheName(options.version)
+  const cache = await caches.open(cacheName)
+  let cached = 0
+  let failed = 0
   await Promise.all(urlsToCache.map(async (entry) => {
     const [url, init] = Array.isArray(entry) ? entry : [entry, undefined]
     if (!url) return
@@ -58,9 +92,18 @@ async function cachePageUrls(urlsToCache) {
         headers: { Accept: "text/html,application/xhtml+xml" },
       })
       const response = await fetch(request)
-      await putPageResponse(cache, request, response)
-    } catch {}
+      if (await putPageResponse(cache, request, response)) cached += 1
+      else failed += 1
+    } catch {
+      failed += 1
+    }
   }))
+  const ok = failed === 0 || cached >= Math.min(3, urlsToCache.length)
+  if (ok && options.promote && options.version) {
+    await promotePageCacheVersion(options.version)
+    await purgeOldPageCaches(cacheName)
+  }
+  return { ok, cached, failed, cacheName }
 }
 
 self.addEventListener("activate", (event) => {
@@ -80,8 +123,11 @@ self.addEventListener("message", (event) => {
     : []
 
   event.waitUntil((async () => {
-    await cachePageUrls(urlsToCache)
-    event.ports?.[0]?.postMessage({ ok: true, cached: urlsToCache.length })
+    const result = await cachePageUrls(urlsToCache, {
+      version: typeof event.data?.payload?.version === "string" ? event.data.payload.version : "",
+      promote: Boolean(event.data?.payload?.promote),
+    })
+    event.ports?.[0]?.postMessage(result)
   })())
 })
 
@@ -139,7 +185,7 @@ self.addEventListener("fetch", (event) => {
 
   event.stopImmediatePropagation()
   event.respondWith((async () => {
-    const cache = await caches.open("fieldflow-pages")
+    const cache = await caches.open(await activePageCacheName())
     const exactUrl = new URL(request.url)
     const cached = await cache.match(request, { ignoreVary: true })
       || await cache.match(exactUrl.href, { ignoreVary: true })

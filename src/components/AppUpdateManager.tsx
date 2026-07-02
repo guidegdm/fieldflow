@@ -13,6 +13,22 @@ const UPDATE_SNOOZE_KEY = "fieldflow-update-snooze"
 const CHECK_INTERVAL_MS = 10 * 60 * 1000
 const UPDATE_SNOOZE_MS = 24 * 60 * 60 * 1000
 const UPDATE_PENDING_MS = 2 * 60 * 1000
+const UPDATE_ROUTES_TO_CACHE = [
+  "/",
+  "/demo",
+  "/auth/signin",
+  "/auth/signup",
+  "/auth/setup",
+  "/admin/dashboard",
+  "/admin/workflows",
+  "/admin/users",
+  "/field-worker/home",
+  "/field-worker/register",
+  "/field-worker/search",
+  "/supervisor/dashboard",
+  "/supervisor/review",
+  "/supervisor/inventory",
+]
 
 type PendingUpdate = { version: string; startedAt: number }
 
@@ -113,6 +129,33 @@ async function prepareServiceWorkerForReload() {
     await controllerChanged
   }
   return !registration.installing
+}
+
+async function warmUpdateCache(version: string) {
+  if (!("serviceWorker" in navigator)) return true
+  const registration = await navigator.serviceWorker.ready.catch(() => null)
+  const worker = registration?.active || registration?.waiting || registration?.installing
+  if (!worker) return true
+  const urls = Array.from(new Set([...UPDATE_ROUTES_TO_CACHE, window.location.pathname])).map((url) => [
+    new URL(url, window.location.origin).href,
+    { credentials: "include" },
+  ])
+  return new Promise<boolean>((resolve) => {
+    const channel = new MessageChannel()
+    const timeout = window.setTimeout(() => resolve(false), 15000)
+    channel.port1.onmessage = (event) => {
+      window.clearTimeout(timeout)
+      resolve(Boolean(event.data?.ok))
+    }
+    worker.postMessage({
+      type: "CACHE_URLS",
+      payload: {
+        urlsToCache: urls,
+        version,
+        promote: true,
+      },
+    }, [channel.port2])
+  })
 }
 
 export function AppUpdateManager() {
@@ -234,6 +277,8 @@ export function AppUpdateManager() {
     writePendingUpdate(target)
     try {
       if (!navigator.onLine) throw new Error("offline")
+      const warmed = await warmUpdateCache(target)
+      if (!warmed) throw new Error("update_warmup_failed")
       await prepareServiceWorkerForReload()
       window.sessionStorage.setItem(UPDATE_RELOAD_KEY, target)
       window.location.reload()

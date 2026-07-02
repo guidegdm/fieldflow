@@ -1,7 +1,7 @@
 import { create } from "zustand"
 import { generateId } from "@/lib/utils"
 import { invalidate } from "@/lib/invalidation"
-import type { WorkflowDefinition, WorkflowState, WorkflowTransition, FieldDefinition } from "@/types/workflow"
+import type { WorkflowDefinition, WorkflowState, WorkflowTransition, FieldDefinition, WorkflowTransitionKind } from "@/types/workflow"
 
 interface WorkflowStateStore {
   workflow: WorkflowDefinition | null
@@ -74,6 +74,7 @@ export const useWorkflowStore = create<WorkflowStateStore>()((set, get) => ({
     const toState = w.states.find((state) => state.id === to)
     const transitionNumber = w.transitions.length + 1
     const fallbackLabel = `Transition ${transitionNumber}`
+    const kind: WorkflowTransitionKind = requiredRoles.includes("field_worker") ? "submit" : "verify"
     const t: WorkflowTransition = {
       id: generateId(),
       key: `transition_${transitionNumber}`,
@@ -82,6 +83,9 @@ export const useWorkflowStore = create<WorkflowStateStore>()((set, get) => ({
       fromState: from,
       toState: to,
       requiredRoles,
+      kind,
+      requiresReason: false,
+      terminal: Boolean(toState?.isTerminal),
     }
     set({ workflow: { ...w, transitions: [...w.transitions, t] } })
   },

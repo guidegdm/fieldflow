@@ -34,6 +34,9 @@ const proposedTransitionSchema = z.object({
   fromState: z.string(),
   toState: z.string(),
   requiredRoles: z.array(z.string()),
+  kind: z.enum(["submit", "verify", "prioritize", "approve", "reject", "return", "reserve", "distribute", "confirm", "close", "custom"]).optional(),
+  requiresReason: z.boolean().optional(),
+  terminal: z.boolean().optional(),
 })
 
 const proposeChangesSchema = z.object({
@@ -109,6 +112,13 @@ export const proposeChangesTool: ToolDef = {
             fromState: { type: "string", description: "Source state key" },
             toState: { type: "string", description: "Target state key" },
             requiredRoles: { type: "array", items: { type: "string" }, description: "Roles that can trigger this transition" },
+            kind: {
+              type: "string",
+              enum: ["submit", "verify", "prioritize", "approve", "reject", "return", "reserve", "distribute", "confirm", "close", "custom"],
+              description: "Business meaning of the transition. Use this instead of relying on labels.",
+            },
+            requiresReason: { type: "boolean", description: "True when the user must provide a reason before applying this transition." },
+            terminal: { type: "boolean", description: "True when this transition moves the record into a terminal state." },
           },
           required: ["key", "label", "fromState", "toState", "requiredRoles"],
         },

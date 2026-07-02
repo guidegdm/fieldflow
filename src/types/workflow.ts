@@ -55,6 +55,19 @@ export interface WorkflowState {
   y: number
 }
 
+export type WorkflowTransitionKind =
+  | "submit"
+  | "verify"
+  | "prioritize"
+  | "approve"
+  | "reject"
+  | "return"
+  | "reserve"
+  | "distribute"
+  | "confirm"
+  | "close"
+  | "custom"
+
 export interface WorkflowTransition {
   id: string
   key: string
@@ -63,6 +76,9 @@ export interface WorkflowTransition {
   fromState: string
   toState: string
   requiredRoles: string[]
+  kind?: WorkflowTransitionKind
+  requiresReason?: boolean
+  terminal?: boolean
   sideEffects?: string[]
 }
 

@@ -103,6 +103,9 @@ function createDraftWorkflow(id: string, user: DemoUser, translate: (key: string
         fromState: "state-draft",
         toState: "state-submitted",
         requiredRoles: ["field_worker"],
+        kind: "submit",
+        requiresReason: false,
+        terminal: false,
       },
     ],
     roles: [

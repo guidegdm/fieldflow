@@ -81,9 +81,9 @@ function localWorkflow(orgId: string, orgKey: DemoOrgKey): WorkflowDefinition {
       { id: "s-approved", key: "approved", label: "Approuve", labelEn: "Approved", color: "#16A34A", isInitial: false, isTerminal: false, x: 820, y: 120 },
     ],
     transitions: [
-      { id: "t-submit", key: "submit", label: "Soumettre", labelEn: "Submit", fromState: "s-draft", toState: "s-submitted", requiredRoles: ["field_worker"] },
-      { id: "t-verify", key: "verify", label: "Verifier", labelEn: "Verify", fromState: "s-submitted", toState: "s-verified", requiredRoles: ["supervisor"] },
-      { id: "t-approve", key: "approve", label: "Approuver", labelEn: "Approve", fromState: "s-verified", toState: "s-approved", requiredRoles: ["supervisor"] },
+      { id: "t-submit", key: "submit", label: "Soumettre", labelEn: "Submit", fromState: "s-draft", toState: "s-submitted", requiredRoles: ["field_worker"], kind: "submit" },
+      { id: "t-verify", key: "verify", label: "Verifier", labelEn: "Verify", fromState: "s-submitted", toState: "s-verified", requiredRoles: ["supervisor"], kind: "verify" },
+      { id: "t-approve", key: "approve", label: "Approuver", labelEn: "Approve", fromState: "s-verified", toState: "s-approved", requiredRoles: ["supervisor"], kind: "approve", terminal: true },
     ],
     roles: [
       { id: "r-field", key: "field_worker", label: "Agent terrain", labelEn: "Field Agent", permissions: ["record:create", "record:read_own", "record:update_own", "sync:push", "sync:pull"] },

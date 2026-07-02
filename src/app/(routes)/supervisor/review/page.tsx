@@ -107,11 +107,12 @@ export default function SupervisorReview() {
 
   const handleSubmit = async (transition: WorkflowTransition) => {
     if (!record || !workflow) return
-    const destructive = isRejectTransition(transition)
+    const kind = transitionKind(transition, workflow)
+    const destructive = kind === "reject" || Boolean(transition.requiresReason)
     if (destructive && !reason.trim()) return
 
     const now = Date.now()
-    const status = statusForTransition(transition)
+    const status = statusForTransition(transition, workflow)
     const state = normalizeStateId(workflow, transition.toState)
     const reviewFields = {
       supervisor_review_action: status,
@@ -245,8 +246,9 @@ export default function SupervisorReview() {
             {t("supervisor.noAvailableTransitions", "No review actions are available for this state.")}
           </p>
         ) : availableTransitions.map((transition) => {
-          const danger = isRejectTransition(transition)
-          const warning = isReturnTransition(transition)
+          const kind = transitionKind(transition, workflow)
+          const danger = kind === "reject"
+          const warning = kind === "return"
           return (
             <Button
               key={transition.id}
@@ -267,8 +269,9 @@ export default function SupervisorReview() {
       {selectedTransitionId && (() => {
         const transition = availableTransitions.find((candidate) => candidate.id === selectedTransitionId)
         if (!transition) return null
-        const danger = isRejectTransition(transition)
-        const warning = isReturnTransition(transition)
+        const kind = transitionKind(transition, workflow)
+        const danger = kind === "reject"
+        const warning = kind === "return"
         return (
         <div className={`space-y-3 p-4 rounded-md border ${danger ? "border-danger-500/30 bg-danger-500/5" : warning ? "border-warning-500/30 bg-warning-500/5" : "border-antiseptic-green/30 bg-antiseptic-green/5"}`}>
           {(danger || warning) && (
@@ -317,19 +320,26 @@ function normalizeStateId(workflow: WorkflowDefinition, state?: string) {
   return workflow.states.find((candidate) => candidate.id === state || candidate.key === state)?.id ?? state
 }
 
-function isRejectTransition(transition: WorkflowTransition) {
-  return `${transition.key} ${transition.label} ${transition.labelEn} ${transition.toState}`.toLowerCase().includes("reject")
+function transitionKind(transition: WorkflowTransition, workflow?: WorkflowDefinition | null) {
+  if (transition.kind) return transition.kind
+  const text = `${transition.key} ${transition.label} ${transition.labelEn} ${transition.toState}`.toLowerCase()
+  if (text.includes("reject")) return "reject"
+  if (text.includes("return") || text.includes("changes") || text.includes("draft")) return "return"
+  if (text.includes("reserve")) return "reserve"
+  if (text.includes("distribute")) return "distribute"
+  if (text.includes("submit")) return "submit"
+  if (text.includes("priorit")) return "prioritize"
+  if (text.includes("verify") || text.includes("verif")) return "verify"
+  if (text.includes("approve") || text.includes("confirm") || text.includes("close")) return "approve"
+  const target = workflow?.states.find((state) => state.id === transition.toState || state.key === transition.toState)
+  if (target?.isTerminal) return "approve"
+  return "custom"
 }
 
-function isReturnTransition(transition: WorkflowTransition) {
-  const text = `${transition.key} ${transition.label} ${transition.labelEn} ${transition.toState}`.toLowerCase()
-  return text.includes("return") || text.includes("changes") || text.includes("draft")
-}
-
-function statusForTransition(transition: WorkflowTransition) {
-  const text = `${transition.key} ${transition.label} ${transition.labelEn} ${transition.toState}`.toLowerCase()
-  if (text.includes("reject")) return "rejected"
-  if (text.includes("approve") || text.includes("verified") || text.includes("confirm") || text.includes("close")) return "approved"
+function statusForTransition(transition: WorkflowTransition, workflow?: WorkflowDefinition | null) {
+  const kind = transitionKind(transition, workflow)
+  if (kind === "reject") return "rejected"
+  if (kind === "approve" || kind === "confirm" || kind === "close") return "approved"
   return "pending"
 }
 

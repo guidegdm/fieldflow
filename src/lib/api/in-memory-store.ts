@@ -94,6 +94,10 @@ class Store {
     if (DYNAMODB_ENABLED) return (await getDynamo())?.hasMutation(clientId, orgId) ?? false
     return this.hasMutation(clientId)
   }
+  async getMutationForOrg(clientId: string, orgId: string) {
+    if (DYNAMODB_ENABLED) return (await getDynamo())?.getMutation(clientId, orgId)
+    return this.mutations.get(clientId)
+  }
   async storeMutationForOrg(m: MutationEntry, orgId: string) {
     const serverSeq = DYNAMODB_ENABLED
       ? await (await getDynamo())?.nextMutationSeq(orgId) ?? this.seq + 1
@@ -108,7 +112,7 @@ class Store {
     const serverSeq = DYNAMODB_ENABLED
       ? await (await getDynamo())?.nextMutationSeq(orgId) ?? this.seq + 1
       : this.seq + 1
-    const claimed = { ...m, status: "SENDING" as const, server_seq: serverSeq }
+    const claimed = { ...m, status: "SENDING" as const, serverCommitStatus: "claimed", server_seq: serverSeq } as MutationEntry & { serverCommitStatus: string }
     if (DYNAMODB_ENABLED) {
       const stored = await (await getDynamo())?.putMutationIfAbsent(claimed, orgId, serverSeq)
       if (!stored) return false
@@ -121,7 +125,7 @@ class Store {
     const existing = this.mutations.get(m.client_id)
     const serverSeq = existing?.server_seq ?? this.seq + 1
     if (!existing) this.seq = serverSeq
-    const stored = { ...m, server_seq: serverSeq }
+    const stored = { ...m, status: "ACKED" as const, serverCommitStatus: "committed", server_seq: serverSeq } as MutationEntry & { serverCommitStatus: string }
     if (DYNAMODB_ENABLED) await (await getDynamo())?.putMutation(stored, orgId, serverSeq)
     this.mutations.set(m.client_id, stored)
   }

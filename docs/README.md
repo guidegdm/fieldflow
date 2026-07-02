@@ -12,6 +12,7 @@ This folder is the current codebase documentation for FieldFlow. It intentionall
 | [data-model.md](./data-model.md) | DynamoDB single-table model, entity keys, GSIs, TTL, demo metrics, inventory transactions, and S3 attachments. |
 | [workflow-engine.md](./workflow-engine.md) | Workflow definitions, builder behavior, record lifecycle, supervisor review, conflict integration, and role capabilities. |
 | [ai-assistant.md](./ai-assistant.md) | AI workflow assistant loop, tools, validation, DeepSeek call path, and safety limits. |
+| [ui-philosophy.md](./ui-philosophy.md) | Visual language, typography, colors, page structure, controls, loaders, motion, and responsive rules. |
 | [operations-deployment.md](./operations-deployment.md) | Environment variables, local commands, production build behavior, AWS resources, and verification notes. |
 
 ## Current Stack
@@ -30,4 +31,3 @@ This folder is the current codebase documentation for FieldFlow. It intentionall
 - Prefer links to concrete files and line numbers over broad claims.
 - If behavior is best-effort, local-only, or browser-dependent, say so directly.
 - Keep the old hackathon/story material out of this folder unless it reflects the current code.
-

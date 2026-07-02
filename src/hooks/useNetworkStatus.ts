@@ -2,7 +2,7 @@ import { useEffect } from "react"
 import { useSyncStore } from "@/stores/syncStore"
 import { useAuthStore } from "@/stores/authStore"
 import { getCurrentMode, simulateNetwork, type NetworkMode } from "@/lib/network-simulator"
-import { runBackgroundSync } from "@/lib/sync/run-background-sync"
+import { requestPipelineSync } from "@/lib/sync/pipeline-coordinator"
 
 export function useNetworkStatus() {
   const setOnline = useSyncStore((s) => s.setOnline)
@@ -15,7 +15,7 @@ export function useNetworkStatus() {
       if (syncInFlight || getCurrentMode() === "offline" || !navigator.onLine) return
       syncInFlight = true
       try {
-        await runBackgroundSync(user)
+        await requestPipelineSync(user, { reason: "network-reconnect", retry: true })
       } finally {
         syncInFlight = false
       }

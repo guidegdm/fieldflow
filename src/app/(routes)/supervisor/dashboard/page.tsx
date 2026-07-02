@@ -42,8 +42,18 @@ export default function SupervisorDashboard() {
       setLoading(false)
       return
     }
+    let cancelled = false
     setLoading(true)
     const workflowIds = scope === "all" ? workflows.map((workflow) => workflow.id) : activeWorkflowId ? [activeWorkflowId] : []
+    async function loadLocal() {
+      const local = user?.orgId ? await db.getAllRecordsForOrg(user.orgId).catch(() => []) : []
+      const filteredLocal = scope === "all" ? local : local.filter((record) => record.workflowId === activeWorkflowId)
+      if (!cancelled && filteredLocal.length) {
+        setRecords(filteredLocal)
+        setLoading(false)
+      }
+    }
+    void loadLocal()
     Promise.all(workflowIds.map(async (workflowId) => {
       try {
         const res = await fetch(`/api/workflows/${workflowId}/records`, { credentials: "include" })
@@ -54,12 +64,17 @@ export default function SupervisorDashboard() {
         return local.filter((record) => record.workflowId === workflowId)
       }
     }))
-      .then(groups => setRecords(groups.flat()))
+      .then(groups => {
+        if (!cancelled) setRecords(groups.flat())
+      })
       .catch(async () => {
         const local = user?.orgId ? await db.getAllRecordsForOrg(user.orgId).catch(() => []) : []
-        setRecords(scope === "all" ? local : local.filter((record) => record.workflowId === activeWorkflowId))
+        if (!cancelled) setRecords(scope === "all" ? local : local.filter((record) => record.workflowId === activeWorkflowId))
       })
-      .finally(() => setLoading(false))
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => { cancelled = true }
   }, [activeWorkflowId, refreshKey, scope, user?.orgId, workflows])
 
   const workflowsById = new Map<string, WorkflowDefinition>(workflows.map((workflow) => [workflow.id, workflow]))

@@ -8,6 +8,7 @@ export type WorkflowValidationError = {
 
 const VALID_FIELD_TYPES = new Set(["text", "number", "select", "multi_select", "multi-select", "date", "gps", "photo", "textarea"])
 const VALID_ROLES = new Set(["field_worker", "supervisor", "org_admin"])
+const VALID_TRANSITION_KINDS = new Set(["submit", "verify", "prioritize", "approve", "reject", "return", "reserve", "distribute", "confirm", "close", "custom"])
 
 function duplicateValues(values: string[]) {
   const seen = new Set<string>()
@@ -55,6 +56,9 @@ export function validateWorkflowDefinition(workflow: WorkflowDefinition): Workfl
   for (const transition of transitions) {
     if (!stateIds.has(transition.fromState)) errors.push({ code: "UNKNOWN_FROM_STATE", message: `Transition ${transition.key} references an unknown source state`, field: transition.key })
     if (!stateIds.has(transition.toState)) errors.push({ code: "UNKNOWN_TO_STATE", message: `Transition ${transition.key} references an unknown target state`, field: transition.key })
+    if (transition.kind && !VALID_TRANSITION_KINDS.has(transition.kind)) {
+      errors.push({ code: "INVALID_TRANSITION_KIND", message: `Unsupported transition kind: ${transition.kind}`, field: transition.key })
+    }
     for (const role of transition.requiredRoles ?? []) {
       if (!roleKeys.has(role)) errors.push({ code: "UNKNOWN_ROLE", message: `Transition ${transition.key} references unknown role ${role}`, field: transition.key })
     }

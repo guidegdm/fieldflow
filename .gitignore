@@ -8,7 +8,6 @@ node_modules/
 *.log
 advice.md
 story.md
-docs/
 docs2/
 codex/
 tmp/

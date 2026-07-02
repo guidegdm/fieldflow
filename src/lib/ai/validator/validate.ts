@@ -139,6 +139,14 @@ export function validateProposal(
 
   // R9: Role references exist
   for (const pt of proposal.transitions) {
+    const kind = pt.transition.kind
+    if (kind && !["submit", "verify", "prioritize", "approve", "reject", "return", "reserve", "distribute", "confirm", "close", "custom"].includes(kind)) {
+      errors.push({
+        code: "INVALID_TRANSITION_KIND",
+        message: `Transition "${pt.transition.key}" has invalid kind "${kind}"`,
+        field: pt.transition.key,
+      })
+    }
     for (const role of pt.transition.requiredRoles) {
       if (!existingRoleKeys.has(role)) {
         errors.push({

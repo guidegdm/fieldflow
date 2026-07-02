@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
-import { runBackgroundSync } from "@/lib/sync/run-background-sync"
+import { requestPipelineSync } from "@/lib/sync/pipeline-coordinator"
 import { registerFieldFlowPeriodicMaintenance } from "@/lib/sync/register-background-sync"
 import { useAuthStore } from "@/stores/authStore"
 import { flushPendingLogout } from "@/lib/auth/client-logout"
@@ -33,7 +33,7 @@ export function ServiceWorkerRegister() {
       if (event.data?.type !== "FIELD_FLOW_SYNC_NOW") return
       const user = useAuthStore.getState().user
       if (!user) return
-      void runBackgroundSync(user, { retry: true })
+      void requestPipelineSync(user, { reason: "service-worker", retry: true })
     }
 
     navigator.serviceWorker.addEventListener("controllerchange", handleControllerChange)

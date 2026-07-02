@@ -60,12 +60,12 @@ function demoWorkflow(orgId: string, orgKey: DemoOrgKey, expiresAt: number): Wor
       { id: "s-confirmed", key: "confirmed", label: "Confirme", labelEn: "Confirmed", color: "#1D4ED8", isInitial: false, isTerminal: true, x: 200, y: 650 },
     ],
     transitions: [
-      { id: "t-1", key: "submit", label: "Soumettre", labelEn: "Submit", fromState: "s-draft", toState: "s-submitted", requiredRoles: ["field_worker"] },
-      { id: "t-2", key: "verify", label: "Verifier", labelEn: "Verify", fromState: "s-submitted", toState: "s-verified", requiredRoles: ["supervisor"] },
-      { id: "t-3", key: "approve", label: "Approuver", labelEn: "Approve", fromState: "s-verified", toState: "s-approved", requiredRoles: ["supervisor"] },
-      { id: "t-4", key: "reserve", label: "Reserver", labelEn: "Reserve", fromState: "s-approved", toState: "s-reserved", requiredRoles: ["supervisor"], sideEffects: ["inventory_reserve"] },
-      { id: "t-5", key: "distribute", label: "Distribuer", labelEn: "Distribute", fromState: "s-reserved", toState: "s-distributed", requiredRoles: ["field_worker"] },
-      { id: "t-6", key: "confirm", label: "Confirmer", labelEn: "Confirm", fromState: "s-distributed", toState: "s-confirmed", requiredRoles: ["field_worker"] },
+      { id: "t-1", key: "submit", label: "Soumettre", labelEn: "Submit", fromState: "s-draft", toState: "s-submitted", requiredRoles: ["field_worker"], kind: "submit" },
+      { id: "t-2", key: "verify", label: "Verifier", labelEn: "Verify", fromState: "s-submitted", toState: "s-verified", requiredRoles: ["supervisor"], kind: "verify" },
+      { id: "t-3", key: "approve", label: "Approuver", labelEn: "Approve", fromState: "s-verified", toState: "s-approved", requiredRoles: ["supervisor"], kind: "approve" },
+      { id: "t-4", key: "reserve", label: "Reserver", labelEn: "Reserve", fromState: "s-approved", toState: "s-reserved", requiredRoles: ["supervisor"], kind: "reserve", sideEffects: ["inventory_reserve"] },
+      { id: "t-5", key: "distribute", label: "Distribuer", labelEn: "Distribute", fromState: "s-reserved", toState: "s-distributed", requiredRoles: ["field_worker"], kind: "distribute" },
+      { id: "t-6", key: "confirm", label: "Confirmer", labelEn: "Confirm", fromState: "s-distributed", toState: "s-confirmed", requiredRoles: ["field_worker"], kind: "confirm", terminal: true },
     ],
     roles: [
       { id: "r-1", key: "field_worker", label: "Agent terrain", permissions: ["record:create", "record:read_own", "record:update_own", "sync:push", "sync:pull"] },
@@ -124,9 +124,9 @@ function secondaryDemoWorkflows(orgId: string, orgKey: DemoOrgKey, expiresAt: nu
         { id: "s-closed", key: "closed", label: "Cloture", labelEn: "Closed", color: "#059669", isInitial: false, isTerminal: true, x: 800, y: 80 },
       ],
       transitions: [
-        { id: "req-t-1", key: "submit", label: "Soumettre", labelEn: "Submit", fromState: "s-draft", toState: "s-submitted", requiredRoles: ["field_worker"] },
-        { id: "req-t-2", key: "prioritize", label: "Prioriser", labelEn: "Prioritize", fromState: "s-submitted", toState: "s-prioritized", requiredRoles: ["supervisor"] },
-        { id: "req-t-3", key: "close", label: "Cloturer", labelEn: "Close", fromState: "s-prioritized", toState: "s-closed", requiredRoles: ["supervisor"] },
+        { id: "req-t-1", key: "submit", label: "Soumettre", labelEn: "Submit", fromState: "s-draft", toState: "s-submitted", requiredRoles: ["field_worker"], kind: "submit" },
+        { id: "req-t-2", key: "prioritize", label: "Prioriser", labelEn: "Prioritize", fromState: "s-submitted", toState: "s-prioritized", requiredRoles: ["supervisor"], kind: "prioritize" },
+        { id: "req-t-3", key: "close", label: "Cloturer", labelEn: "Close", fromState: "s-prioritized", toState: "s-closed", requiredRoles: ["supervisor"], kind: "close", terminal: true },
       ],
       roles: [
         { id: "req-r-1", key: "field_worker", label: "Agent terrain", labelEn: "Field Agent", permissions: ["record:create", "record:read_own", "record:update_own", "sync:push", "sync:pull"] },
@@ -177,8 +177,8 @@ function secondaryDemoWorkflows(orgId: string, orgKey: DemoOrgKey, expiresAt: nu
         { id: "s-confirmed", key: "confirmed", label: "Confirme", labelEn: "Confirmed", color: "#059669", isInitial: false, isTerminal: true, x: 580, y: 80 },
       ],
       transitions: [
-        { id: "stk-t-1", key: "submit", label: "Soumettre", labelEn: "Submit", fromState: "s-draft", toState: "s-submitted", requiredRoles: ["field_worker"] },
-        { id: "stk-t-2", key: "confirm", label: "Confirmer", labelEn: "Confirm", fromState: "s-submitted", toState: "s-confirmed", requiredRoles: ["supervisor"] },
+        { id: "stk-t-1", key: "submit", label: "Soumettre", labelEn: "Submit", fromState: "s-draft", toState: "s-submitted", requiredRoles: ["field_worker"], kind: "submit" },
+        { id: "stk-t-2", key: "confirm", label: "Confirmer", labelEn: "Confirm", fromState: "s-submitted", toState: "s-confirmed", requiredRoles: ["supervisor"], kind: "confirm", terminal: true },
       ],
       roles: [
         { id: "stk-r-1", key: "field_worker", label: "Agent terrain", labelEn: "Field Agent", permissions: ["record:create", "record:read_own", "record:update_own", "sync:push", "sync:pull"] },

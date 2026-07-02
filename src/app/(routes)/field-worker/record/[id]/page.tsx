@@ -13,7 +13,7 @@ import type { WorkflowDefinition } from "@/types/workflow"
 import { FieldRenderer } from "@/components/fields/FieldRenderer"
 import { groupFieldsBySection, recordTitle, sectionLabel } from "@/lib/workflows/runtime"
 import { db } from "@/lib/db/indexeddb"
-import { runBackgroundSync } from "@/lib/sync/run-background-sync"
+import { requestPipelineSync } from "@/lib/sync/pipeline-coordinator"
 import { registerFieldFlowBackgroundSync } from "@/lib/sync/register-background-sync"
 import { generateId } from "@/lib/utils"
 import { useSyncStore } from "@/stores/syncStore"
@@ -203,7 +203,7 @@ export default function RecordDetailPage() {
       useSyncStore.getState().setPendingCount((await db.getPendingMutations()).length)
       setRecord(updated)
       setEditing(false)
-      void runBackgroundSync(user)
+      void requestPipelineSync(user, { reason: "record-update", retry: true })
     } catch {
       setSaveError(t("record.saveFailed", "Could not save changes locally."))
     } finally {

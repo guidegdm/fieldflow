@@ -7,6 +7,7 @@ import type { ConflictRecord } from "@/types/sync"
 import type { RecordData } from "@/types/record"
 import type { WorkflowDefinition, WorkflowField } from "@/types/workflow"
 import { hasAnyRoleAccess } from "@/lib/auth/roles"
+import { validateWorkflowDefinition } from "@/lib/workflows/validate-definition"
 
 const mutationSchema = z.object({
   client_id: z.string().min(1),
@@ -124,6 +125,36 @@ async function demoExpiresAtForOrg(store: { getOrgAsync: (id: string) => Promise
   return Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60
 }
 
+type ServerMutation = SyncBatchRequest["operations"][number] & {
+  serverCommitStatus?: string
+  server_seq?: number
+}
+
+function isCommittedMutation(mutation: ServerMutation | undefined) {
+  return !!mutation && (mutation.serverCommitStatus === "committed" || mutation.status === "ACKED")
+}
+
+async function getServerMutation(store: { getMutationForOrg: (clientId: string, orgId: string) => Promise<unknown> }, clientId: string, orgId: string) {
+  return await store.getMutationForOrg(clientId, orgId).catch(() => undefined) as ServerMutation | undefined
+}
+
+async function claimOrResumeMutation(
+  store: {
+    claimMutationForOrg: (op: SyncBatchRequest["operations"][number], orgId: string) => Promise<boolean>
+    getMutationForOrg: (clientId: string, orgId: string) => Promise<unknown>
+  },
+  op: SyncBatchRequest["operations"][number],
+  orgId: string,
+) {
+  if (await store.claimMutationForOrg(op, orgId)) return true
+  const existing = await getServerMutation(store, op.client_id, orgId)
+  return !isCommittedMutation(existing)
+}
+
+function withMutationStamp<T extends Record<string, unknown>>(value: T, clientId: string): T & { lastMutationId: string } {
+  return { ...value, lastMutationId: clientId }
+}
+
 export async function POST(request: NextRequest) {
   const user = await getAuthUser(request)
   if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 })
@@ -143,7 +174,8 @@ export async function POST(request: NextRequest) {
   const conflicts: SyncBatchResponse["conflicts"] = []
 
   for (const op of body.operations) {
-    if (await store.hasMutationForOrg(op.client_id, user.orgId)) {
+    const serverMutation = await getServerMutation(store, op.client_id, user.orgId)
+    if (isCommittedMutation(serverMutation)) {
       acked.push(op.client_id)
       continue
     }
@@ -156,12 +188,24 @@ export async function POST(request: NextRequest) {
           failed.push({ client_id: op.client_id, reason: "INVALID_WORKFLOW_DEFINITION" })
           continue
         }
-        if (!(await store.claimMutationForOrg(op, user.orgId))) {
+        const workflowDefinition = op.payload as WorkflowDefinition
+        const workflowErrors = validateWorkflowDefinition(workflowDefinition)
+        if (workflowErrors.length > 0) {
+          failed.push({ client_id: op.client_id, reason: `INVALID_WORKFLOW_DEFINITION:${workflowErrors[0]?.message || "validation_failed"}` })
+          continue
+        }
+        const existingWorkflow = await store.getWorkflowForOrgAsync(op.workflow_id, user.orgId)
+        if ((existingWorkflow as (WorkflowDefinition & { lastMutationId?: string }) | undefined)?.lastMutationId === op.client_id) {
+          await store.completeMutationForOrg({ ...op, payload: existingWorkflow, expiresAt: demoExpiresAt }, user.orgId)
           acked.push(op.client_id)
           continue
         }
-        await store.putWorkflowForOrg(op.payload as WorkflowDefinition)
-        await store.completeMutationForOrg(op, user.orgId)
+        if (!(await claimOrResumeMutation(store, op, user.orgId))) {
+          acked.push(op.client_id)
+          continue
+        }
+        await store.putWorkflowForOrg(withMutationStamp(workflowDefinition as WorkflowDefinition & Record<string, unknown>, op.client_id) as unknown as WorkflowDefinition)
+        await store.completeMutationForOrg({ ...op, payload: withMutationStamp(workflowDefinition as unknown as Record<string, unknown>, op.client_id), expiresAt: demoExpiresAt }, user.orgId)
         acked.push(op.client_id)
         continue
       }
@@ -204,12 +248,19 @@ export async function POST(request: NextRequest) {
           orgId: user.orgId,
           expiresAt: demoExpiresAt,
         }
-        if (!(await store.claimMutationForOrg(op, user.orgId))) {
+        const existingRecord = await store.getRecordForOrg(record.id, user.orgId)
+        if ((existingRecord as (RecordData & { lastMutationId?: string }) | undefined)?.lastMutationId === op.client_id) {
+          await store.completeMutationForOrg({ ...op, payload: existingRecord, expiresAt: demoExpiresAt }, user.orgId)
           acked.push(op.client_id)
           continue
         }
-        await store.putRecordForOrg(record)
-        await store.completeMutationForOrg({ ...op, payload: record, expiresAt: demoExpiresAt }, user.orgId)
+        if (!(await claimOrResumeMutation(store, op, user.orgId))) {
+          acked.push(op.client_id)
+          continue
+        }
+        const stampedRecord = withMutationStamp(record as unknown as Record<string, unknown>, op.client_id) as unknown as RecordData
+        await store.putRecordForOrg(stampedRecord)
+        await store.completeMutationForOrg({ ...op, payload: stampedRecord, expiresAt: demoExpiresAt }, user.orgId)
         acked.push(op.client_id)
       } else if (op.operation === "update" || op.operation === "attach_evidence") {
         const storedRecord = await store.getRecordForOrg(op.record_id!, user.orgId)
@@ -218,6 +269,11 @@ export async function POST(request: NextRequest) {
           continue
         }
         const existing = cloneRecord(storedRecord)
+        if ((existing as RecordData & { lastMutationId?: string }).lastMutationId === op.client_id) {
+          await store.completeMutationForOrg({ ...op, payload: existing, expiresAt: demoExpiresAt }, user.orgId)
+          acked.push(op.client_id)
+          continue
+        }
 
         const payloadObject = asRecord(op.payload)
         const incomingFields = asRecord(payloadObject.fields ?? op.payload)
@@ -371,7 +427,7 @@ export async function POST(request: NextRequest) {
             inventory_reservation_hash: inventory.contentHash,
           }
         }
-        if (!(await store.claimMutationForOrg(op, user.orgId))) {
+        if (!(await claimOrResumeMutation(store, op, user.orgId))) {
           acked.push(op.client_id)
           continue
         }
@@ -382,8 +438,9 @@ export async function POST(request: NextRequest) {
 
         const hasEscalated = opConflicts.some((c) => !c.auto_resolved)
         existing.syncStatus = hasEscalated ? "conflict" : existing.syncStatus || "synced"
-        await store.putRecordForOrg(existing)
-        await store.completeMutationForOrg({ ...op, payload: existing, expiresAt: demoExpiresAt }, user.orgId)
+        const stampedRecord = withMutationStamp(existing as unknown as Record<string, unknown>, op.client_id) as unknown as RecordData
+        await store.putRecordForOrg(stampedRecord)
+        await store.completeMutationForOrg({ ...op, payload: stampedRecord, expiresAt: demoExpiresAt }, user.orgId)
 
         for (const ec of opConflicts.filter((c) => !c.auto_resolved)) {
           const cr: ConflictRecord = {
@@ -408,11 +465,20 @@ export async function POST(request: NextRequest) {
       } else if (op.operation === "delete") {
         const existing = await store.getRecordForOrg(op.record_id!, user.orgId)
         if (!existing) {
+          if (serverMutation && !isCommittedMutation(serverMutation)) {
+            await store.completeMutationForOrg({
+              ...op,
+              payload: { id: op.record_id, orgId: user.orgId, deletedAt: operationServerTs },
+              expiresAt: demoExpiresAt,
+            }, user.orgId)
+            acked.push(op.client_id)
+            continue
+          }
           failed.push({ client_id: op.client_id, reason: "RECORD_NOT_FOUND" })
           continue
         }
 
-        if (!(await store.claimMutationForOrg(op, user.orgId))) {
+        if (!(await claimOrResumeMutation(store, op, user.orgId))) {
           acked.push(op.client_id)
           continue
         }

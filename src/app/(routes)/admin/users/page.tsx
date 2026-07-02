@@ -10,6 +10,8 @@ import { Select } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import type { UserRole } from "@/types/auth"
 import { Loader2, UserPlus, X, ChevronDown, Check } from "lucide-react"
+import { db } from "@/lib/db/indexeddb"
+import { useAuthStore } from "@/stores/authStore"
 
 interface UserRow {
   id: string
@@ -30,6 +32,7 @@ const ROLES: { value: UserRole; label: string; labelEn: string }[] = [
 
 export default function AdminUsersPage() {
   const { t, i18n } = useTranslation()
+  const orgId = useAuthStore((state) => state.user?.orgId)
   const [users, setUsers] = useState<UserRow[]>([])
   const [loading, setLoading] = useState(true)
   const [inviteOpen, setInviteOpen] = useState(false)
@@ -40,9 +43,20 @@ export default function AdminUsersPage() {
   const [inviteError, setInviteError] = useState("")
 
   useEffect(() => {
+    let cancelled = false
+    const projectionKey = orgId ? `admin-users:${orgId}` : null
+    async function loadLocal() {
+      if (!projectionKey) return
+      const local = await db.getProjection<UserRow[]>(projectionKey).catch(() => undefined)
+      if (!cancelled && local?.length) {
+        setUsers(local)
+        setLoading(false)
+      }
+    }
+    void loadLocal()
     fetch("/api/admin/users", { credentials: "include" })
       .then((res) => res.ok ? res.json() : [])
-      .then((data) => setUsers(data.map((u: UserRow & { userId?: string }) => ({
+      .then((data) => data.map((u: UserRow & { userId?: string }) => ({
         id: u.id || u.userId || u.email,
         name: u.name,
         email: u.email,
@@ -51,10 +65,20 @@ export default function AdminUsersPage() {
         invited: Boolean(u.invited),
         inviteStatus: u.inviteStatus,
         delivery: u.delivery,
-      }))))
-      .catch(() => setUsers([]))
-      .finally(() => setLoading(false))
-  }, [])
+      })))
+      .then((nextUsers) => {
+        if (cancelled) return
+        setUsers(nextUsers)
+        if (projectionKey) void db.putProjection(projectionKey, nextUsers, orgId)
+      })
+      .catch(() => {
+        if (!cancelled && !projectionKey) setUsers([])
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [orgId])
 
   const handleInvite = async () => {
     if (!inviteEmail) return
@@ -79,7 +103,9 @@ export default function AdminUsersPage() {
         inviteStatus: user.inviteStatus,
         delivery: user.delivery,
       }
-      setUsers((prev) => [newUser, ...prev.filter((item) => item.email !== newUser.email)])
+      const nextUsers = [newUser, ...users.filter((item) => item.email !== newUser.email)]
+      setUsers(nextUsers)
+      if (orgId) void db.putProjection(`admin-users:${orgId}`, nextUsers, orgId)
       setInviteOpen(false)
       setInviteEmail("")
       setInviteRole("field_worker")
@@ -108,7 +134,9 @@ export default function AdminUsersPage() {
     setEditingRole(null)
     try {
       const updated = await persistUser(current.email, { role })
-      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, ...updated, id: updated.id || updated.userId || updated.email } : u)))
+      const nextUsers = users.map((u) => (u.id === userId ? { ...u, ...updated, id: updated.id || updated.userId || updated.email } : u))
+      setUsers(nextUsers)
+      if (orgId) void db.putProjection(`admin-users:${orgId}`, nextUsers, orgId)
     } catch {
       setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role: current.role } : u)))
       setInviteError(t("admin.userUpdateFailed", "User could not be updated."))
@@ -122,7 +150,9 @@ export default function AdminUsersPage() {
     setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, active: nextActive, inviteStatus: nextActive ? "accepted" : "inactive" } : u)))
     try {
       const updated = await persistUser(current.email, { active: nextActive })
-      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, ...updated, id: updated.id || updated.userId || updated.email } : u)))
+      const nextUsers = users.map((u) => (u.id === userId ? { ...u, ...updated, id: updated.id || updated.userId || updated.email } : u))
+      setUsers(nextUsers)
+      if (orgId) void db.putProjection(`admin-users:${orgId}`, nextUsers, orgId)
     } catch {
       setUsers((prev) => prev.map((u) => (u.id === userId ? current : u)))
       setInviteError(t("admin.userUpdateFailed", "User could not be updated."))

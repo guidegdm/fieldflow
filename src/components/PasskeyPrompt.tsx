@@ -102,9 +102,9 @@ export function PasskeyPrompt() {
   }
 
   return (
-    <div className="fixed inset-x-3 bottom-3 z-50 mx-auto max-w-md rounded-xl border border-graph-line bg-white/95 p-3 shadow-xl backdrop-blur sm:bottom-5">
+    <div className="fixed inset-x-3 top-[calc(4.75rem+env(safe-area-inset-top))] z-50 mx-auto max-h-[min(24rem,calc(100dvh-2rem))] max-w-md overflow-y-auto rounded-2xl border border-graph-line bg-white/95 p-3 shadow-2xl shadow-ink-black/10 ring-1 ring-ink-black/5 backdrop-blur sm:bottom-5 sm:left-auto sm:right-5 sm:top-auto sm:mx-0 sm:max-w-sm">
       <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-ink-blue text-white">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-ink-blue text-white shadow-sm">
           <KeyRound className="h-5 w-5" aria-hidden="true" />
         </div>
         <div className="min-w-0 flex-1">
@@ -115,7 +115,7 @@ export function PasskeyPrompt() {
           {error && <p className="mt-2 text-xs text-danger-500">{error}</p>}
           <div className="mt-3 flex flex-wrap gap-2">
             <Button size="sm" loading={registering} onClick={register}>{t("passkey.register", "Add passkey")}</Button>
-            <Button size="sm" variant="secondary" onClick={dismiss} disabled={registering}>{t("common.later")}</Button>
+            <Button size="sm" variant="secondary" onClick={dismiss} disabled={registering}>{t("common.later", "Later")}</Button>
           </div>
         </div>
         <button

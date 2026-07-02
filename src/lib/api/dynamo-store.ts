@@ -705,6 +705,11 @@ export const dynamoStore = {
     return !!result.Item
   },
 
+  async getMutation(clientId: string, orgId: string): Promise<MutationEntry | undefined> {
+    const result = await sendGet(orgMutationPk(orgId, clientId), "PROFILE")
+    return stripKeys<MutationEntry>(result.Item as (MutationEntry & Record<string, unknown>) | undefined)
+  },
+
   async getServerSince(orgId: string, seq: number): Promise<MutationEntry[]> {
     const items = (await listOrgMutationsAfter(orgId, seq)) ?? await scanAll({
       FilterExpression: "entityType = :type AND orgId = :orgId AND server_seq > :seq",

@@ -19,6 +19,26 @@ async function getDynamo() {
 const g = globalThis as Record<string, unknown>
 const scopedKey = (orgId: string | undefined, id: string) => orgId ? `${orgId}#${id}` : id
 
+type OrgItem = Record<string, unknown> & { id: string }
+type UserProfileItem = Record<string, unknown> & {
+  orgId?: string
+  userId?: string
+  id?: string
+  email?: string
+  name?: string
+  role?: string
+  active?: boolean
+  invited?: boolean
+  inviteToken?: string
+  inviteStatus?: string
+  inviteExpiresAt?: number
+  invitedBy?: string
+  delivery?: string
+  deliveryWarning?: string
+  createdAt?: number
+  updatedAt?: number
+}
+
 class Store {
   private records = new Map<string, RecordData>()
   private workflows = new Map<string, WorkflowDefinition>()
@@ -27,8 +47,8 @@ class Store {
   private conflicts = new Map<string, ConflictRecord>()
   private criticalOps = new Map<string, { itemId: string; quantity: number; timestamp: number; contentHash: string }>()
   private inventory = new Map<string, InventoryItem>()
-  private orgs = new Map<string, any>()
-  private userProfiles = new Map<string, any>()
+  private orgs = new Map<string, OrgItem>()
+  private userProfiles = new Map<string, UserProfileItem>()
   private auditEvents: AuditEvent[] = []
   private inventoryLedger: InventoryLedgerEntry[] = []
   private demoSandboxMetrics: Array<Record<string, unknown>> = []
@@ -94,6 +114,10 @@ class Store {
     if (DYNAMODB_ENABLED) return (await getDynamo())?.hasMutation(clientId, orgId) ?? false
     return this.hasMutation(clientId)
   }
+  async getMutationForOrg(clientId: string, orgId: string) {
+    if (DYNAMODB_ENABLED) return (await getDynamo())?.getMutation(clientId, orgId)
+    return this.mutations.get(clientId)
+  }
   async storeMutationForOrg(m: MutationEntry, orgId: string) {
     const serverSeq = DYNAMODB_ENABLED
       ? await (await getDynamo())?.nextMutationSeq(orgId) ?? this.seq + 1
@@ -108,7 +132,7 @@ class Store {
     const serverSeq = DYNAMODB_ENABLED
       ? await (await getDynamo())?.nextMutationSeq(orgId) ?? this.seq + 1
       : this.seq + 1
-    const claimed = { ...m, status: "SENDING" as const, server_seq: serverSeq }
+    const claimed = { ...m, status: "SENDING" as const, serverCommitStatus: "claimed", server_seq: serverSeq } as MutationEntry & { serverCommitStatus: string }
     if (DYNAMODB_ENABLED) {
       const stored = await (await getDynamo())?.putMutationIfAbsent(claimed, orgId, serverSeq)
       if (!stored) return false
@@ -121,7 +145,7 @@ class Store {
     const existing = this.mutations.get(m.client_id)
     const serverSeq = existing?.server_seq ?? this.seq + 1
     if (!existing) this.seq = serverSeq
-    const stored = { ...m, server_seq: serverSeq }
+    const stored = { ...m, status: "ACKED" as const, serverCommitStatus: "committed", server_seq: serverSeq } as MutationEntry & { serverCommitStatus: string }
     if (DYNAMODB_ENABLED) await (await getDynamo())?.putMutation(stored, orgId, serverSeq)
     this.mutations.set(m.client_id, stored)
   }
@@ -145,8 +169,8 @@ class Store {
     })
   }
 
-  putOrg(o: any) { this.orgs.set(o.id, o) }
-  async putOrgAsync(o: Record<string, unknown> & { id: string }) {
+  putOrg(o: OrgItem) { this.orgs.set(o.id, o) }
+  async putOrgAsync(o: OrgItem) {
     if (DYNAMODB_ENABLED) await (await getDynamo())?.putOrgItem(o)
     this.orgs.set(o.id, o)
   }
@@ -160,22 +184,22 @@ class Store {
     const userId = String(p.userId || p.email || "")
     return orgId && userId ? `${orgId}#${userId}` : userId
   }
-  putUserProfile(p: any) { this.userProfiles.set(this.userProfileKey(p), p) }
-  async putUserProfileAsync(p: Record<string, unknown>) {
+  putUserProfile(p: UserProfileItem) { this.userProfiles.set(this.userProfileKey(p), p) }
+  async putUserProfileAsync(p: UserProfileItem) {
     if (DYNAMODB_ENABLED) await (await getDynamo())?.putUserProfile(p)
     this.userProfiles.set(this.userProfileKey(p), p)
   }
-  async getUsersByOrg(orgId: string) {
-    if (DYNAMODB_ENABLED) return (await getDynamo())?.listUserProfiles(orgId) ?? []
+  async getUsersByOrg(orgId: string): Promise<UserProfileItem[]> {
+    if (DYNAMODB_ENABLED) return ((await getDynamo())?.listUserProfiles(orgId) ?? []) as Promise<UserProfileItem[]>
     return Array.from(this.userProfiles.values()).filter((p) => p.orgId === orgId)
   }
   getUserProfile(userId: string) { return this.userProfiles.get(userId) }
-  async getUserProfileByEmailAsync(email: string) {
-    if (DYNAMODB_ENABLED) return (await getDynamo())?.getUserProfileByEmail(email)
+  async getUserProfileByEmailAsync(email: string): Promise<UserProfileItem | undefined> {
+    if (DYNAMODB_ENABLED) return (await getDynamo())?.getUserProfileByEmail(email) as Promise<UserProfileItem | undefined>
     return Array.from(this.userProfiles.values()).find((p) => p.email === email)
   }
-  async listUserProfilesByEmailAsync(email: string) {
-    if (DYNAMODB_ENABLED) return (await getDynamo())?.listUserProfilesByEmail(email) ?? []
+  async listUserProfilesByEmailAsync(email: string): Promise<UserProfileItem[]> {
+    if (DYNAMODB_ENABLED) return ((await getDynamo())?.listUserProfilesByEmail(email) ?? []) as Promise<UserProfileItem[]>
     return Array.from(this.userProfiles.values()).filter((p) => p.email === email)
   }
 

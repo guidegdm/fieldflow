@@ -17,6 +17,10 @@ import { useAuthStore } from "@/stores/authStore"
 import { hasAnyRoleAccess } from "@/lib/auth/roles"
 import { db } from "@/lib/db/indexeddb"
 import { invalidate } from "@/lib/invalidation"
+import { requestPipelineSync } from "@/lib/sync/pipeline-coordinator"
+import { registerFieldFlowBackgroundSync } from "@/lib/sync/register-background-sync"
+import { useSyncStore } from "@/stores/syncStore"
+import type { MutationEntry } from "@/types/sync"
 
 type TimelineStatus = "success" | "default" | "warning" | "danger"
 
@@ -115,59 +119,53 @@ export default function SupervisorReview() {
       supervisor_reviewed_at: new Date(now).toISOString(),
     }
 
-    setSubmitting(true)
-    try {
-      const res = await fetch("/api/sync/batch", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          device_id: "supervisor-web",
-          device_seq: 0,
-          operations: [{
-            client_id: `review-${record.id}-${now}`,
-            device_id: "supervisor-web",
-            operation: "update",
-            resource: "record",
-            workflow_id: record.workflowId,
-            record_id: record.id,
-            payload: {
-              fields: reviewFields,
-              status,
-              state,
-              syncStatus: "synced",
-            },
-            client_timestamp: now,
-            base_version: record.version,
-            base_fields: {
-              supervisor_review_action: record.fields?.supervisor_review_action,
-              supervisor_review_reason: record.fields?.supervisor_review_reason,
-              supervisor_reviewed_at: record.fields?.supervisor_reviewed_at,
-            },
-            status: "PENDING",
-            retry_count: 0,
-            last_error: null,
-            enqueued_at: now,
-          }],
-        }),
-      })
-
-      if (!res.ok) return
-      const updatedRecord: RecordData = {
-        ...record,
-        fields: { ...record.fields, ...reviewFields },
+    const deviceId = user?.deviceId || "supervisor-web"
+    const updatedRecord: RecordData = {
+      ...record,
+      fields: { ...record.fields, ...reviewFields },
+      status,
+      state,
+      syncStatus: "pending",
+      updatedAt: now,
+      version: record.version + 1,
+    }
+    const mutation: MutationEntry = {
+      client_id: `review-${record.id}-${transition.id}-${now}`,
+      device_id: deviceId,
+      operation: "update",
+      resource: "record",
+      workflow_id: record.workflowId,
+      record_id: record.id,
+      payload: {
+        fields: reviewFields,
         status,
         state,
-        syncStatus: "synced",
-        updatedAt: now,
-        syncedAt: now,
-        version: record.version + 1,
-      }
-      await db.putRecord(updatedRecord).catch(() => {})
+        syncStatus: "pending",
+      },
+      client_timestamp: now,
+      base_version: record.version,
+      base_fields: {
+        supervisor_review_action: record.fields?.supervisor_review_action,
+        supervisor_review_reason: record.fields?.supervisor_review_reason,
+        supervisor_reviewed_at: record.fields?.supervisor_reviewed_at,
+      },
+      status: "PENDING",
+      retry_count: 0,
+      last_error: null,
+      enqueued_at: now,
+    }
+
+    setSubmitting(true)
+    try {
+      await db.putRecord(updatedRecord)
+      await db.enqueueMutation(mutation)
+      void registerFieldFlowBackgroundSync()
+      useSyncStore.getState().setPendingCount((await db.getPendingMutations()).length)
       setRecord(updatedRecord)
       setSelectedTransitionId(null)
       setReason("")
       invalidate(["records", "review", "sync"])
+      void requestPipelineSync(user, { reason: "supervisor-review", retry: true })
     } finally {
       setSubmitting(false)
     }

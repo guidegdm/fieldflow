@@ -2,7 +2,6 @@
 
 import { db } from "@/lib/db/indexeddb"
 import { registerFieldFlowBackgroundSync } from "@/lib/sync/register-background-sync"
-import { generateId } from "@/lib/utils"
 import { useSyncStore } from "@/stores/syncStore"
 import { invalidate } from "@/lib/invalidation"
 import type { DemoUser } from "@/types/auth"
@@ -21,6 +20,26 @@ function resolvedValue(conflict: ConflictRecord, choice: "accept_a" | "accept_b"
   if (choice === "accept_a") return conflict.value_a
   if (choice === "accept_b") return conflict.value_b
   return manualValue
+}
+
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`
+  if (value && typeof value === "object") {
+    return `{${Object.entries(value as Record<string, unknown>)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, entry]) => `${JSON.stringify(key)}:${stableJson(entry)}`)
+      .join(",")}}`
+  }
+  return JSON.stringify(value)
+}
+
+function stableHash(value: unknown) {
+  let hash = 5381
+  const input = stableJson(value)
+  for (let index = 0; index < input.length; index += 1) {
+    hash = ((hash << 5) + hash) ^ input.charCodeAt(index)
+  }
+  return (hash >>> 0).toString(36)
 }
 
 export async function resolveConflictsOffline({
@@ -50,6 +69,13 @@ export async function resolveConflictsOffline({
   const now = Date.now()
   const baseFields = { ...(record.fields ?? {}) }
   const fields = { ...(record.fields ?? {}) }
+  const mutationId = `conflict-resolution-${record.id}-${stableHash({
+    recordId: record.id,
+    conflictIds: conflicts.map((conflict) => conflict.id).sort(),
+    resolutions,
+    rationale,
+    resolvedBy,
+  })}`
 
   for (const conflict of conflicts) {
     const input = resolutions[conflict.field]
@@ -71,10 +97,11 @@ export async function resolveConflictsOffline({
     syncStatus: "pending",
     updatedAt: now,
     version: record.version + 1,
+    lastMutationId: mutationId,
   }
 
   const mutation: MutationEntry = {
-    client_id: `conflict-resolution-${record.id}-${generateId()}`,
+    client_id: mutationId,
     device_id: user?.deviceId || record.deviceId || `resolver-${resolvedBy}`,
     operation: "update",
     resource: "record",
